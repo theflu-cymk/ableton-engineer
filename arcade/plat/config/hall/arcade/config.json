@@ -1,0 +1,122 @@
+{
+  "hall": "arcade",
+  "version": "1.0.0",
+  "debug": false,
+  "autoLogin": true,
+  "iframe": true,
+  "brand": {
+    "name": "NEBULA",
+    "sub": "play money arcade",
+    "notice": "Play tokens only. Nothing here costs money, pays out money, or can be exchanged for anything."
+  },
+  "currency": {
+    "code": "TKN",
+    "name": "tokens",
+    "symbol": "\u25c9",
+    "starting": 1000,
+    "topUp": 500
+  },
+  "categories": [
+    { "id": "all", "label": "ALL", "icon": "\u25a6" },
+    { "id": "slot", "label": "SLOT", "icon": "\u25ce" },
+    { "id": "fishing", "label": "FISHING", "icon": "\u2248" },
+    { "id": "keno", "label": "KENO", "icon": "\u25a4" },
+    { "id": "table", "label": "TABLE", "icon": "\u25c8" },
+    { "id": "links", "label": "SOON", "icon": "\u2315" }
+  ],
+  "games": [
+    {
+      "gid": 2001,
+      "slug": "slot",
+      "name": "Orbit7_2001",
+      "title": "Orbit 7",
+      "category": "slot",
+      "hot": true,
+      "built": true,
+      "blurb": "3x3 reels - 3 lines",
+      "art": { "a": "#ffb347", "b": "#ff2d95", "glyph": "7" }
+    },
+    {
+      "gid": 2002,
+      "slug": "keno",
+      "name": "NumberNebula_2002",
+      "title": "Number Nebula",
+      "category": "keno",
+      "hot": true,
+      "built": true,
+      "blurb": "Pick 10 of 80",
+      "art": { "a": "#5df2c1", "b": "#2a6bff", "glyph": "80" }
+    },
+    {
+      "gid": 2003,
+      "slug": "fish",
+      "name": "ReefRunner_2003",
+      "title": "Reef Runner",
+      "category": "fishing",
+      "hot": true,
+      "built": true,
+      "blurb": "Cannon arcade",
+      "art": { "a": "#38e8ff", "b": "#0b3a8f", "glyph": "\u2248" }
+    },
+    {
+      "gid": 2004,
+      "slug": "wild-legend",
+      "name": "WildLegend_2004",
+      "title": "Wild Legend",
+      "category": "slot",
+      "built": false,
+      "unavailableReason": "Catalogue placeholder. Drop a build in games/wild-legend/ and flip built to true.",
+      "art": { "a": "#ff6b35", "b": "#3b1060", "glyph": "\u265e" }
+    },
+    {
+      "gid": 2005,
+      "slug": "st-nova",
+      "name": "StNova_2005",
+      "title": "St. Nova's Treasure",
+      "category": "slot",
+      "built": false,
+      "unavailableReason": "Catalogue placeholder. The lobby renders it from config, nothing else.",
+      "art": { "a": "#8bff6b", "b": "#0a5c2e", "glyph": "\u2618" }
+    },
+    {
+      "gid": 2006,
+      "slug": "hexa-keno",
+      "name": "HexaKeno_2006",
+      "title": "Hexa Keno",
+      "category": "keno",
+      "built": false,
+      "unavailableReason": "Catalogue placeholder. Add a game folder to make it playable.",
+      "art": { "a": "#ff9ef5", "b": "#5a1a8f", "glyph": "\u2b21" }
+    },
+    {
+      "gid": 2007,
+      "slug": "deep-vault",
+      "name": "DeepVault_2007",
+      "title": "Deep Vault",
+      "category": "fishing",
+      "built": false,
+      "unavailableReason": "Catalogue placeholder. Same slot in the grid, no code behind it.",
+      "art": { "a": "#7cc6ff", "b": "#102a5c", "glyph": "\u26c3" }
+    },
+    {
+      "gid": 2008,
+      "slug": "lucky-5",
+      "name": "Lucky5_2008",
+      "title": "Lucky 5",
+      "category": "table",
+      "built": false,
+      "unavailableReason": "Table games are not built in this pass.",
+      "art": { "a": "#ffd166", "b": "#8a3b00", "glyph": "5" }
+    },
+    {
+      "gid": 2009,
+      "slug": "moon-crash",
+      "name": "MoonCrash_2009",
+      "title": "Moon Crash",
+      "category": "links",
+      "built": false,
+      "unavailableReason": "Not built. The SOON tab exists so the catalogue shape is visible.",
+      "art": { "a": "#c79bff", "b": "#2a0f5c", "glyph": "\u2315" }
+    }
+  ]
+}

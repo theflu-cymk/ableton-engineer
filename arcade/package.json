@@ -1,0 +1,11 @@
+{
+  "name": "nebula-arcade",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Play-money arcade: same wrapper -> hall -> game architecture as a real casino shell, but tokens have no value.",
+  "scripts": {
+    "serve": "node scripts/serve.js",
+    "simulate": "node scripts/simulate.js"
+  }
+}

@@ -1,0 +1,174 @@
+.app {
+  display: grid;
+  grid-template-columns: 66px 1fr;
+  min-height: 100vh;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 8px;
+  border-right: 1px solid var(--line);
+  background: rgba(6, 9, 18, 0.72);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  align-items: center;
+}
+
+.rail button {
+  width: 50px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 8px 0 6px;
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  color: var(--dim);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.rail button .ico { font-size: 17px; line-height: 1; }
+.rail button .lbl { font-size: 8px; letter-spacing: 0.08em; font-weight: 700; }
+.rail button:hover { color: var(--ink); background: rgba(124, 243, 208, 0.1); }
+.rail button.on {
+  color: var(--ink);
+  border-color: rgba(124, 243, 208, 0.45);
+  background: linear-gradient(180deg, rgba(124, 243, 208, 0.22), rgba(90, 107, 255, 0.14));
+  box-shadow: 0 6px 20px rgba(124, 243, 208, 0.16);
+}
+
+.stage { padding: 12px 14px 40px; min-width: 0; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 13px;
+  color: #06121c;
+  background: linear-gradient(135deg, #7cf3d0, #8b9bff);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  flex: 0 0 auto;
+}
+
+.banner {
+  margin-left: auto;
+  text-align: right;
+  line-height: 1;
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(90, 107, 255, 0.34), rgba(124, 243, 208, 0.16));
+  border: 1px solid rgba(124, 243, 208, 0.32);
+}
+.banner span { display: block; font-size: 15px; font-weight: 800; letter-spacing: 0.22em; }
+.banner small { display: block; font-size: 8px; letter-spacing: 0.34em; color: var(--accent); margin-top: 3px; }
+
+.section {
+  margin: 0 0 10px;
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  position: relative;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0d1120;
+  text-align: left;
+  transition: transform 0.12s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124, 243, 208, 0.5);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+.card .art {
+  aspect-ratio: 4 / 5;
+  display: grid;
+  place-items: center;
+  font-size: 40px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 3px 16px rgba(0, 0, 0, 0.55);
+  position: relative;
+}
+.card .art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 80% at 50% 120%, rgba(0, 0, 0, 0.55), transparent 60%);
+}
+.card .meta { display: block; padding: 7px 9px 9px; }
+.card .name {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card .blurb { display: block; font-size: 10px; color: var(--dim); margin-top: 1px; }
+.card.locked .art { filter: grayscale(0.55) brightness(0.55); }
+.card.locked .name { color: #b9c1e0; }
+.card .hot {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #ff6a3d, #ff2d55);
+  box-shadow: 0 4px 12px rgba(255, 45, 85, 0.35);
+  z-index: 2;
+}
+.card .lock {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  font-size: 10px;
+  color: #cfd6f5;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 6px;
+  padding: 2px 5px;
+  z-index: 2;
+}
+
+.notice {
+  margin: 22px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--dim);
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+@media (max-width: 520px) {
+  .app { grid-template-columns: 58px 1fr; }
+  .rail button { width: 44px; }
+  .grid { grid-template-columns: repeat(2, 1fr); gap: 9px; }
+  .banner span { font-size: 13px; }
+}

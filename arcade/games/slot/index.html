@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbit 7</title>
+<link rel="stylesheet" href="../../commonFrame/ui.css">
+<link rel="stylesheet" href="slot.css">
+</head>
+<body>
+  <header class="game-head">
+    <button class="btn ghost" id="back">&#9664; LOBBY</button>
+    <h1>Orbit 7</h1>
+    <span class="grow"></span>
+    <span class="wallet"><span class="coin">&#9673;</span><b id="balance">0</b><span class="unit">TKN</span></span>
+  </header>
+
+  <main class="game-body slot">
+    <section class="cabinet">
+      <div class="reels" id="reels"></div>
+
+      <div class="controls">
+        <div class="control">
+          <label for="bet">Bet / line</label>
+          <div class="stepper">
+            <button class="btn ghost" id="betDown" aria-label="Decrease bet">&#8722;</button>
+            <b id="bet">1</b>
+            <button class="btn ghost" id="betUp" aria-label="Increase bet">+</button>
+          </div>
+        </div>
+        <button class="btn spin" id="spin">SPIN</button>
+        <button class="btn ghost" id="auto">AUTO &times;10</button>
+      </div>
+
+      <div class="readout" id="readout">3 lines &middot; pick a bet and spin</div>
+      <div class="stats" id="stats"></div>
+    </section>
+
+    <aside class="side">
+      <h2>Paytable &mdash; multiples of line bet</h2>
+      <table id="paytable"></table>
+      <p class="disclosure" id="disclosure"></p>
+
+      <h2 style="margin-top:18px">Seed</h2>
+      <input type="number" id="seed" aria-label="Seed">
+      <button class="btn ghost" id="reseed" style="margin-top:8px;width:100%">New seed</button>
+    </aside>
+  </main>
+
+  <div id="toast"></div>
+  <script type="module" src="slot.js"></script>
+</body>
+</html>

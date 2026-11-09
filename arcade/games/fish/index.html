@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reef Runner</title>
+<link rel="stylesheet" href="../../commonFrame/ui.css">
+<link rel="stylesheet" href="fish.css">
+</head>
+<body>
+  <header class="game-head">
+    <button class="btn ghost" id="back">&#9664; LOBBY</button>
+    <h1>Reef Runner</h1>
+    <span class="grow"></span>
+    <span class="wallet"><span class="coin">&#9673;</span><b id="balance">0</b><span class="unit">TKN</span></span>
+  </header>
+
+  <main class="game-body fish">
+    <section class="sea">
+      <canvas id="sea"></canvas>
+      <div class="hud">
+        <span>shots <b id="shots">0</b></span>
+        <span>caught <b id="caught">0</b></span>
+        <span>net <b id="net">0</b></span>
+        <span>return <b id="rtp">&mdash;</b></span>
+      </div>
+    </section>
+
+    <aside class="side">
+      <h2>How this cabinet works</h2>
+      <p class="disclosure">
+        Each shot costs <b>1 token</b>, and a hit is <b>not</b> a catch. Every fish carries its own
+        per-hit catch chance, solved so that any fish you land on returns the same expected value:
+        small fish are caught often, the kraken almost never. A shot that hits nothing pays nothing,
+        so your aim moves the realised return. Move to aim, click or tap to fire.
+      </p>
+
+      <h2 style="margin-top:16px">Targets</h2>
+      <table id="tiers"></table>
+
+      <button class="btn ghost" id="auto" style="margin-top:16px;width:100%">AUTO-FIRE: OFF</button>
+    </aside>
+  </main>
+
+  <div id="toast"></div>
+  <script type="module" src="fish.js"></script>
+</body>
+</html>

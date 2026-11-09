@@ -1,0 +1,377 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>zooming terraces — controls</title>
+<style>
+  html,body{margin:0;height:100%;background:#0a0a10;overflow:hidden;
+    font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;color:#cccddd}
+  #wrap{display:flex;height:100%}
+  #stage{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;background:#0a0a10}
+  canvas{display:block}
+  #panel{width:300px;flex:0 0 300px;box-sizing:border-box;overflow-y:auto;
+    background:#12121b;border-left:1px solid #23232f;padding:14px 14px 28px}
+  #panel h1{font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+    color:#8f90a8;margin:0 0 12px;font-weight:600}
+  .row{margin:0 0 13px}
+  .row label{display:flex;justify-content:space-between;gap:8px;color:#a8a9c0}
+  .row label b{color:#f0e6df;font-weight:600}
+  .row small{display:block;color:#5f6076;font-size:10px;margin-top:1px}
+  input[type=range]{width:100%;height:18px;margin:2px 0 0;-webkit-appearance:none;background:transparent}
+  input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:2px;background:#2c2d3c}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;margin-top:-5px;
+    border-radius:50%;background:#e8d9d0;border:0;cursor:pointer}
+  input[type=range]::-moz-range-track{height:3px;border-radius:2px;background:#2c2d3c}
+  input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radius:50%;background:#e8d9d0}
+  .colors{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin:2px 0 14px}
+  .colors label{display:flex;flex-direction:column;gap:5px;color:#a8a9c0;font-size:11px}
+  input[type=color]{width:100%;height:24px;padding:0;border:1px solid #2c2d3c;background:#0f0f16;
+    border-radius:4px;cursor:pointer}
+  .btns{display:flex;gap:8px;margin-top:4px}
+  button{flex:1;padding:7px 8px;background:#1d1d29;color:#d8d8e6;border:1px solid #2f3040;
+    border-radius:5px;font:inherit;cursor:pointer}
+  button:hover{background:#262636}
+  hr{border:0;border-top:1px solid #23232f;margin:14px 0}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage"><canvas id="c"></canvas></div>
+  <div id="panel">
+    <h1>uniforms</h1>
+    <div id="sliders"></div>
+    <hr>
+    <h1>colours</h1>
+    <div class="colors" id="colorcontrols"></div>
+    <div class="btns">
+      <button id="pause">pause</button>
+      <button id="reset">reset</button>
+    </div>
+  </div>
+</div>
+
+<script id="frag" type="x-shader/x-fragment">
+precision mediump float;
+
+uniform vec2  uParam;
+uniform vec2  iResolution;
+uniform float iTime;
+uniform float uSpeed;
+uniform float uLineCount;
+uniform float uAmplitude;
+uniform float uYOffset;
+uniform vec3  uBgColor1;
+uniform vec3  uBgColor2;
+uniform vec3  uWaveColor1;
+uniform vec3  uWaveColor2;
+
+const float MAX_LINES = 20.0;
+const float COS30     = 0.86602540;
+const float TAU       = 6.28318530;
+const float PERIOD    = 1.0;
+const float CLIMB     = 0.70;
+const float RISER     = 0.22;
+const float TREAD_PX  = 3.5;
+
+float hash1(float n) { return fract(sin(n * 12.9898) * 43758.5453); }
+
+float prof(float u) {
+  return u < CLIMB ? u / CLIMB : (1.0 - u) / (1.0 - CLIMB);
+}
+
+float stoneH(vec2 xz, float N, float D, float sec, float px) {
+  float r = max(abs(xz.x), abs(xz.y));
+  float u = fract(log2(max(r, 1e-5)) / PERIOD);
+
+  float Mu = clamp(r * 0.6931 / (px * TREAD_PX), 2.0, N);
+  float st = 1.0 / Mu;
+  float fr = fract(u * Mu);
+  float iu = floor(u * Mu);
+
+  float va = prof(iu * st);
+  float vb = prof(min((iu + 1.0) * st, 1.0));
+  float vv = mix(va, vb, smoothstep(1.0 - RISER, 1.0, fr));
+  float h  = -D * (1.0 - vv);
+
+  float stH  = abs(vb - va) * D + 1e-4;
+  float fade = smoothstep(1.0, 2.5, r * TAU / (sec * px));
+
+  float a  = fract(atan(xz.y, xz.x) * (sec / TAU));
+  float f  = abs(a - 0.5) * 2.0;
+  float sm = 1.0 - smoothstep(0.86, 0.995, f);
+  h -= stH * 0.45 * sm * fade;
+  h += stH * 0.30 * (hash1(a * 61.0 + iu * 7.13) - 0.5) * (1.0 - sm) * fade;
+  return h;
+}
+
+void main() {
+  float px = 1.0 / iResolution.y;
+  vec2  p  = (gl_FragCoord.xy - 0.5 * iResolution.xy) * px;
+
+  float rate = 0.15 * max(uSpeed, 0.0) * (uParam.x > 0.0 ? uParam.x : 1.0);
+  float zs   = exp2(-PERIOD * fract(iTime * rate));
+
+  vec2 w  = (p + vec2(0.0, uYOffset - 0.20)) * zs;
+  vec3 bg = mix(uBgColor2, uBgColor1, clamp(0.55 - p.y * 1.3, 0.0, 1.0));
+
+  float A    = w.x / COS30;
+  float c    = 0.5 * abs(A);
+  float YTOP = 0.02;
+  float s0   = w.y + YTOP;
+
+  float N   = clamp(floor(uLineCount + 0.5), 2.0, MAX_LINES);
+  float D   = clamp(uAmplitude, 0.05, 1.5);
+  float sec = 9.0 * N;
+
+  float TMAX = YTOP + D + 0.05;
+  float st   = max(TMAX / 158.0, min(D / (CLIMB * N) * 0.15, 0.55 * TREAD_PX * px));
+
+  float t = 0.0, t0 = 0.0;
+  bool hit = false;
+  for (int i = 0; i < 160; i++) {
+    if (t > TMAX) break;
+    float s  = s0 - t;
+    vec2  xz = vec2(s + 0.5 * A, s - 0.5 * A);
+    if (YTOP - t <= stoneH(xz, N, D, sec, px)) { hit = true; break; }
+    t0 = t;
+    t += st;
+  }
+  if (!hit) { gl_FragColor = vec4(bg, 1.0); return; }
+
+  for (int i = 0; i < 6; i++) {
+    float tm = 0.5 * (t0 + t);
+    float s  = s0 - tm;
+    vec2  xz = vec2(s + 0.5 * A, s - 0.5 * A);
+    if (YTOP - tm <= stoneH(xz, N, D, sec, px)) t = tm; else t0 = tm;
+  }
+
+  float y  = YTOP - t;
+  float s  = s0 - t;
+  float x  = s + 0.5 * A;
+  float z  = s - 0.5 * A;
+  vec2  xz = vec2(x, z);
+
+  float r  = abs(s) + c;
+  float Mu = clamp(r * 0.6931 / (px * TREAD_PX), 2.0, N);
+
+  float e  = max(r * 0.6931 / Mu * 0.30, zs * px * 2.0);
+  float h0 = stoneH(xz, N, D, sec, px);
+  vec3  nrm = normalize(vec3(
+      -(stoneH(xz + vec2(e, 0.0), N, D, sec, px) - h0) / e,
+      1.0,
+      -(stoneH(xz + vec2(0.0, e), N, D, sec, px) - h0) / e));
+
+  float up   = clamp(nrm.y, 0.0, 1.0);
+  float wall = 1.0 - up;
+
+  float uu  = fract(log2(max(r, 1e-5)) / PERIOD);
+  float fr  = fract(uu * Mu);
+  float iu  = floor(uu * Mu);
+
+  float a    = fract(atan(z, x) * (sec / TAU));
+  float f    = abs(a - 0.5) * 2.0;
+  float seam = 1.0 - smoothstep(0.86, 0.995, f);
+  float secFade = smoothstep(1.0, 2.5, r * TAU / (sec * px));
+
+  vec2  nh   = nrm.xz;
+  float nhL  = length(nh);
+  float warm = 0.5 + 0.5 * (nhL > 1e-5 ? dot(nh / nhL, vec2(-0.92, 0.40)) : 0.0);
+
+  float deep = clamp((y + D) / max(D, 1e-4), 0.0, 1.0);
+  vec3  top  = mix(uWaveColor1, vec3(1.0, 0.97, 0.94), 0.30) * (0.92 + 0.12 * deep);
+  vec3  side = mix(uWaveColor2 * vec3(0.94, 0.93, 1.04),
+                   uWaveColor1 * vec3(1.03, 0.90, 0.87), warm) * 0.94;
+
+  vec3  albedo = mix(side, top, smoothstep(0.55, 0.90, up));
+  vec3  L      = normalize(vec3(-0.45, 0.80, 0.40));
+  float dif    = max(dot(nrm, L), 0.0);
+  float sky    = 0.55 + 0.45 * nrm.y;
+  vec3  col    = albedo * (0.34 + 0.36 * dif + 0.30 * sky);
+  col *= 0.62 + 0.38 * deep;
+
+  col *= 0.78 + 0.22 * smoothstep(0.04, 0.30, fr);
+  col *= 1.0 - 0.28 * seam * secFade;
+  col *= 1.0 - 0.10 * hash1(floor(a * sec) * 1.7 + iu * 3.1) * secFade;
+
+  float per   = TAU * max(r, 1e-4) / (640.0 * px);
+  float hfade = smoothstep(1.5, 3.0, per);
+  float strip = 0.5 + 0.5 * sin(atan(z, x) * 640.0);
+  col *= 1.0 - 0.08 * wall * strip * hfade;
+
+  float fog = 1.0 - exp(-max(t - 0.55, 0.0) * 1.2);
+  col = mix(col, bg, clamp(fog, 0.0, 0.55));
+
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
+
+<script>
+(function () {
+  var cv   = document.getElementById('c');
+  var gl   = cv.getContext('webgl', { antialias: false, preserveDrawingBuffer: true });
+  var stage = document.getElementById('stage');
+  if (!gl) { stage.innerHTML = '<pre style="color:#f88">WebGL unavailable</pre>'; return; }
+
+  var vsSrc = 'attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }';
+  var fsSrc = document.getElementById('frag').textContent;
+
+  function makeShader(type, src) {
+    var o = gl.createShader(type);
+    gl.shaderSource(o, src); gl.compileShader(o);
+    if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) {
+      stage.innerHTML = '<pre style="color:#f88;white-space:pre-wrap;padding:16px">' +
+                        gl.getShaderInfoLog(o) + '</pre>';
+      throw new Error('compile');
+    }
+    return o;
+  }
+  var prog = gl.createProgram();
+  gl.attachShader(prog, makeShader(gl.VERTEX_SHADER, vsSrc));
+  gl.attachShader(prog, makeShader(gl.FRAGMENT_SHADER, fsSrc));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+    stage.innerHTML = '<pre style="color:#f88;padding:16px">' + gl.getProgramInfoLog(prog) + '</pre>';
+    return;
+  }
+  gl.useProgram(prog);
+
+  var buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  var loc = gl.getAttribLocation(prog, 'a');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  var U = {};
+  ['uParam', 'iResolution', 'iTime', 'uSpeed', 'uLineCount', 'uAmplitude', 'uYOffset',
+   'uBgColor1', 'uBgColor2', 'uWaveColor1', 'uWaveColor2'].forEach(function (n) {
+    U[n] = gl.getUniformLocation(prog, n);
+  });
+
+  /* ---- state ---- */
+  var DEFAULTS = {
+    speed: 1.00, lines: 16, amp: 0.30, yoff: 0.0, zoomspeed: 1.0,
+    bg1: [0.66, 0.60, 0.78], bg2: [0.98, 0.93, 0.91],
+    w1:  [1.00, 0.83, 0.75], w2:  [0.58, 0.55, 0.79]
+  };
+  var P = JSON.parse(JSON.stringify(DEFAULTS));
+
+  /* ---- sliders ---- */
+  var SLIDERS = [
+    { key: 'speed',    label: 'uSpeed',      hint: 'zoom rate',              min: 0,    max: 3,   step: 0.01 },
+    { key: 'zoomspeed',label: 'uParam.x',    hint: 'extra zoom multiplier',  min: 0,    max: 4,   step: 0.01 },
+    { key: 'lines',    label: 'uLineCount',  hint: 'rings per octave',       min: 2,    max: 20,  step: 1    },
+    { key: 'amp',      label: 'uAmplitude',  hint: 'crater depth',           min: 0.05, max: 1.5, step: 0.01 },
+    { key: 'yoff',     label: 'uYOffset',    hint: 'vertical framing',       min: -1,   max: 1,   step: 0.01 }
+  ];
+  var slidersEl = document.getElementById('sliders');
+
+  SLIDERS.forEach(function (s) {
+    var row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML =
+      '<label><span>' + s.label + '</span><b></b></label>' +
+      '<input type="range" min="' + s.min + '" max="' + s.max + '" step="' + s.step + '">' +
+      '<small>' + s.hint + '</small>';
+    var input = row.querySelector('input');
+    var out   = row.querySelector('b');
+    function show() {
+      out.textContent = s.step >= 1 ? String(P[s.key]) : Number(P[s.key]).toFixed(2);
+    }
+    input.value = P[s.key];
+    show();
+    input.addEventListener('input', function () {
+      P[s.key] = parseFloat(input.value);
+      show();
+    });
+    slidersEl.appendChild(row);
+  });
+
+  /* ---- colours ---- */
+  var COLORS = [
+    { key: 'bg1', label: 'uBgColor1 (sky)' },
+    { key: 'bg2', label: 'uBgColor2 (haze)' },
+    { key: 'w1',  label: 'uWaveColor1 (tops)' },
+    { key: 'w2',  label: 'uWaveColor2 (sides)' }
+  ];
+  function toHex(c) {
+    return '#' + c.map(function (v) {
+      var n = Math.round(Math.max(0, Math.min(1, v)) * 255);
+      return ('0' + n.toString(16)).slice(-2);
+    }).join('');
+  }
+  function fromHex(h) {
+    return [parseInt(h.slice(1, 3), 16) / 255,
+            parseInt(h.slice(3, 5), 16) / 255,
+            parseInt(h.slice(5, 7), 16) / 255];
+  }
+  var colorsEl = document.getElementById('colorcontrols');
+  var colorInputs = [];
+  COLORS.forEach(function (c) {
+    var label = document.createElement('label');
+    label.innerHTML = c.label + '<input type="color" value="' + toHex(P[c.key]) + '">';
+    var input = label.querySelector('input');
+    input.addEventListener('input', function () { P[c.key] = fromHex(input.value); });
+    colorsEl.appendChild(label);
+    colorInputs.push({ key: c.key, input: input });
+  });
+
+  /* ---- buttons ---- */
+  var paused = false, frozen = 0;
+  var pauseBtn = document.getElementById('pause');
+  pauseBtn.addEventListener('click', function () {
+    paused = !paused;
+    pauseBtn.textContent = paused ? 'resume' : 'pause';
+    if (paused) frozen = elapsed;
+  });
+  document.getElementById('reset').addEventListener('click', function () {
+    P = JSON.parse(JSON.stringify(DEFAULTS));
+    slidersEl.querySelectorAll('.row').forEach(function (row, i) {
+      var s = SLIDERS[i];
+      row.querySelector('input').value = P[s.key];
+      row.querySelector('b').textContent =
+        s.step >= 1 ? String(P[s.key]) : Number(P[s.key]).toFixed(2);
+    });
+    colorInputs.forEach(function (c) { c.input.value = toHex(P[c.key]); });
+  });
+
+  /* ---- canvas size ---- */
+  function resize() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var availW = stage.clientWidth, availH = stage.clientHeight;
+    var h = availH, w = Math.round(h * 750 / 1334);
+    if (w > availW) { w = availW; h = Math.round(w * 1334 / 750); }
+    var pw = Math.round(w * dpr), ph = Math.round(h * dpr);
+    if (cv.width !== pw || cv.height !== ph) {
+      cv.width = pw; cv.height = ph;
+      cv.style.width = w + 'px'; cv.style.height = h + 'px';
+      gl.viewport(0, 0, pw, ph);
+    }
+  }
+  window.addEventListener('resize', resize);
+
+  /* ---- loop ---- */
+  var start = performance.now(), elapsed = 0;
+  function frame(now) {
+    resize();
+    if (!paused) elapsed = (now - start) / 1000;
+    gl.uniform2fv(U.iResolution, [cv.width, cv.height]);
+    gl.uniform1f(U.iTime, paused ? frozen : elapsed);
+    gl.uniform1f(U.uSpeed, P.speed);
+    gl.uniform1f(U.uLineCount, P.lines);
+    gl.uniform1f(U.uAmplitude, P.amp);
+    gl.uniform1f(U.uYOffset, P.yoff);
+    gl.uniform2fv(U.uParam, [P.zoomspeed, 0.0]);
+    gl.uniform3fv(U.uBgColor1, P.bg1);
+    gl.uniform3fv(U.uBgColor2, P.bg2);
+    gl.uniform3fv(U.uWaveColor1, P.w1);
+    gl.uniform3fv(U.uWaveColor2, P.w2);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    requestAnimationFrame(frame);
+  }
+  resize();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

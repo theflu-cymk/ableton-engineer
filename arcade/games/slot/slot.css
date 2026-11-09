@@ -1,0 +1,91 @@
+.slot { grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
+
+.cabinet {
+  background: linear-gradient(180deg, rgba(32, 22, 62, 0.94), rgba(9, 11, 22, 0.96));
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: inset 0 0 70px rgba(124, 243, 208, 0.06), 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.reels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 470px;
+  margin: 0 auto;
+}
+
+.reel {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.38);
+  border: 1px solid rgba(130, 160, 255, 0.12);
+}
+.reel.spinning .cell { filter: blur(1.6px) brightness(0.85); }
+
+.cell {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  font-size: clamp(26px, 8vmin, 44px);
+  font-weight: 800;
+  color: hsl(var(--hue, 200) 92% 72%);
+  text-shadow: 0 0 18px hsl(var(--hue, 200) 92% 60% / 0.55);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: box-shadow 0.15s ease, background 0.15s ease;
+}
+.cell.win {
+  box-shadow: 0 0 0 2px var(--accent), 0 0 26px rgba(124, 243, 208, 0.45);
+  background: linear-gradient(180deg, rgba(124, 243, 208, 0.3), rgba(124, 243, 208, 0.06));
+}
+
+.controls {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.control label {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--dim);
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.stepper { display: flex; align-items: center; gap: 6px; }
+.stepper b { min-width: 26px; text-align: center; font-variant-numeric: tabular-nums; }
+.stepper .btn { padding: 4px 10px; }
+
+.readout {
+  margin-top: 14px;
+  min-height: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--dim);
+}
+.readout b { color: var(--accent); }
+.readout .win { color: var(--gold); font-weight: 700; }
+
+.stats {
+  margin-top: 10px;
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 860px) {
+  .slot { grid-template-columns: 1fr; }
+}

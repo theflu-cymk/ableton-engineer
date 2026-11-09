@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nebula Arcade</title>
+<link rel="stylesheet" href="shell.css">
+</head>
+<body>
+  <header id="bar">
+    <div class="brand">
+      <span class="logo">&#10022;</span>
+      <span><b>NEBULA</b><small>play money arcade</small></span>
+    </div>
+    <span class="spacer"></span>
+    <span class="who" id="guest">guest</span>
+    <span class="wallet"><span class="coin">&#9673;</span><b id="balance">0</b><span class="unit">TKN</span></span>
+    <button id="topup" class="btn small">+500</button>
+    <button id="reset" class="btn ghost small">reset</button>
+    <span class="badge" id="notice" title="">NO REAL MONEY</span>
+  </header>
+
+  <iframe id="frame" title="Nebula arcade" allow="autoplay"></iframe>
+
+  <div id="toast"></div>
+  <script type="module" src="shell.js"></script>
+</body>
+</html>
