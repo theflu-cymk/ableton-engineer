@@ -359,9 +359,8 @@ with a real result:
 - clips: `clips_duplicate_range` (0.2.3), `clips_rename` (0.2.7), `clips_set_warp_mode` (0.2.14),
   `clips_fix_loop_points` (0.2.16), `clips_warp_check`.
 - tracks: `tracks_list`, `tracks_set_sends` and `tracks_name_and_color` (0.2.12),
-  `tracks_set_volume` (M3 autofix), `tracks_gain_stage` restore path only (0.2.1; no measured write,
-  see the Bundle B gate below), `tracks_set_pan` (0.2.7, again
-  on 0.4.6), `tracks_delete` and `tracks_clean_empty` (0.4.4).
+  `tracks_set_volume` (M3 autofix), `tracks_set_pan` (0.2.7, again on 0.4.6), `tracks_delete` and
+  `tracks_clean_empty` (0.4.4), `tracks_duplicate` (apply and retry on 0.4.7, cleanup on 0.4.8).
 - devices: `devices_read_chain`, `devices_read_parameters`, `devices_browse_presets`,
   `devices_set_parameter` (0.3.4), `devices_set_macro` (0.3.6, again on 0.3.9), `devices_move`
   (0.3.9), `devices_delete` (0.3.6).
@@ -377,9 +376,10 @@ with a real result:
 `ableton_guide` is the one tool with no Live call to gate: it builds the command sheet locally and
 its MCP surface is covered by the suite.
 
-**Caveat on the three bulk track writes.** `tracks_set_volume`, `tracks_gain_stage` and
-`tracks_set_pan` are Verified only for uniquely named tracks. Their name resolution writes every
-match (defect below), so they must be re-gated after the ambiguity fix rather than counted as safe.
+**Caveat on the three bulk track writes.** The duplicate-name guard is **Verified on real `0.4.7`**
+for all three tools. `tracks_set_volume` and `tracks_set_pan` are Verified for a uniquely named
+track with exact undo; `tracks_gain_stage` still has no measured write and remains in the no-gate
+table. The old "writes every match" defect is fixed, not merely re-gated.
 
 **No real-Live gate yet — 13 tools.**
 
@@ -389,7 +389,7 @@ match (defect below), so they must be re-gated after the ambiguity fix rather th
 | `clips_copy` | edit, arrange | 0.3.0 handler | Session→Session and Arrangement→Arrangement copies; Session↔Arrangement refusal; exact undo |
 | `clips_transpose` | edit, arrange | 0.3.0 handler | a real MIDI transpose and exact note restore |
 | `clips_clear` | edit | 0.3.0 handler | a real MIDI clear and exact restore; audio refusal |
-| `tracks_duplicate` | prep | apply and retry on 0.4.7; empty-name cleanup fix in 0.4.8 | double apply through `run_tool` is a no-op; exact cleanup after the restart |
+| `tracks_gain_stage` | prep | restore path on 0.2.1; no measured write | a real measured peak and exact volume undo |
 | `tracks_set_routing` | prep, mix | 0.3.0 handler | real input/output names, type before channel, exact restore |
 | `mix_routing_report` | inspect, mix | 0.3.0 handler | a real routing table |
 | `library_folders` | sound | 0.3.0 handler | real browser roots and paging |
@@ -467,9 +467,12 @@ The Set file mtime stayed `2026-11-10 04:19:41`, size 1,555,091 bytes; the Set w
 `new_track.name`; restore refused with "the track at that index has a different name". A restore
 with `{"track_index": 8}` alone deleted `9-Audio`, returned the Set to 32 tracks, and put
 `8-Audio`/`REDRUMS` back at 7/8. `0.4.8` omits an empty name from the token and has a test that
-renames the copy after the apply. This is a real defect the fake could not show. `0.4.8` is
-installed as build `dc6e1b4e6405` with **396 passed, 7 subtests**; `doctor` remains `stale` until
-Live restarts, so the cleanup re-gate is still pending.
+renames the copy after the apply. This is a real defect the fake could not show. `0.4.8` is loaded as build `dc6e1b4e6405` with **396 passed, 7 subtests**. On the re-gate, the token
+was `{"track_index": 8}` with no empty name; the first apply made 33 tracks, the identical retry
+stayed at 33 with no second `scratch_copy`, and the tool's own restore deleted `9-Audio` and returned
+the Set to 32 tracks with `8-Audio`/`REDRUMS` at 7/8 and baseline volume/pan. The Set mtime stayed
+`2026-11-10 04:19:41`; `doctor` after reported `0.4.8`, build `dc6e1b4e6405`, `ran 13`, `errors 0`,
+`super_errors 0`, no `stale`.
 
 **Routing is not gateable on this build.** `mix_routing_report` returned real output-type names,
 but all 32 rows had `input_channel` and `output_channel` as `<Track.RoutingChannel object at
@@ -488,11 +491,9 @@ token), not a measured-peak normalization. Real 12.2.5 exposes meters (`output_m
 0..1) rather than `peak_db`; a measured write needs that fallback and playback before it can be
 claimed.
 
-**Verdict.** Bundle B is **not green**. Volume, pan, ambiguity and duplicate idempotency are
-Verified on real Live; `tracks_duplicate` cleanup is fixed in `0.4.8` and still needs the restart
-gate; `tracks_set_routing`, `mix_routing_report` and `tracks_gain_stage` remain blockers. No user
-Set was written. `doctor` after the writes: script `0.4.7`, build `0606e8763f6e`, `errors 18`,
-`super_errors 0`.
+**Verdict.** Bundle B is **not green**. Volume, pan, ambiguity, duplicate idempotency and duplicate
+cleanup are Verified on real Live (`0.4.7` writes, `0.4.8` cleanup); `tracks_set_routing`,
+`mix_routing_report` and `tracks_gain_stage` remain blockers. No user Set was written.
 
 ### Tracks sends and name/colour (2026-11-10, `0.2.12`)
 
