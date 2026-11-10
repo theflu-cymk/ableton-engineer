@@ -107,6 +107,12 @@ and a test walks all seven values.
 `warp_mode_name: "complex_pro"` with 3 markers. Mode counts were 277 `beats`, 56 `complex` and 1
 `complex_pro`; no audio clip had an unnamed mode.
 
+**Also verified on `paper tiger heart` (2026-11-10, `0.1.8`):** 14 tracks, 73 arrangement and 66
+Session clips, 139 audio clips, `counts.warp_markers: 547`, `warp_markers_unreadable: 0`, every mode
+`beats`. A direct parse of `paper tiger heart.als` finds the same 547 markers under its 139
+`AudioClip` elements. This is **not** the 77-track stress fixture: `paper tiger heart remaster.als`
+holds 1825 markers (1787 under 245 clips) and has not been read live yet.
+
 | Area | On disk |
 |---|---|
 | server | `src/enableton/`: `cli.py`, `manifest.py`, `modes.json`, `modes.py`, `reports.py`, `setup.py`, `tools.json`, `tools.py`, plus `live/`, `protocol/`, `state/` packages |
