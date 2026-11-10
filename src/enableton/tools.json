@@ -34,6 +34,74 @@
       "cmd": null
     },
     {
+      "name": "ableton_escalate",
+      "domain": "core",
+      "summary": "Compile a bounded plan from current findings when a mode needs a fix outside it.",
+      "description": "Compiles up to 12 steps across 3 phases from the current Set's findings. Intent is matched against finding titles, kinds, phases and locations; an explicit context.finding_ids or context.phases selects precisely. The compiler never invents tool arguments: an intent with no matching finding returns no plan and a reason. The plan is stored and expires after 10 minutes; it does not write Live. Call ableton_plan_apply with the returned plan_id to execute it.",
+      "examples": ["fix the gain issue outside this mode", "clean up the matching problem", "escalate the empty-track finding"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "intent": {"type": "string", "description": "What the caller is trying to fix."},
+          "context": {
+            "type": "object",
+            "properties": {
+              "finding_ids": {"type": "array", "items": {"type": "string"}},
+              "phases": {"type": "array", "items": {"type": "string"}},
+              "mode": {"type": "string", "enum": ["auto", "inspect"]}
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["intent"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 5000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "ableton_plan_apply",
+      "domain": "core",
+      "summary": "Apply a stored escalation plan transactionally.",
+      "description": "Loads the plan by plan_id and applies its steps through the transactional executor: preflight every step, make a scratch copy, apply top to bottom, stop at the first failure and restore exactly. A successful apply deletes the plan; a failed apply keeps it for inspection. Plans expire after 10 minutes. This writes Live; use ableton_escalate or inspect_plan first to inspect the steps.",
+      "examples": ["apply that plan", "run plan p_7f2", "apply the escalated fix"],
+      "input": {
+        "type": "object",
+        "properties": {"plan_id": {"type": "string"}},
+        "required": ["plan_id"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 30000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "ableton_plan_discard",
+      "domain": "core",
+      "summary": "Discard a stored escalation plan.",
+      "description": "Deletes a plan by plan_id without touching Live. A plan that is already gone returns discarded false; it does not fabricate success.",
+      "examples": ["discard that plan", "forget plan p_7f2"],
+      "input": {
+        "type": "object",
+        "properties": {"plan_id": {"type": "string"}},
+        "required": ["plan_id"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 1000,
+      "writes": false,
+      "reversible": false,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
       "name": "inspect_structure",
       "domain": "inspect",
       "summary": "How the Set is built: sections, tracks, clips and device counts.",

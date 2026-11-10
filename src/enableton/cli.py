@@ -7,6 +7,7 @@ import json
 import sys
 from typing import Any, Dict, Optional
 
+from . import diagnostics
 from .manifest import load_manifest
 from .modes import ModeError, load_modes
 from .protocol.client import DEFAULT_PORT, LiveClient
@@ -75,7 +76,11 @@ def main(argv: Optional[list] = None) -> int:
     call.add_argument("tool")
     call.add_argument("--args", default="{}", help="JSON object of arguments")
 
-    sub.add_parser("modes", help="list modes and their tool counts")
+    modes_parser = sub.add_parser("modes", help="list modes, tool counts and finding counts")
+    modes_parser.add_argument(
+        "--findings", action="store_true",
+        help="read Live and add per-mode finding counts; no connection leaves them unavailable",
+    )
 
     serve = sub.add_parser("serve", help="run the MCP server")
     serve.add_argument("--mode", default=None)
@@ -146,7 +151,24 @@ def main(argv: Optional[list] = None) -> int:
         modes = load_modes(catalogue)
         rows = [{"mode": m, "tools": len(modes.modes[m].tools),
                  "summary": modes.modes[m].summary} for m in modes.names()]
-        _print({"default": modes.default, "cap": modes.max_tools, "modes": rows})
+        payload = {"default": modes.default, "cap": modes.max_tools, "modes": rows}
+        if args.findings:
+            client = LiveClient(host=args.host, port=args.port)
+            try:
+                client.connect(timeout=1.5)
+                snapshot = client.call("snapshot.get", {}, timeout_ms=6000)
+                findings = diagnostics.detect(snapshot, "standard")
+                payload["findings"] = diagnostics.counts(findings)
+                payload["live"] = {"connected": True}
+                for row in rows:
+                    selected = [finding for finding in findings if finding.mode == row["mode"]]
+                    row["findings"] = diagnostics.counts(selected)
+            except (LiveError, OSError) as exc:
+                message = exc.message if isinstance(exc, LiveError) else str(exc)
+                payload["live"] = {"connected": False, "error": message}
+            finally:
+                client.close()
+        _print(payload)
         return EXIT_OK
 
     if args.command == "guide":

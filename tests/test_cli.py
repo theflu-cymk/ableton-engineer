@@ -51,6 +51,29 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["default"], "auto")
         self.assertEqual([row["mode"] for row in payload["modes"]], ["auto", "inspect"])
 
+    def test_modes_findings_reads_per_mode_counts_from_live(self):
+        server = support.fake_server()
+        self.addCleanup(server.stop)
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            self.assertEqual(
+                main(["--port", str(server.port), "modes", "--findings"]), EXIT_OK
+            )
+        payload = json.loads(buffer.getvalue())
+        rows = {row["mode"]: row for row in payload["modes"]}
+        self.assertEqual(payload["findings"]["total"], 2)
+        self.assertEqual(rows["auto"]["findings"]["total"], 0)
+        self.assertEqual(rows["inspect"]["findings"]["total"], 2)
+
+    def test_modes_findings_without_live_still_lists_modes(self):
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            self.assertEqual(main(["--port", "1", "modes", "--findings"]), EXIT_OK)
+        payload = json.loads(buffer.getvalue())
+        self.assertFalse(payload["live"]["connected"])
+        self.assertEqual([row["mode"] for row in payload["modes"]], ["auto", "inspect"])
+
 
 if __name__ == "__main__":
     unittest.main()

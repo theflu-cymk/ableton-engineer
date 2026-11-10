@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Optional
 
-from . import diagnostics
+from . import diagnostics, escalation
 from .manifest import load_manifest
+from .plans import PlanStore, PlanStoreError
 from .plans.executor import PlanError, PlanExecutor, Step
 from .protocol.codes import LiveError
 from .reports import (
@@ -43,6 +44,7 @@ def run_tool(
     catalogue: Optional[Dict[str, Any]] = None,
     cache: Optional[SnapshotCache] = None,
     backup_root: Optional[str] = None,
+    plan_root: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Run one tool by name, local or remote, with the manifest's own timeout."""
     catalogue = catalogue or load_manifest()
@@ -73,13 +75,26 @@ def run_tool(
                 )
             if name == "inspect_plan":
                 return diagnostics.plan(cache.get(), args, catalogue)
+            if name == "ableton_escalate":
+                return escalation.escalate(
+                    cache.get(), args, catalogue, PlanStore(root=plan_root)
+                )
+            if name == "ableton_plan_apply":
+                return escalation.apply_plan(
+                    adapter, cache, args, PlanStore(root=plan_root), catalogue, backup_root
+                )
+            if name == "ableton_plan_discard":
+                return escalation.discard_plan(args, PlanStore(root=plan_root))
             handler = LOCAL.get(name)
             if handler is None:
                 raise LiveError(
                     "UNSUPPORTED", "tool %r has no server-side implementation yet" % (name,)
                 )
             return handler(cache.get(), args)
-        except (ReportError, diagnostics.DiagnosticsError) as exc:
+        except (
+            ReportError, diagnostics.DiagnosticsError, escalation.EscalationError,
+            PlanStoreError,
+        ) as exc:
             raise LiveError("BAD_ARGS", str(exc))
 
     # Bulk writes with a dry-run switch go through the M2 transaction path: preflight, a scratch

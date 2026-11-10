@@ -1,6 +1,12 @@
 {
   "validation": {"max_tools_per_mode": 34},
-  "core_tools": ["ableton_status", "ableton_guide"],
+  "core_tools": [
+    "ableton_status",
+    "ableton_guide",
+    "ableton_escalate",
+    "ableton_plan_apply",
+    "ableton_plan_discard"
+  ],
   "modes": [
     {
       "name": "auto",
