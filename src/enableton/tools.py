@@ -16,8 +16,8 @@ from .plans import PlanStore, PlanStoreError
 from .plans.executor import PlanError, PlanExecutor, Step
 from .protocol.codes import LiveError
 from .reports import (
-    ReportError, levels, mix_headroom, notes_overlaps, structure, summary_from_snapshot, unused,
-    warp_check,
+    ReportError, devices_read_chain, levels, master_chain_read, mix_headroom, notes_overlaps,
+    sections_map, structure, summary_from_snapshot, unused, warp_check,
 )
 from .state.snapshot import SnapshotCache
 
@@ -28,6 +28,9 @@ LOCAL = {
     "mix_headroom": mix_headroom,
     "clips_warp_check": warp_check,
     "notes_overlaps": notes_overlaps,
+    "devices_read_chain": devices_read_chain,
+    "master_chain_read": master_chain_read,
+    "sections_map": sections_map,
     "inspect_run": diagnostics.run,
     "inspect_report": diagnostics.report,
     "inspect_finding": diagnostics.get,

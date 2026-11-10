@@ -620,3 +620,82 @@ def mix_headroom(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) ->
             "reason": "The snapshot carries the master device chain, not its fader.",
         },
     }
+
+
+def devices_read_chain(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Read one track's device tree, including devices inside rack chains.
+
+    The snapshot already carries the tree. This report resolves the track by exact name and
+    refuses an ambiguous name rather than silently picking the first duplicate. It does not
+    claim to read device parameters or presets; those are separate capabilities.
+    """
+    args = dict(args or {})
+    _only(args, ("track",))
+    name = args.get("track")
+    if not isinstance(name, str) or not name:
+        raise ReportError("track must be a non-empty string")
+
+    matches = [track for track in data.get("tracks") or [] if track.get("name") == name]
+    if not matches:
+        raise ReportError("no track named %r" % (name,))
+    if len(matches) > 1:
+        raise ReportError(
+            "%d tracks are named %r; rename one before reading its chain" % (len(matches), name)
+        )
+
+    track = matches[0]
+    devices = track.get("devices") or []
+    return {
+        "track": {
+            "name": track.get("name"),
+            "index": track.get("index"),
+            "kind": track.get("kind"),
+        },
+        "devices": devices,
+        "top_level": len(devices),
+        "total": int(track.get("device_count") or _device_total(track)),
+        "note": "Nested devices are under each device's 'chains' field, not flattened.",
+    }
+
+
+def master_chain_read(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Read the master device chain and preserve why it is unavailable when it is."""
+    args = dict(args or {})
+    _only(args, ())
+    master = data.get("master_track") or {}
+    captured = data.get("captured") or {}
+    available = bool(master.get("available", captured.get("master_available", False)))
+    reason = None if available else (captured.get("master_reason") or master.get("reason"))
+    return {
+        "available": available,
+        "devices": master.get("devices") or [],
+        "device_count": int(master.get("device_count") or 0),
+        "reason": reason or (None if available else "the snapshot carries no master chain"),
+    }
+
+
+def sections_map(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Return the section map derived from arrangement clip density.
+
+    These Sets often have no locators, so a section is a contiguous run of occupied bars. The
+    source field says that explicitly; this report never presents the result as named sections.
+    """
+    args = dict(args or {})
+    _only(args, ("offset", "limit"))
+    offset, limit = _paging(args)
+    song = data.get("song") or {}
+    tracks = data.get("tracks") or []
+    per_bar = beats_per_bar(song)
+    sections = _sections(tracks, per_bar)
+    page = _page(sections, offset, limit)
+    locators = data.get("locators") or []
+    return {
+        "items": page["items"],
+        "total": page["total"],
+        "next_offset": page["next_offset"],
+        "bars": _total_bars(tracks, per_bar),
+        "beats_per_bar": per_bar,
+        "source": "arrangement_density",
+        "named_sections": len([locator for locator in locators if locator.get("name")]),
+        "locators_available": bool((data.get("captured") or {}).get("locators_available")),
+    }

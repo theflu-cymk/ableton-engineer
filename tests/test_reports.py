@@ -13,8 +13,8 @@ import unittest
 import support  # noqa: F401
 from enableton.live.fake import FakeAdapter, build_song
 from enableton.reports import (
-    ReportError, levels, mix_headroom, notes_overlaps, structure, summary_from_snapshot,
-    unused, warp_check,
+    ReportError, devices_read_chain, levels, master_chain_read, mix_headroom, notes_overlaps,
+    sections_map, structure, summary_from_snapshot, unused, warp_check,
 )
 
 
@@ -86,6 +86,43 @@ class ReportTests(unittest.TestCase):
                          {"Drums": [0, 1]})
 
     # -- unused ------------------------------------------------------------
+    def test_devices_read_chain_returns_the_nested_tree(self):
+        report = devices_read_chain(self.data, {"track": "Drums"})
+        self.assertEqual(report["track"]["index"], 0)
+        self.assertEqual(report["track"]["kind"], "midi")
+        self.assertEqual(report["top_level"], 2)
+        self.assertEqual(report["total"], 2)
+        self.assertEqual([row["name"] for row in report["devices"]], ["EQ Eight", "Glue"])
+
+    def test_devices_read_chain_refuses_an_unknown_track(self):
+        with self.assertRaises(ReportError) as ctx:
+            devices_read_chain(self.data, {"track": "Missing"})
+        self.assertIn("no track named", str(ctx.exception))
+
+    def test_master_chain_read_preserves_unavailability_and_reason(self):
+        report = master_chain_read(self.data, {})
+        self.assertFalse(report["available"])
+        self.assertEqual(report["device_count"], 0)
+        self.assertTrue(report["reason"])
+
+        data = dict(self.data)
+        data["master_track"] = {
+            "available": True,
+            "device_count": 1,
+            "devices": [{"name": "Limiter", "class": "Limiter", "active": True}],
+        }
+        report = master_chain_read(data, {})
+        self.assertTrue(report["available"])
+        self.assertEqual(report["device_count"], 1)
+        self.assertIsNone(report["reason"])
+
+    def test_sections_map_returns_arrangement_sections_with_their_source(self):
+        report = sections_map(self.data, {})
+        self.assertEqual(report["total"], 2)
+        self.assertEqual(report["source"], "arrangement_density")
+        self.assertEqual([row["start_bar"] for row in report["items"]], [1, 9])
+        self.assertEqual(report["named_sections"], 0)
+
     def test_unused_names_the_empty_material(self):
         report = unused(self.data, {})
         self.assertEqual(report["tracks_without_clips"], ["Vocal chop"])

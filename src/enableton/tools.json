@@ -459,6 +459,66 @@
       "cmd": "tracks.gain_stage"
     },
     {
+      "name": "devices_read_chain",
+      "domain": "devices",
+      "summary": "Read a track's device chain, including nested rack chains.",
+      "description": "Reads one track's device tree from the cached snapshot. Devices inside racks stay nested under each device's chains field; the result also gives the top-level count and recursive total. A track name must identify exactly one track, because a duplicate name is ambiguous and is refused rather than guessed. This does not read parameters or presets.",
+      "examples": ["what is on the drum bus", "show me the bass device chain"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."}
+        },
+        "required": ["track"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 500,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "master_chain_read",
+      "domain": "master",
+      "summary": "Read the master device chain.",
+      "description": "Returns the devices on Live's master track, including nested rack chains, plus the recursive device count. When the snapshot could not read the master chain, available is false and the reason is returned instead of an empty chain that looks like a clean master.",
+      "examples": ["what is on my master", "show the master chain"],
+      "input": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "timeout_ms": 500,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "sections_map",
+      "domain": "sections",
+      "summary": "Map the arrangement's occupied sections.",
+      "description": "Builds sections from contiguous runs of bars that hold arrangement clips. The source field makes clear these are derived from density, not named locators; named_sections counts locators that actually carry names. Use inspect_structure when the full track and signal summary is needed.",
+      "examples": ["where are the sections in this arrangement", "show the arrangement map"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "offset": {"type": "integer", "minimum": 0, "default": 0},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 500,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
       "name": "transport_play",
       "domain": "transport",
       "summary": "Start playback, optionally from a bar.",
