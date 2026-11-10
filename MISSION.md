@@ -33,7 +33,7 @@ test should assert that, or every count in the spec is wrong by 3×.
 
 ## 2. State of the build (measured, not claimed)
 
-`uv run pytest -q` → **151 passed**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 safety foundation is implemented; its real scratch-Set write test is still pending.
+`uv run pytest -q` → **151 passed**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 safety foundation is implemented, with a real scratch-Set write/restore verified; `clips_duplicate_range` and full M2 acceptance remain.
 
 **The real-Live gate has been passed once (2026-11-09).** `uv run enableton status` returned a real
 summary from Live 12.2.5 — 4 tracks, 2 returns, 8 scenes, 120 BPM, 2 devices, `is_playing false` —
@@ -214,9 +214,15 @@ now returns the track index and exact undo values, and accepts the executor's `r
 bytes and pre-write timing, refusal when the Set has no path, exact rollback after a synthetic
 second-step failure, and double-apply on one executor.
 
-**Not real-Live verified.** `0.2.1` is installed but Live still holds `0.2.0`; the write test must
-use a scratch copy, never `fortnight`, and `clips_duplicate_range` remains unimplemented. M2 is not
-done.
+**Real scratch-Set write verified (2026-11-10, `0.2.1`, restarted Live):** `doctor` reported script
+`0.2.1`, `build d70bd71e8360` with no `stale`. On `SCRATCH fortnight`, `run_tool` applied the
+`tracks_gain_stage` restore path to REVocals: 0.85 -> 0.5, creating a timestamped
+`%APPDATA%\Enableton\backups` copy first, then restoring 0.85 exactly. Two applied calls produced
+two copies. This verifies the scratch-copy and exact-restore path on real Live. The forced mid-plan
+failure is still covered by the fake executor test, not real Live.
+
+**Still pending.** `clips_duplicate_range` is unimplemented and a forced real mid-plan failure has
+not been exercised. M2 is not done.
 
 | Area | On disk |
 |---|---|
@@ -238,7 +244,7 @@ One milestone per mission; a mission ends when its acceptance test passes as a *
 |---|---|---|---|
 | **1** | M0 | gap audit, then close M0 | `pytest` green ✔; `enableton doctor` against the fake reports connected; drift test green; `ableton_status` returns a real summary from the fake; a written gap report names each uncovered M0/M1 item |
 | 2 | M1 | read path | against `Crust Wumble.als` (19 tracks, 120 BPM, 22 Session clips) **and** `fortnight.als` (32 tracks, 250 clips; user-approved replacement for the unread 77-track remaster): three questions answered from the data, the trace shows **snapshot reads ≤ 1 per request**, and `tests/test_acceptance_read_path.py` replays the captured second snapshot for four answers at one read. `notes_overlaps` is implemented in `0.2.0`, which reads the extended note API after `0.1.9` read an absent legacy attribute and reported zero; its live gate passed on `fortnight` (3,364 notes, 16 overlaps). |
-| 3 | M2 | write path + safety | dry-run trace matches applied trace; a forced mid-plan failure restores state exactly (object-by-object diff); double-apply is a no-op; a scratch copy exists before any write. Safety executor + gain-stage restore are implemented; `clips_duplicate_range` and real scratch-Set verification pending. |
+| 3 | M2 | write path + safety | dry-run trace matches applied trace; a forced mid-plan failure restores state exactly (object-by-object diff); double-apply is a no-op; a scratch copy exists before any write. Safety executor, scratch copy and real gain-stage restore are verified; `clips_duplicate_range` and a forced real mid-plan failure remain pending. |
 | 4 | M3 | diagnostics | per-mode finding counts equal before/after; autofix halts when the count rises; `needs_listening` never auto-applies |
 | 5 | M4 | full catalogue + modes | drift test green; every mode ≤ 34 tools; every tool in ≥ 1 mode; escalation reaches every tool |
 | 6 | M5 | UX | every screen renders as text with working `ableton_choose` ids; scope chip matches the loaded tool set; a full flow completes with Apps disabled |
