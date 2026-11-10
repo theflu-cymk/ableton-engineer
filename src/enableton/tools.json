@@ -682,8 +682,8 @@
     {
       "name": "tracks_list",
       "domain": "tracks",
-      "summary": "List tracks with name, role, volume and pan.",
-      "description": "Returns a page of tracks in Set order. Use offset/limit for large Sets; next_offset is null on the last page.",
+      "summary": "List tracks with name, colour, volume, pan and sends.",
+      "description": "Returns a page of tracks in Set order with Live's mixer state and return-send levels. Use offset/limit for large Sets; next_offset is null on the last page.",
       "examples": ["what tracks do I have", "list my drum tracks"],
       "input": {
         "type": "object",
@@ -965,6 +965,83 @@
       "needs": [],
       "min_live": null,
       "cmd": "tracks.set_pan"
+    },
+    {
+      "name": "tracks_set_sends",
+      "domain": "tracks",
+      "summary": "Set return-send levels on one track, with dry-run and exact restore.",
+      "description": "Sets one or more send levels for a named track. Send keys must match return-track names; values are 0..1 as Live stores them. Dry-run by default; applying returns an undo token that restores the exact previous values.",
+      "examples": ["add some reverb to the vocals", "turn the delay send down"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "sends": {
+            "type": "object",
+            "additionalProperties": {"type": "number", "minimum": 0, "maximum": 1}
+          },
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "send_index": {"type": "integer", "minimum": 0},
+                "send": {"type": "string"},
+                "value": {"type": "number", "minimum": 0, "maximum": 1}
+              },
+              "required": ["track_index", "send_index", "value"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["track", "sends"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "tracks.set_sends"
+    },
+    {
+      "name": "tracks_name_and_color",
+      "domain": "tracks",
+      "summary": "Rename or recolour one track, with dry-run and exact restore.",
+      "description": "Changes a track's name, its colour, or both, resolving the track by name or by Set index (use the index when names are duplicated). Colour is Live's palette index 0..69. Dry-run by default; applying returns an undo token that restores the exact previous name and colour.",
+      "examples": ["rename this track to lead", "make the drum track orange"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "track_index": {"type": "integer", "minimum": 0, "description": "Set index; use instead of track when names are duplicated."},
+          "name": {"type": "string", "minLength": 1},
+          "color": {"type": "integer", "minimum": 0, "maximum": 69, "description": "Live's palette index."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "name": {"type": "string", "minLength": 1},
+                "color": {"type": "integer", "minimum": 0, "maximum": 69}
+              },
+              "required": ["track_index", "name", "color"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "tracks.name_and_color"
     },
     {
       "name": "clips_rename",

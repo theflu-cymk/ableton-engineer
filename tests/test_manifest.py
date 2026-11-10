@@ -51,9 +51,9 @@ class ManifestTests(unittest.TestCase):
             remote_commands(catalogue),
             ["clips.duplicate_range", "clips.rename", "notes.humanize", "notes.quantize",
              "notes.read", "notes.replace", "notes.scale_lock", "notes.strum", "notes.transform",
-             "snapshot.get", "track.list", "tracks.gain_stage", "tracks.set_pan",
-             "tracks.set_volume", "transport.locate", "transport.play", "transport.set_loop",
-             "transport.stop"],
+             "snapshot.get", "track.list", "tracks.gain_stage", "tracks.name_and_color",
+             "tracks.set_pan", "tracks.set_sends", "tracks.set_volume", "transport.locate",
+             "transport.play", "transport.set_loop", "transport.stop"],
         )
 
     def test_rejects_duplicate_names(self):
@@ -115,7 +115,7 @@ class ManifestTests(unittest.TestCase):
         self.assertTrue(by_name["tracks_list"]["annotations"]["readOnlyHint"])
         self.assertFalse(by_name["tracks_gain_stage"]["annotations"]["readOnlyHint"])
         self.assertEqual(by_name["tracks_list"]["inputSchema"]["type"], "object")
-        self.assertIn("List tracks with name, role, volume and pan.",
+        self.assertIn("List tracks with name, colour, volume, pan and sends.",
                       by_name["tracks_list"]["description"])
 
 

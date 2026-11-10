@@ -42,10 +42,15 @@ def list_tracks(args, song):
             "name": track.name,
             "volume": round(_param(track, "volume", "volume"), 4),
             "pan": round(_param(track, "panning", "pan"), 3),
+            "color": int(getattr(track, "color", 0) or 0),
             "is_midi": bool(getattr(track, "is_midi", False)
                             or getattr(track, "has_midi_input", False)),
             "peak_db": getattr(track, "peak_db", None),
         })
+        sends, sends_reason = _send_map(song, track)
+        items[-1]["sends"] = sends
+        if sends_reason is not None:
+            items[-1]["sends_reason"] = sends_reason
 
     next_offset = offset + len(page)
     return {
@@ -260,3 +265,268 @@ def set_pan(args, song):
         if not dry_run:
             _set_param(track, "panning", "pan", pan)
     return {"dry_run": dry_run, "changes": changes, "undo": undo}
+
+
+def _one_track(song, name):
+    matches = [
+        (index, track) for index, track in enumerate(song.tracks)
+        if str(getattr(track, "name", "")) == name
+    ]
+    if not matches:
+        raise ScriptError("NOT_FOUND", "no track named %r" % (name,))
+    if len(matches) > 1:
+        raise ScriptError(
+            "AMBIGUOUS_REF",
+            "%d tracks are named %r; rename one before editing it" % (len(matches), name),
+        )
+    return matches[0]
+
+
+def _return_tracks(song):
+    return list(getattr(song, "return_tracks", []) or [])
+
+
+def _return_names(song):
+    return [str(getattr(track, "name", "")) for track in _return_tracks(song)]
+
+
+def _send_params(track):
+    mixer = getattr(track, "mixer_device", None)
+    sends = getattr(mixer, "sends", None) if mixer is not None else None
+    if sends is None:
+        sends = getattr(track, "sends", None)
+    if sends is None:
+        raise ScriptError("UNSUPPORTED", "track does not expose send parameters")
+    return list(sends)
+
+
+def _send_value(param):
+    return float(getattr(param, "value", 0.0) or 0.0)
+
+
+def _send_map(song, track):
+    names = _return_names(song)
+    try:
+        params = _send_params(track)
+    except ScriptError as exc:
+        return {}, str(exc)
+    return {
+        names[index]: round(_send_value(params[index]), 4)
+        for index in range(min(len(names), len(params)))
+    }, None
+
+
+@command("tracks.set_sends")
+def set_sends(args, song):
+    check_args(args, allowed=("track", "sends", "dry_run", "restore"))
+    dry_run = bool(args.get("dry_run", True))
+    restore = args.get("restore")
+    if restore is not None:
+        if "track" in args or "sends" in args:
+            raise ScriptError("BAD_ARGS", "restore cannot be combined with track or sends")
+        if not isinstance(restore, list) or not restore:
+            raise ScriptError("BAD_ARGS", "restore must be a non-empty list")
+        changes = []
+        for entry in reversed(restore):
+            if not isinstance(entry, dict):
+                raise ScriptError("BAD_ARGS", "restore entries must be objects")
+            if isinstance(entry.get("value"), bool):
+                raise ScriptError("BAD_ARGS", "restore value must be a number from 0 to 1")
+            try:
+                index = int(entry["track_index"])
+                send_index = int(entry["send_index"])
+                value = float(entry["value"])
+            except (KeyError, TypeError, ValueError):
+                raise ScriptError(
+                    "BAD_ARGS", "restore entries need track_index, send_index and value"
+                )
+            if value < 0.0 or value > 1.0:
+                raise ScriptError("BAD_ARGS", "restore value must be a number from 0 to 1")
+            if index < 0 or index >= len(song.tracks):
+                raise ScriptError("NOT_FOUND", "no track at index %s" % (index,))
+            track = song.tracks[index]
+            params = _send_params(track)
+            if send_index < 0 or send_index >= len(params):
+                raise ScriptError("NOT_FOUND", "no send at index %s" % (send_index,))
+            current = _send_value(params[send_index])
+            if not dry_run:
+                params[send_index].value = value
+            changes.append({
+                "track": str(getattr(track, "name", "")),
+                "track_index": index,
+                "send_index": send_index,
+                "send": entry.get("send"),
+                "from": round(current, 4),
+                "to": round(value, 4),
+            })
+        return {"dry_run": dry_run, "restored": len(changes), "changes": changes}
+
+    track_name = args.get("track")
+    if not isinstance(track_name, str) or not track_name:
+        raise ScriptError("BAD_ARGS", "track must be a non-empty string")
+    sends = args.get("sends")
+    if not isinstance(sends, dict) or not sends:
+        raise ScriptError("BAD_ARGS", "sends must be a non-empty object")
+
+    index, track = _one_track(song, track_name)
+    params = _send_params(track)
+    names = _return_names(song)
+    changes, undo = [], []
+    for send_name, raw_value in sends.items():
+        if not isinstance(send_name, str) or not send_name:
+            raise ScriptError("BAD_ARGS", "send names must be non-empty strings")
+        matches = [position for position, name in enumerate(names) if name == send_name]
+        if not matches:
+            raise ScriptError("NOT_FOUND", "no return track named %r" % (send_name,))
+        if len(matches) > 1:
+            raise ScriptError(
+                "AMBIGUOUS_REF",
+                "%d return tracks are named %r; rename one before setting sends"
+                % (len(matches), send_name),
+            )
+        send_index = matches[0]
+        if send_index >= len(params):
+            raise ScriptError(
+                "NOT_FOUND", "track %r has no send parameter for %r" % (track_name, send_name)
+            )
+        if isinstance(raw_value, bool):
+            raise ScriptError("BAD_ARGS", "send values must be numbers from 0 to 1")
+        try:
+            value = float(raw_value)
+        except (TypeError, ValueError):
+            raise ScriptError("BAD_ARGS", "send values must be numbers from 0 to 1")
+        if value < 0.0 or value > 1.0:
+            raise ScriptError("BAD_ARGS", "send values must be numbers from 0 to 1")
+        current = _send_value(params[send_index])
+        changes.append({
+            "track": str(getattr(track, "name", "")),
+            "track_index": index,
+            "send": send_name,
+            "send_index": send_index,
+            "from": round(current, 4),
+            "to": round(value, 4),
+        })
+        undo.append({
+            "track_index": index,
+            "send_index": send_index,
+            "send": send_name,
+            "value": current,
+        })
+        if not dry_run:
+            params[send_index].value = value
+
+    return {
+        "dry_run": dry_run,
+        "track": str(getattr(track, "name", "")),
+        "track_index": index,
+        "changes": changes,
+        "undo": undo,
+    }
+
+
+@command("tracks.name_and_color")
+def name_and_color(args, song):
+    check_args(args, allowed=("track", "track_index", "name", "color", "dry_run", "restore"))
+    dry_run = bool(args.get("dry_run", True))
+    restore = args.get("restore")
+    if restore is not None:
+        if "track" in args or "track_index" in args or "name" in args or "color" in args:
+            raise ScriptError(
+                "BAD_ARGS", "restore cannot be combined with track, track_index, name or color"
+            )
+        if not isinstance(restore, list) or not restore:
+            raise ScriptError("BAD_ARGS", "restore must be a non-empty list")
+        changes = []
+        for entry in reversed(restore):
+            if not isinstance(entry, dict):
+                raise ScriptError("BAD_ARGS", "restore entries must be objects")
+            try:
+                index = int(entry["track_index"])
+            except (KeyError, TypeError, ValueError):
+                raise ScriptError("BAD_ARGS", "restore entries need track_index")
+            old_name = entry.get("name")
+            old_color = entry.get("color")
+            if old_name is None and old_color is None:
+                raise ScriptError("BAD_ARGS", "restore entries need a name or color")
+            if old_name is not None and (not isinstance(old_name, str) or not old_name):
+                raise ScriptError("BAD_ARGS", "restore name must be a non-empty string")
+            if old_color is not None and (
+                not isinstance(old_color, int) or isinstance(old_color, bool)
+                or old_color < 0 or old_color > 69
+            ):
+                raise ScriptError("BAD_ARGS", "restore color must be an integer from 0 to 69")
+            if index < 0 or index >= len(song.tracks):
+                raise ScriptError("NOT_FOUND", "no track at index %s" % (index,))
+            track = song.tracks[index]
+            current_name = str(getattr(track, "name", ""))
+            current_color = int(getattr(track, "color", 0) or 0)
+            if not dry_run:
+                if old_name is not None:
+                    track.name = old_name
+                if old_color is not None:
+                    track.color = old_color
+            changes.append({
+                "track": current_name,
+                "track_index": index,
+                "name": None if old_name is None else {
+                    "from": current_name, "to": old_name,
+                },
+                "color": None if old_color is None else {
+                    "from": current_color, "to": old_color,
+                },
+            })
+        return {"dry_run": dry_run, "restored": len(changes), "changes": changes}
+
+    has_track = "track" in args
+    has_index = "track_index" in args
+    if has_track == has_index:
+        raise ScriptError("BAD_ARGS", "give exactly one of track or track_index")
+    if has_track:
+        track_name = args.get("track")
+        if not isinstance(track_name, str) or not track_name:
+            raise ScriptError("BAD_ARGS", "track must be a non-empty string")
+        index, track = _one_track(song, track_name)
+    else:
+        raw_index = args.get("track_index")
+        if (
+            not isinstance(raw_index, int) or isinstance(raw_index, bool)
+            or raw_index < 0
+        ):
+            raise ScriptError("BAD_ARGS", "track_index must be a non-negative integer")
+        if raw_index >= len(song.tracks):
+            raise ScriptError("NOT_FOUND", "no track at index %s" % (raw_index,))
+        index = raw_index
+        track = song.tracks[index]
+
+    name = args.get("name")
+    color = args.get("color")
+    if name is None and color is None:
+        raise ScriptError("BAD_ARGS", "give at least one of name or color")
+    if name is not None and (not isinstance(name, str) or not name):
+        raise ScriptError("BAD_ARGS", "name must be a non-empty string")
+    if color is not None and (
+        not isinstance(color, int) or isinstance(color, bool)
+        or color < 0 or color > 69
+    ):
+        raise ScriptError("BAD_ARGS", "color must be an integer from 0 to 69")
+
+    current_name = str(getattr(track, "name", ""))
+    current_color = int(getattr(track, "color", 0) or 0)
+    changes = []
+    if name is not None:
+        changes.append({"field": "name", "from": current_name, "to": name})
+    if color is not None:
+        changes.append({"field": "color", "from": current_color, "to": color})
+    undo = [{"track_index": index, "name": current_name, "color": current_color}]
+    if not dry_run:
+        if name is not None:
+            track.name = name
+        if color is not None:
+            track.color = color
+    return {
+        "dry_run": dry_run,
+        "track": current_name,
+        "track_index": index,
+        "changes": changes,
+        "undo": undo,
+    }

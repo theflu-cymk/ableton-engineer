@@ -25,6 +25,8 @@ class ModeTests(unittest.TestCase):
         self.assertEqual(modes.names(), ["auto", "edit", "inspect"])
         self.assertIn("ableton_status", modes.get("auto").tools)  # core injected
         self.assertIn("tracks_gain_stage", modes.get("auto").tools)
+        self.assertIn("tracks_set_sends", modes.get("auto").tools)
+        self.assertIn("tracks_name_and_color", modes.get("auto").tools)
         self.assertIn("notes_quantize", modes.get("edit").tools)
         self.assertIn("notes_read", modes.get("edit").tools)
 

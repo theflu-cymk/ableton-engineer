@@ -1,7 +1,7 @@
 import unittest
 
 import support  # noqa: F401
-from enableton.live.fake import FakeAdapter, FakeClip, build_song
+from enableton.live.fake import FakeAdapter, FakeClip, FakeSend, FakeTrack, build_song
 
 from Enableton.errors import ScriptError
 
@@ -37,6 +37,119 @@ class TrackPanTests(unittest.TestCase):
         with self.assertRaises(ScriptError) as ctx:
             self.adapter.call("tracks.set_pan", {"tracks": ["Missing"], "pan": 0.0})
         self.assertEqual(ctx.exception.code, "NOT_FOUND")
+
+
+class TrackSendTests(unittest.TestCase):
+    def setUp(self):
+        self.song = build_song()
+        self.song.return_tracks = [FakeTrack("A-Reverb"), FakeTrack("B-Delay")]
+        self.song.tracks[0].sends = [FakeSend(0.1), FakeSend(0.2)]
+        self.adapter = FakeAdapter(self.song)
+
+    def test_dry_run_apply_and_restore_are_exact(self):
+        preview = self.adapter.call("tracks.set_sends", {
+            "track": "Drums", "sends": {"A-Reverb": 0.35}, "dry_run": True,
+        })
+        self.assertTrue(preview["dry_run"])
+        self.assertEqual(preview["changes"][0]["from"], 0.1)
+        self.assertEqual(preview["changes"][0]["to"], 0.35)
+        self.assertEqual(self.song.tracks[0].sends[0].value, 0.1)
+
+        applied = self.adapter.call("tracks.set_sends", {
+            "track": "Drums", "sends": {"A-Reverb": 0.35}, "dry_run": False,
+        })
+        self.assertAlmostEqual(self.song.tracks[0].sends[0].value, 0.35)
+        self.assertEqual(applied["undo"][0]["send"], "A-Reverb")
+
+        restored = self.adapter.call("tracks.set_sends", {
+            "restore": applied["undo"], "dry_run": False,
+        })
+        self.assertEqual(restored["restored"], 1)
+        self.assertEqual(self.song.tracks[0].sends[0].value, 0.1)
+        self.assertEqual(self.song.tracks[0].sends[1].value, 0.2)
+
+    def test_track_list_exposes_colour_and_sends(self):
+        self.song.tracks[0].color = 7
+        page = self.adapter.call("track.list", {})
+        drums = [item for item in page["items"] if item["name"] == "Drums"][0]
+        self.assertEqual(drums["color"], 7)
+        self.assertEqual(drums["sends"], {"A-Reverb": 0.1, "B-Delay": 0.2})
+
+    def test_unknown_send_duplicate_return_and_range_are_typed(self):
+        with self.assertRaises(ScriptError) as ctx:
+            self.adapter.call("tracks.set_sends", {
+                "track": "Drums", "sends": {"C-Chorus": 0.2},
+            })
+        self.assertEqual(ctx.exception.code, "NOT_FOUND")
+
+        with self.assertRaises(ScriptError) as ctx:
+            self.adapter.call("tracks.set_sends", {
+                "track": "Drums", "sends": {"A-Reverb": 1.5},
+            })
+        self.assertEqual(ctx.exception.code, "BAD_ARGS")
+
+        self.song.return_tracks.append(FakeTrack("A-Reverb"))
+        with self.assertRaises(ScriptError) as ctx:
+            self.adapter.call("tracks.set_sends", {
+                "track": "Drums", "sends": {"A-Reverb": 0.2},
+            })
+        self.assertEqual(ctx.exception.code, "AMBIGUOUS_REF")
+
+
+class TrackNameColorTests(unittest.TestCase):
+    def setUp(self):
+        self.song = build_song()
+        self.adapter = FakeAdapter(self.song)
+
+    def test_dry_run_leaves_name_and_colour_unchanged(self):
+        result = self.adapter.call("tracks.name_and_color", {
+            "track": "Drums", "name": "GATE DRUMS", "color": 7, "dry_run": True,
+        })
+        self.assertTrue(result["dry_run"])
+        self.assertEqual(self.song.tracks[0].name, "Drums")
+        self.assertEqual(self.song.tracks[0].color, 0)
+
+    def test_apply_and_restore_are_exact(self):
+        applied = self.adapter.call("tracks.name_and_color", {
+            "track": "Drums", "name": "GATE DRUMS", "color": 7, "dry_run": False,
+        })
+        self.assertEqual(self.song.tracks[0].name, "GATE DRUMS")
+        self.assertEqual(self.song.tracks[0].color, 7)
+        self.assertEqual(len(applied["undo"]), 1)
+
+        restored = self.adapter.call("tracks.name_and_color", {
+            "restore": applied["undo"], "dry_run": False,
+        })
+        self.assertEqual(restored["restored"], 1)
+        self.assertEqual(self.song.tracks[0].name, "Drums")
+        self.assertEqual(self.song.tracks[0].color, 0)
+
+    def test_track_index_resolves_a_duplicate_name(self):
+        self.song.tracks[1].name = "Drums"
+        applied = self.adapter.call("tracks.name_and_color", {
+            "track_index": 1, "name": "Bass layer", "dry_run": False,
+        })
+        self.assertEqual(self.song.tracks[0].name, "Drums")
+        self.assertEqual(self.song.tracks[1].name, "Bass layer")
+        restored = self.adapter.call("tracks.name_and_color", {
+            "restore": applied["undo"], "dry_run": False,
+        })
+        self.assertEqual(restored["restored"], 1)
+        self.assertEqual(self.song.tracks[0].name, "Drums")
+        self.assertEqual(self.song.tracks[1].name, "Drums")
+
+    def test_name_and_colour_are_validated(self):
+        for args, code in (
+            ({"track": "Drums"}, "BAD_ARGS"),
+            ({"track": "Drums", "track_index": 0, "name": "x"}, "BAD_ARGS"),
+            ({"track": "Drums", "name": ""}, "BAD_ARGS"),
+            ({"track": "Drums", "color": 70}, "BAD_ARGS"),
+            ({"track": "Missing", "name": "x"}, "NOT_FOUND"),
+            ({"track_index": 99, "name": "x"}, "NOT_FOUND"),
+        ):
+            with self.assertRaises(ScriptError, msg=repr(args)) as ctx:
+                self.adapter.call("tracks.name_and_color", args)
+            self.assertEqual(ctx.exception.code, code, args)
 
 
 class ClipRenameTests(unittest.TestCase):

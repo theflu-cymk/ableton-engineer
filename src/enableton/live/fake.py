@@ -33,6 +33,12 @@ class FakeDevice:
 
 
 @dataclass
+class FakeSend:
+    value: float = 0.0
+    name: str = ""
+
+
+@dataclass
 class FakeNote:
     pitch: int
     start_time: float
@@ -125,6 +131,7 @@ class FakeTrack:
     name: str
     volume: float = 0.7
     pan: float = 0.0
+    color: int = 0
     peak_db: Optional[float] = None
     is_midi: bool = False
     mute: bool = False
@@ -133,6 +140,7 @@ class FakeTrack:
     is_foldable: bool = False
     group_index: Optional[int] = None
     devices: List[FakeDevice] = field(default_factory=list)
+    sends: List[FakeSend] = field(default_factory=list)
     clip_slots: List[FakeClipSlot] = field(default_factory=list)
     arrangement_clips: List[FakeClip] = field(default_factory=list)
 

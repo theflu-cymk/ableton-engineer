@@ -177,12 +177,18 @@ def _duplicate_track_findings(data: Dict[str, Any]) -> List[Finding]:
         if len(indexes) < 2:
             continue
         location = {"track": {"name": name, "index": indexes[0]}, "indexes": indexes}
+        new_name = "%s (2)" % name
+        suffix = 3
+        while new_name in names:
+            new_name = "%s (%d)" % (name, suffix)
+            suffix += 1
         findings.append(_make(
             "hygiene.duplicate_track_name", "warn", 1.0,
             "Track name %r is used by %d tracks" % (name, len(indexes)),
-            {"indexes": indexes},
+            {"indexes": indexes, "rename_index": indexes[1], "new_name": new_name},
             location, "hygiene", "hygiene", "inspect", False,
-            {"tool": "tracks_name_and_color", "args": {"tracks": [name]}},
+            {"tool": "tracks_name_and_color",
+             "args": {"track_index": indexes[1], "name": new_name}},
         ))
     return findings
 

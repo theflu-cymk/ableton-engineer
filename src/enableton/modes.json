@@ -26,6 +26,8 @@
         "tracks_list",
         "tracks_set_volume",
         "tracks_set_pan",
+        "tracks_set_sends",
+        "tracks_name_and_color",
         "tracks_gain_stage",
         "clips_rename",
         "inspect_run",

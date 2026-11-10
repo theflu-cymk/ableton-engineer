@@ -83,7 +83,13 @@ class DiagnosticsReportTests(unittest.TestCase):
         self.assertEqual(counts["total"], 4)
         self.assertEqual(counts["by_mode"], {"auto": 1, "inspect": 3})
         self.assertEqual(counts["needs_listening"], 1)
-        self.assertEqual(counts["auto_fixable"], 1)
+        self.assertEqual(counts["auto_fixable"], 2)
+        duplicate = next(
+            finding for finding in findings
+            if finding.kind == "hygiene.duplicate_track_name"
+        )
+        self.assertEqual(duplicate.fix["tool"], "tracks_name_and_color")
+        self.assertEqual(duplicate.fix["args"], {"track_index": 2, "name": "A (2)"})
 
     def test_ids_are_stable_and_findings_are_phase_ordered(self):
         first = diagnostics.detect(self.data(), "standard")
