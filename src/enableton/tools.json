@@ -102,6 +102,26 @@
       "cmd": null
     },
     {
+      "name": "ableton_undo",
+      "domain": "core",
+      "summary": "Undo the last transaction Enableton applied.",
+      "description": "Restores the last transaction this server applied, from the restore tokens the tools themselves returned. Live's own undo is linear and cannot unwind a plan; this consumes Enableton's record instead. The record holds one applied write and expires after 10 minutes. It is refused when nothing was applied, when the record expired, or when the current Set is not the Set the transaction was applied to. Restores replay in reverse, and the record is cleared afterwards, so a partial undo is reported and never replayed twice.",
+      "examples": ["undo that", "put the last change back", "revert what you just did"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "scope": {"type": "string", "enum": ["last"], "default": "last", "description": "Only the last transaction is supported in this build."}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 30000,
+      "writes": true,
+      "reversible": false,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
       "name": "inspect_structure",
       "domain": "inspect",
       "summary": "How the Set is built: sections, tracks, clips and device counts.",
@@ -1220,6 +1240,46 @@
       "needs": [],
       "min_live": null,
       "cmd": "sections.create_locators"
+    },
+    {
+      "name": "sections_move",
+      "domain": "sections",
+      "summary": "Move a locator to another bar, with dry-run and exact restore.",
+      "description": "Moves one locator, selected by exact bar or unique name, to another bar. Live 12.2.5 has no setter for Locator.time, so a move is a create at the destination followed by a delete at the source. An occupied destination is refused instead of replacing that marker, the locator keeps its name, and the playhead is put back. Dry-run by default; applying returns an undo token that moves the cue back.",
+      "examples": ["move the intro marker to bar 9", "shift my drop locator four bars later"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "bar": {"type": "number", "minimum": 1, "description": "Bar of the locator to move."},
+          "name": {"type": "string", "description": "Unique name of the locator to move."},
+          "to_bar": {"type": "number", "minimum": 1, "description": "Destination bar; must be empty."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "description": "Internal rollback token returned by an applied move.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"},
+                "time": {"type": "number", "minimum": 0},
+                "bar": {"type": "number", "minimum": 1},
+                "new_time": {"type": "number", "minimum": 0},
+                "new_bar": {"type": "number", "minimum": 1}
+              },
+              "required": ["time", "new_time"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["to_bar"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 6000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "sections.move"
     },
     {
       "name": "sections_delete",

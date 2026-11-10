@@ -138,6 +138,54 @@ class LocatorTests(unittest.TestCase):
         self.assertEqual([scene.name for scene in song.scenes], ["intro"])
 
 
+class LocatorMoveTests(unittest.TestCase):
+    def setUp(self):
+        self.adapter = FakeAdapter()
+        self.song = self.adapter.song
+        self.song.locators = [FakeLocator("intro", 0.0), FakeLocator("drop", 16.0)]
+
+    def test_dry_run_lists_the_move_and_changes_nothing(self):
+        preview = self.adapter.call("sections.move", {"name": "intro", "to_bar": 9})
+        self.assertTrue(preview["dry_run"])
+        self.assertEqual(preview["moved"]["to_bar"], 9.0)
+        self.assertEqual(
+            [(locator.name, locator.time) for locator in self.song.locators],
+            [("intro", 0.0), ("drop", 16.0)],
+        )
+
+    def test_apply_moves_the_marker_keeps_its_name_and_restores(self):
+        self.song.current_song_time = 7.5
+        applied = self.adapter.call(
+            "sections.move", {"name": "intro", "to_bar": 9, "dry_run": False}
+        )
+        self.assertEqual(
+            [(locator.name, locator.time) for locator in self.song.locators],
+            [("drop", 16.0), ("intro", 32.0)],
+        )
+        self.assertEqual(len(applied["undo"]), 1)
+        self.assertAlmostEqual(self.song.current_song_time, 7.5)
+
+        self.adapter.call("sections.move", {"restore": applied["undo"], "dry_run": False})
+        self.assertEqual(
+            [(locator.name, locator.time) for locator in self.song.locators],
+            [("intro", 0.0), ("drop", 16.0)],
+        )
+
+    def test_occupied_destination_is_refused(self):
+        with self.assertRaises(ScriptError) as ctx:
+            self.adapter.call(
+                "sections.move", {"bar": 1, "to_bar": 5, "dry_run": False}
+            )
+        self.assertEqual(ctx.exception.code, "PRECONDITION_FAILED")
+        self.assertEqual(len(self.song.locators), 2)
+
+    def test_duplicate_name_is_ambiguous(self):
+        self.song.locators.append(FakeLocator("intro", 32.0))
+        with self.assertRaises(ScriptError) as ctx:
+            self.adapter.call("sections.move", {"name": "intro", "to_bar": 9})
+        self.assertEqual(ctx.exception.code, "AMBIGUOUS_REF")
+
+
 class TrackExpansionTests(unittest.TestCase):
     def setUp(self):
         self.adapter = FakeAdapter()

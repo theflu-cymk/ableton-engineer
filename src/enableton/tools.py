@@ -12,7 +12,7 @@ from typing import Any, Callable, Dict, Optional
 from . import diagnostics, escalation
 from .manifest import load_manifest
 from .modes import ModeError, guide as build_guide
-from .plans import PlanStore, PlanStoreError
+from .plans import PlanStore, PlanStoreError, TransactionStore, undo_transaction
 from .plans.executor import PlanError, PlanExecutor, Step
 from .protocol.codes import LiveError
 from .reports import (
@@ -50,6 +50,7 @@ def run_tool(
     cache: Optional[SnapshotCache] = None,
     backup_root: Optional[str] = None,
     plan_root: Optional[str] = None,
+    transaction_root: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Run one tool by name, local or remote, with the manifest's own timeout."""
     catalogue = catalogue or load_manifest()
@@ -95,10 +96,16 @@ def run_tool(
                 )
             if name == "ableton_plan_apply":
                 return escalation.apply_plan(
-                    adapter, cache, args, PlanStore(root=plan_root), catalogue, backup_root
+                    adapter, cache, args, PlanStore(root=plan_root), catalogue, backup_root,
+                    transaction_root=transaction_root,
                 )
             if name == "ableton_plan_discard":
                 return escalation.discard_plan(args, PlanStore(root=plan_root))
+            if name == "ableton_undo":
+                return undo_transaction(
+                    adapter, cache, args, catalogue,
+                    TransactionStore(root=transaction_root),
+                )
             handler = LOCAL.get(name)
             if handler is None:
                 raise LiveError(
@@ -120,7 +127,8 @@ def run_tool(
             snapshot = cache.get()
             set_path = (snapshot.get("song") or {}).get("file_path")
             outcome = PlanExecutor(
-                adapter, set_path=set_path, backup_root=backup_root
+                adapter, set_path=set_path, backup_root=backup_root,
+                transaction_store=TransactionStore(root=transaction_root),
             ).apply([Step(name, args)])
         except PlanError as exc:
             raise LiveError(exc.code, exc.message, exc.detail)

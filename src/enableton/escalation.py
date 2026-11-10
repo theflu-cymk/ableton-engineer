@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Sequence, Set
 
 from . import diagnostics
 from .manifest import Tool
-from .plans import PlanStore, PlanStoreError
+from .plans import PlanStore, PlanStoreError, TransactionStore
 from .plans.executor import PlanError, PlanExecutor, Step
 
 
@@ -247,6 +247,7 @@ def apply_plan(
     store: Optional[PlanStore] = None,
     catalogue: Optional[Dict[str, Tool]] = None,
     backup_root: Optional[str] = None,
+    transaction_root: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Execute a stored plan transactionally and report failure plus restore."""
     args = dict(args or {})
@@ -275,6 +276,7 @@ def apply_plan(
         set_path=set_path,
         backup_root=backup_root,
         catalogue=catalogue,
+        transaction_store=TransactionStore(root=transaction_root),
     )
     try:
         outcome = executor.apply(steps)

@@ -39,6 +39,8 @@ class ModeTests(unittest.TestCase):
         self.assertIn("tracks_duplicate", modes.get("prep").tools)
         self.assertIn("tracks_set_routing", modes.get("mix").tools)
         self.assertIn("sections_create_locators", modes.get("arrange").tools)
+        self.assertIn("sections_move", modes.get("arrange").tools)
+        self.assertIn("ableton_undo", modes.get("prep").tools)
         self.assertIn("clips_copy", modes.get("edit").tools)
         self.assertIn("library_browse", modes.get("sound").tools)
 

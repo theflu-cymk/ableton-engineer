@@ -89,6 +89,7 @@
         "tracks_set_routing",
         "tracks_delete",
         "tracks_clean_empty",
+        "ableton_undo",
         "clips_warp_check",
         "clips_fix_loop_points",
         "clips_set_warp_mode",
@@ -129,8 +130,10 @@
       "tools": [
         "sections_map",
         "sections_create_locators",
+        "sections_move",
         "sections_delete",
         "sections_scenes_from_sections",
+        "ableton_undo",
         "clips_copy",
         "clips_duplicate_range",
         "clips_transpose",

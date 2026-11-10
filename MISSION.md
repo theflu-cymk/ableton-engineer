@@ -288,6 +288,24 @@ renumbered track; the gate compares kind, clip counts and device counts instead 
 - Every applied step went through `run_tool`, so the dry-run/apply trace check passed each time;
   the Set was not saved, and Live's default audio-track renumbering was observed again.
 
+### Section move and transaction undo (`0.4.5`)
+
+**Implemented, real-Live gate pending.**
+
+- `sections_move` selects one locator by exact bar or unique name and moves it to `to_bar` as a
+  create at the destination followed by a delete at the source, because `Locator.time` has no
+  setter on 12.2.5. An occupied destination is refused instead of replaced, the locator keeps its
+  name, the playhead is put back, and the undo token moves the cue back.
+- `ableton_undo` consumes the transaction record the executor now writes after every applied write:
+  tool name, script command and the tool-owned restore tokens, kept for 10 minutes under
+  `%APPDATA%\Enableton\transactions` (injectable root in tests). It refuses when nothing is stored,
+  when the record expired, or when the current Set is not the Set the transaction was applied to.
+  Restores replay in reverse; the record is cleared after the attempt and failures are reported
+  rather than retried, because replaying half an undo is not idempotent.
+- Both are in the catalogue (65 tools) and reachable: `sections_move` in `arrange`, `ableton_undo`
+  in `prep` and `arrange`. The fake tests prove internal consistency only; the gate below is the
+  first real-Live proof.
+
 **Next:** the M4 catalogue accounting still needs its wrong rows corrected (`tracks_delete`,
 `tracks_clean_empty`, `ableton_undo` are implementable; `sections_move` is feasible via delete and
 create; `devices_insert` is confirmed, not Verified).

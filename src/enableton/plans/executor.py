@@ -74,10 +74,13 @@ class PlanExecutor:
         backup_root: Optional[str] = None,
         scratch: Optional[ScratchCopy] = None,
         catalogue: Optional[Dict[str, Tool]] = None,
+        transaction_store: Optional[Any] = None,
     ):
         self._adapter = adapter
         self._catalogue = catalogue or load_manifest()
         self._scratch = scratch or ScratchCopy(set_path, backup_root)
+        self._transactions = transaction_store
+        self._set_path = set_path
         self._applied = {}  # type: Dict[str, Dict[str, Any]]
 
     def _resolve(self, steps: Sequence[Step]) -> List[Tuple[Step, Tool]]:
@@ -217,4 +220,16 @@ class PlanExecutor:
             "results": results,
         }
         self._applied[key] = outcome
+        if self._transactions is not None and self._set_path:
+            entries = [
+                {"tool": step.tool, "cmd": tool.cmd, "undo": list(tokens)}
+                for step, tool, tokens in undo
+                if tokens
+            ]
+            try:
+                self._transactions.record(self._set_path, entries)
+            except Exception:
+                # The write already happened. An undo record that cannot be written must not turn a
+                # successful apply into a failure; ableton_undo then reports that nothing is stored.
+                pass
         return outcome

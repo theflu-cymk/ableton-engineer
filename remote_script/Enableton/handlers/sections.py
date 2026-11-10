@@ -6,8 +6,9 @@ one already exists would silently remove the user's marker. Every write here the
 locator list first, refuses an occupied beat, moves the playhead only to a beat it is about to
 write, and puts the playhead back afterwards.
 
-``Locator.time`` has no setter on Live 12.2.5, so moving a marker is a delete plus a create. This
-module does not offer a move, because it cannot do one.
+``Locator.time`` has no setter on Live 12.2.5, so moving a marker is a delete plus a create.
+``sections.move`` therefore creates at the destination first and only then deletes the source, so a
+failed create never loses the marker; if the delete fails, the new cue is removed again.
 """
 
 from __future__ import annotations
@@ -355,6 +356,183 @@ def _restore_deleted(args, song, dry_run):
                 raise ScriptError(
                     "UNSUPPORTED", "this Live build cannot name a locator: %s" % (exc,)
                 )
+
+    return {
+        "dry_run": dry_run,
+        "restored": len(changes),
+        "changes": changes,
+        "missing": missing,
+    }
+
+
+def _beat_of_bar(bar, beats_per_bar):
+    return round((float(bar) - 1.0) * beats_per_bar, 6)
+
+
+def _require_bar(value, label):
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or float(value) < 1:
+        raise ScriptError("BAD_ARGS", "%s must be a number >= 1" % (label,))
+    return float(value)
+
+
+def _remove_cue(song, beat):
+    try:
+        _seek(song, beat)
+        _toggle(song)
+    except Exception:  # noqa: BLE001 - best-effort rollback of a cue we just made
+        pass
+
+
+def _move_cue(song, source, destination, name):
+    """Create at the destination, then delete the source; never the other way round."""
+    _seek(song, destination)
+    _toggle(song)
+    locator = _locator_at(song, destination)
+    if locator is None:
+        raise ScriptError("LIVE_ERROR", "Live did not create a cue at the new bar")
+    try:
+        locator.name = name
+    except Exception as exc:  # noqa: BLE001 - Live's reason is the answer
+        _remove_cue(song, destination)
+        raise ScriptError(
+            "UNSUPPORTED", "this Live build cannot name a locator: %s" % (exc,)
+        )
+    _seek(song, source)
+    _toggle(song)
+    if _locator_at(song, source) is not None:
+        _remove_cue(song, destination)
+        raise ScriptError("LIVE_ERROR", "Live did not delete the locator at its old bar")
+
+
+@command("sections.move")
+def move(args, song):
+    check_args(args, allowed=("bar", "name", "to_bar", "dry_run", "restore"))
+    dry_run = bool(args.get("dry_run", True))
+    if args.get("restore") is not None:
+        if any(key in args for key in ("bar", "name", "to_bar")):
+            raise ScriptError("BAD_ARGS", "restore cannot be combined with a selection")
+        return _restore_moved(args, song, dry_run)
+
+    selectors = [key for key in ("bar", "name") if key in args]
+    if len(selectors) != 1:
+        raise ScriptError("BAD_ARGS", "give exactly one of bar or name")
+    if "to_bar" not in args:
+        raise ScriptError("BAD_ARGS", "to_bar is required")
+    to_bar = _require_bar(args.get("to_bar"), "to_bar")
+
+    beats_per_bar = _beats_per_bar(song)
+    rows = _rows(song)
+    if not rows:
+        raise ScriptError("NOT_FOUND", "this Set has no locators")
+
+    if "name" in args:
+        wanted = args.get("name")
+        if not isinstance(wanted, str) or not wanted:
+            raise ScriptError("BAD_ARGS", "name must be a non-empty string")
+        matches = [row for row in rows if row["name"] == wanted]
+        if not matches:
+            raise ScriptError("NOT_FOUND", "no locator named %r" % (wanted,))
+        if len(matches) > 1:
+            raise ScriptError(
+                "AMBIGUOUS_REF",
+                "%d locators are named %r; select by bar instead" % (len(matches), wanted),
+            )
+        source = matches[0]
+    else:
+        source_time = _beat_of_bar(_require_bar(args.get("bar"), "bar"), beats_per_bar)
+        matches = [row for row in rows if abs(row["time"] - source_time) <= 1e-6]
+        if not matches:
+            raise ScriptError("NOT_FOUND", "no locator at bar %s" % (args.get("bar"),))
+        source = matches[0]
+
+    destination = _beat_of_bar(to_bar, beats_per_bar)
+    if abs(destination - source["time"]) <= 1e-6:
+        raise ScriptError("BAD_ARGS", "the locator is already at bar %s" % (to_bar,))
+    for row in rows:
+        if row["index"] == source["index"]:
+            continue
+        if abs(row["time"] - destination) <= 1e-6:
+            raise ScriptError(
+                "PRECONDITION_FAILED",
+                "a locator already exists at bar %s (%r); move it first"
+                % (to_bar, row["name"]),
+            )
+
+    name = source["name"]
+    moved = {
+        "name": name,
+        "from_bar": _bar_of(source["time"], beats_per_bar),
+        "to_bar": round(to_bar, 4),
+        "time": source["time"],
+        "new_time": destination,
+    }
+    if dry_run:
+        return {"dry_run": True, "moved": moved, "undo": [], "playhead_restored": True}
+
+    original = _playhead(song)
+    try:
+        _move_cue(song, source["time"], destination, name)
+    finally:
+        if original is not None:
+            try:
+                song.current_song_time = original
+            except Exception:
+                pass
+
+    if _locator_at(song, destination) is None or _locator_at(song, source["time"]) is not None:
+        raise ScriptError("LIVE_ERROR", "the locator did not move exactly once")
+
+    undo = [{
+        "name": name,
+        "time": source["time"],
+        "bar": moved["from_bar"],
+        "new_time": destination,
+        "new_bar": moved["to_bar"],
+    }]
+    return {"dry_run": False, "moved": moved, "undo": undo, "playhead_restored": True}
+
+
+def _restore_moved(args, song, dry_run):
+    entries = args.get("restore")
+    if not isinstance(entries, list) or not entries:
+        raise ScriptError("BAD_ARGS", "restore must be a non-empty list")
+
+    beats_per_bar = _beats_per_bar(song)
+    changes, missing = [], []
+    original = _playhead(song)
+    try:
+        for entry in reversed(entries):
+            if not isinstance(entry, dict):
+                raise ScriptError("BAD_ARGS", "restore entries must be objects")
+            try:
+                source = float(entry["new_time"])
+                destination = float(entry["time"])
+            except (KeyError, TypeError, ValueError):
+                raise ScriptError("BAD_ARGS", "restore entries need time and new_time")
+            locator = _locator_at(song, source)
+            if locator is None:
+                missing.append({"time": source, "reason": "no locator at the moved beat"})
+                continue
+            if _locator_at(song, destination) is not None:
+                missing.append({"time": source, "reason": "the original beat is occupied"})
+                continue
+            name = entry.get("name")
+            if not isinstance(name, str):
+                name = str(_attr(locator, "name", "") or "")
+            changes.append({
+                "name": name,
+                "bar": _bar_of(destination, beats_per_bar),
+                "time": destination,
+            })
+            if dry_run:
+                continue
+            _move_cue(song, source, destination, name)
+    finally:
+        if not dry_run and original is not None:
+            try:
+                song.current_song_time = original
+            except Exception:
+                pass
 
     return {
         "dry_run": dry_run,

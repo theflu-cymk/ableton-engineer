@@ -67,6 +67,7 @@ class EscalationTests(unittest.TestCase):
         applied = run_tool(
             "ableton_plan_apply", {"plan_id": plan["plan_id"]}, self.adapter,
             plan_root=self.plan_root, backup_root=str(self.root / "backups"),
+            transaction_root=str(self.root / "transactions"),
         )
         self.assertTrue(applied["applied"])
         self.assertEqual(applied["counts_before"]["total"], 3)
@@ -117,6 +118,7 @@ class EscalationTests(unittest.TestCase):
         result = apply_plan(
             adapter, SnapshotCache(adapter), {"plan_id": plan["plan_id"]}, store,
             self.catalogue, backup_root=str(self.root / "backups"),
+            transaction_root=str(self.root / "transactions"),
         )
         self.assertFalse(result["applied"])
         self.assertIn("error", result)
