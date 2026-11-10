@@ -662,6 +662,12 @@ def fix_loop_points(args, song):
             "loop points must lie inside the clip (length %s beats)" % round(length, 4),
         )
     current_start, current_end, looping = _loop_state(clip)
+    if not looping:
+        raise ScriptError(
+            "UNSUPPORTED",
+            "clip %r is not looped; its loop points are its clip bounds, so changing them "
+            "would truncate the clip. Enable loop on the clip first." % (clip_name,),
+        )
     if not dry_run:
         _set_loop_points(clip, target_start, target_end)
     return {

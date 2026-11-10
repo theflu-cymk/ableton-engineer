@@ -75,6 +75,14 @@ class ClipLoopPointTests(unittest.TestCase):
         self.assertEqual(restored["restored"], 1)
         self.assertEqual((clip.loop_start, clip.loop_end), (1.0, 8.0))
 
+    def test_unlooped_audio_is_refused_before_writing(self):
+        self.clip.looping = False
+        with self.assertRaises(ScriptError) as ctx:
+            self.adapter.call("clips.fix_loop_points", self.args(dry_run=False))
+        self.assertEqual(ctx.exception.code, "UNSUPPORTED")
+        self.assertIn("Enable loop", ctx.exception.message)
+        self.assertEqual((self.clip.loop_start, self.clip.loop_end), (1.0, 16.0))
+
     def test_unwarped_audio_is_unavailable_with_a_reason(self):
         clip = FakeClip("unwarped", 0.0, 8.0)
         self.track.arrangement_clips.append(clip)

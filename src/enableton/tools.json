@@ -1134,7 +1134,7 @@
       "name": "clips_fix_loop_points",
       "domain": "clips",
       "summary": "Set a clip's loop boundaries, with dry-run and exact restore.",
-      "description": "Sets a MIDI or warped-audio clip's loop start and end in clip-relative beats. Both values are validated against the clip length; unwarped audio uses seconds and is unavailable with a reason. The clip's looping flag, start/end markers and notes are not changed. Duplicate clip names are refused. Dry-run by default; applying returns an undo token that restores the exact previous loop points.",
+      "description": "Sets a looped MIDI or warped-audio clip's loop start and end in clip-relative beats. Both values are validated against the clip length; unwarped audio uses seconds and is unavailable with a reason, and an unlooped clip is refused because its loop end is its clip end. The clip's looping flag, start/end markers and notes are not changed. Duplicate clip names are refused. Dry-run by default; applying returns an undo token that restores the exact previous loop points.",
       "examples": ["tighten this loop to whole bars", "set the loop points on this clip", "fix the loop range"],
       "input": {
         "type": "object",
