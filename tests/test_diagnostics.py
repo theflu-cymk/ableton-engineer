@@ -215,6 +215,7 @@ class AutofixTests(unittest.TestCase):
 
         result = diagnostics.autofix(
             self.adapter, self.cache, {"dry_run": False}, self.catalogue,
+            backup_root=str(self.root / "backups"),
             detectors=[detector],
         )
 
