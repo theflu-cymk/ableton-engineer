@@ -279,6 +279,45 @@ class MoveTests(unittest.TestCase):
             [device.name for device in adapter.song.tracks[0].devices], ["A", "B", "C", "D"]
         )
 
+    def test_the_handler_passes_the_resolved_index_to_the_mover(self):
+        adapter = FakeAdapter()
+        import Enableton.handlers.devices as devices_module
+
+        captured = {}
+        original = devices_module._move
+
+        def spy(song, track, device, to_index, from_index=None):
+            captured["from_index"] = from_index
+            return original(song, track, device, to_index, from_index)
+
+        devices_module._move = spy
+        try:
+            adapter.call("devices.move", {
+                "track": "Drums", "device": "EQ Eight", "to_index": 1, "dry_run": False,
+            })
+        finally:
+            devices_module._move = original
+        self.assertEqual(captured["from_index"], 0)
+        self.assertEqual(
+            [device.name for device in adapter.song.tracks[0].devices], ["Glue", "EQ Eight"]
+        )
+
+    def test_a_forward_move_does_not_depend_on_object_identity(self):
+        class Proxy:
+            def __init__(self, inner):
+                object.__setattr__(self, "_inner", inner)
+
+            def __getattr__(self, name):
+                return getattr(object.__getattribute__(self, "_inner"), name)
+
+        adapter = FakeAdapter()
+        adapter.song.tracks[0] = _NoMoveTrack(adapter.song.tracks[0])
+        track = adapter.song.tracks[0]
+        from Enableton.handlers.devices import _move
+
+        _move(adapter.song, track, Proxy(track.devices[0]), 1, 0)
+        self.assertEqual([device.name for device in track.devices], ["Glue", "EQ Eight"])
+
     def test_a_restore_that_cannot_land_raises_instead_of_claiming_success(self):
         adapter = FakeAdapter()
         adapter.song.tracks[0] = _NoMoveTrack(adapter.song.tracks[0])

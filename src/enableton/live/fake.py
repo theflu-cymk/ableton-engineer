@@ -327,7 +327,15 @@ class FakeSong:
         did nothing and ``2 -> 4`` landed at 3. Mirroring that here is what keeps a handler that
         forgets the correction from passing.
         """
-        start = track.devices.index(device)
+        try:
+            start = track.devices.index(device)
+        except ValueError:
+            # Live hands back a fresh proxy on every access, so the caller's object is not the one
+            # in the list. Resolve it by name, the way Live resolves the underlying device.
+            start = next(
+                index for index, item in enumerate(track.devices) if item.name == device.name
+            )
+            device = track.devices[start]
         track.devices.pop(start)
         if position > start:
             position -= 1

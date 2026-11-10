@@ -440,7 +440,7 @@ def set_macro(args, song):
     return {"dry_run": dry_run, "changes": [change], "undo": undo}
 
 
-def _move(song, track, device, to_index):
+def _move(song, track, device, to_index, from_index=None):
     """Move a device with whichever primitive this Live build exposes.
 
     12.2.5 has no ``Track.move_device``; ``Song.move_device(device, target, position)`` is the one
@@ -448,15 +448,21 @@ def _move(song, track, device, to_index):
     therefore lands one index short: the real 0.3.6 gate saw ``2 -> 3`` do nothing and ``2 -> 4``
     land at 3. The track form, where a build has it, takes the final index. Both paths verify where
     the device actually landed, so a move that did not happen is an error rather than a report.
+
+    ``from_index`` is the index the caller resolved the device at. It cannot be recovered here by
+    identity: Live returns a fresh proxy on every ``track.devices`` access, so ``item is device``
+    is false on the real build and the forward correction silently collapsed to a no-op. That is
+    exactly how the first 0.3.7 gate failed.
     """
     name = str(_attr(device, "name", "") or "")
     devices = _devices(track)
     count = len(devices)
-    start = None
-    for index, item in enumerate(devices):
-        if item is device:
-            start = index
-            break
+    start = from_index
+    if start is None:
+        for index, item in enumerate(devices):
+            if item is device:
+                start = index
+                break
     if start is None:
         start = to_index
 
@@ -470,6 +476,7 @@ def _move(song, track, device, to_index):
         raise ScriptError("UNSUPPORTED", "this Live build cannot reorder devices")
 
     landed = [str(_attr(item, "name", "") or "") for item in _devices(track)]
+    failure = None
     for position in attempts:
         if position < 0 or position > count:
             continue
@@ -478,15 +485,17 @@ def _move(song, track, device, to_index):
                 mover(device, position)
             else:
                 song_mover(device, track, position)
-        except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
-            raise ScriptError("LIVE_ERROR", "Live refused the device move: %s" % (exc,))
+        except Exception as exc:  # noqa: BLE001 - try the next position, report the last reason
+            failure = exc
+            continue
         landed = [str(_attr(item, "name", "") or "") for item in _devices(track)]
         if to_index < len(landed) and landed[to_index] == name:
             return to_index
     raise ScriptError(
         "LIVE_ERROR",
-        "Live did not move %r to index %d; the chain now holds %s"
-        % (name, to_index, ", ".join(landed) if landed else "nothing"),
+        "Live did not move %r to index %d; the chain now holds %s%s"
+        % (name, to_index, ", ".join(landed) if landed else "nothing",
+           " (%s)" % (failure,) if failure is not None else ""),
     )
 
 
@@ -538,7 +547,7 @@ def move(args, song):
         "to_index": device_index,
     }]
     if not dry_run:
-        _move(song, track, device, to_index)
+        _move(song, track, device, to_index, device_index)
         landed = _devices(track)
         if len(landed) != count:
             raise ScriptError(
@@ -601,7 +610,7 @@ def _restore_moves(entries, song, dry_run):
             changes.append({"track_index": track_index, "device": wanted,
                             "from_index": device_index, "to_index": to_index})
             continue
-        _move(song, track, device, to_index)
+        _move(song, track, device, to_index, device_index)
         changes.append({"track_index": track_index, "device": wanted,
                         "from_index": device_index, "to_index": to_index})
     return {

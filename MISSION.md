@@ -205,6 +205,14 @@ apply wrote nothing.
   real. Snapshots, change rows and undo tokens now carry the exact value. The four fields the
   probe perturbed were put back and re-read as `0.85`, pan `0.0`, send `0.0`.
 
+**`0.3.7` forward move still failed (Verified).** On the restarted `0.3.7` build, `2 -> 3` raised
+`Live did not move 'Remove Mud' to index 3` and rolled back. The compensation never ran: `_move`
+found the start index by object identity, and Live returns a fresh proxy on every `track.devices`
+access, so `start` fell back to `to_index` and the forward attempt list collapsed to the single
+no-op position. `0.3.8` takes the resolved `device_index` from both callers, tries each candidate
+position even when one raises, and the fake resolves a device by name when identity fails. The
+snapshot half of the `0.3.7` gate never ran, so exact-precision restore is still **Unverified**.
+
 **Open contract defect (Unverified).** `devices_set_macro`'s manifest still says the value is
 "normally 0 to 1", but a real rack macro uses its own units (`63.35` here). The tool works; its
 documentation is wrong and there is no 0..1 convenience argument yet.
