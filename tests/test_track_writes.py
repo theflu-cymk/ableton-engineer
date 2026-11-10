@@ -69,10 +69,10 @@ class TrackSendTests(unittest.TestCase):
         self.assertEqual(self.song.tracks[0].sends[1].value, 0.2)
 
     def test_track_list_exposes_colour_and_sends(self):
-        self.song.tracks[0].color = 7
+        self.song.tracks[0].color = 0x8BC0FF
         page = self.adapter.call("track.list", {})
         drums = [item for item in page["items"] if item["name"] == "Drums"][0]
-        self.assertEqual(drums["color"], 7)
+        self.assertEqual(drums["color"], 0x8BC0FF)
         self.assertEqual(drums["sends"], {"A-Reverb": 0.1, "B-Delay": 0.2})
 
     def test_unknown_send_duplicate_return_and_range_are_typed(self):
@@ -103,18 +103,21 @@ class TrackNameColorTests(unittest.TestCase):
 
     def test_dry_run_leaves_name_and_colour_unchanged(self):
         result = self.adapter.call("tracks.name_and_color", {
-            "track": "Drums", "name": "GATE DRUMS", "color": 7, "dry_run": True,
+            "track": "Drums", "name": "GATE DRUMS", "color": 0xFF0000,
+            "dry_run": True,
         })
         self.assertTrue(result["dry_run"])
         self.assertEqual(self.song.tracks[0].name, "Drums")
         self.assertEqual(self.song.tracks[0].color, 0)
 
     def test_apply_and_restore_are_exact(self):
+        self.song.tracks[0].color = 0x8BC0FF
         applied = self.adapter.call("tracks.name_and_color", {
-            "track": "Drums", "name": "GATE DRUMS", "color": 7, "dry_run": False,
+            "track": "Drums", "name": "GATE DRUMS", "color": 0xFF0000,
+            "dry_run": False,
         })
         self.assertEqual(self.song.tracks[0].name, "GATE DRUMS")
-        self.assertEqual(self.song.tracks[0].color, 7)
+        self.assertEqual(self.song.tracks[0].color, 0xFF0000)
         self.assertEqual(len(applied["undo"]), 1)
 
         restored = self.adapter.call("tracks.name_and_color", {
@@ -122,7 +125,7 @@ class TrackNameColorTests(unittest.TestCase):
         })
         self.assertEqual(restored["restored"], 1)
         self.assertEqual(self.song.tracks[0].name, "Drums")
-        self.assertEqual(self.song.tracks[0].color, 0)
+        self.assertEqual(self.song.tracks[0].color, 0x8BC0FF)
 
     def test_track_index_resolves_a_duplicate_name(self):
         self.song.tracks[1].name = "Drums"
@@ -143,7 +146,8 @@ class TrackNameColorTests(unittest.TestCase):
             ({"track": "Drums"}, "BAD_ARGS"),
             ({"track": "Drums", "track_index": 0, "name": "x"}, "BAD_ARGS"),
             ({"track": "Drums", "name": ""}, "BAD_ARGS"),
-            ({"track": "Drums", "color": 70}, "BAD_ARGS"),
+            ({"track": "Drums", "color": 16777216}, "BAD_ARGS"),
+            ({"track": "Drums", "color": -1}, "BAD_ARGS"),
             ({"track": "Missing", "name": "x"}, "NOT_FOUND"),
             ({"track_index": 99, "name": "x"}, "NOT_FOUND"),
         ):

@@ -683,7 +683,7 @@
       "name": "tracks_list",
       "domain": "tracks",
       "summary": "List tracks with name, colour, volume, pan and sends.",
-      "description": "Returns a page of tracks in Set order with Live's mixer state and return-send levels. Use offset/limit for large Sets; next_offset is null on the last page.",
+      "description": "Returns a page of tracks in Set order with Live's mixer state and return-send levels. Colour is a packed 24-bit RGB integer (0xRRGGBB). Use offset/limit for large Sets; next_offset is null on the last page.",
       "examples": ["what tracks do I have", "list my drum tracks"],
       "input": {
         "type": "object",
@@ -1010,7 +1010,7 @@
       "name": "tracks_name_and_color",
       "domain": "tracks",
       "summary": "Rename or recolour one track, with dry-run and exact restore.",
-      "description": "Changes a track's name, its colour, or both, resolving the track by name or by Set index (use the index when names are duplicated). Colour is Live's palette index 0..69. Dry-run by default; applying returns an undo token that restores the exact previous name and colour.",
+      "description": "Changes a track's name, its colour, or both, resolving the track by name or by Set index (use the index when names are duplicated). Colour is a packed 24-bit RGB integer (0xRRGGBB), as Live reports it; Live's palette UI may display a nearby swatch. Dry-run by default; applying returns an undo token that restores the exact previous name and colour.",
       "examples": ["rename this track to lead", "make the drum track orange"],
       "input": {
         "type": "object",
@@ -1018,7 +1018,7 @@
           "track": {"type": "string"},
           "track_index": {"type": "integer", "minimum": 0, "description": "Set index; use instead of track when names are duplicated."},
           "name": {"type": "string", "minLength": 1},
-          "color": {"type": "integer", "minimum": 0, "maximum": 69, "description": "Live's palette index."},
+          "color": {"type": "integer", "minimum": 0, "maximum": 16777215, "description": "Packed 24-bit RGB (0xRRGGBB)."},
           "dry_run": {"type": "boolean", "default": true},
           "restore": {
             "type": "array",
@@ -1027,7 +1027,7 @@
               "properties": {
                 "track_index": {"type": "integer", "minimum": 0},
                 "name": {"type": "string", "minLength": 1},
-                "color": {"type": "integer", "minimum": 0, "maximum": 69}
+                "color": {"type": "integer", "minimum": 0, "maximum": 16777215}
               },
               "required": ["track_index", "name", "color"],
               "additionalProperties": false

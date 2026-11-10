@@ -452,9 +452,12 @@ def name_and_color(args, song):
                 raise ScriptError("BAD_ARGS", "restore name must be a non-empty string")
             if old_color is not None and (
                 not isinstance(old_color, int) or isinstance(old_color, bool)
-                or old_color < 0 or old_color > 69
+                or old_color < 0 or old_color > 0xFFFFFF
             ):
-                raise ScriptError("BAD_ARGS", "restore color must be an integer from 0 to 69")
+                raise ScriptError(
+                    "BAD_ARGS",
+                    "restore color must be an integer from 0 to 16777215 (0xRRGGBB)",
+                )
             if index < 0 or index >= len(song.tracks):
                 raise ScriptError("NOT_FOUND", "no track at index %s" % (index,))
             track = song.tracks[index]
@@ -506,9 +509,11 @@ def name_and_color(args, song):
         raise ScriptError("BAD_ARGS", "name must be a non-empty string")
     if color is not None and (
         not isinstance(color, int) or isinstance(color, bool)
-        or color < 0 or color > 69
+        or color < 0 or color > 0xFFFFFF
     ):
-        raise ScriptError("BAD_ARGS", "color must be an integer from 0 to 69")
+        raise ScriptError(
+            "BAD_ARGS", "color must be an integer from 0 to 16777215 (0xRRGGBB)"
+        )
 
     current_name = str(getattr(track, "name", ""))
     current_color = int(getattr(track, "color", 0) or 0)
