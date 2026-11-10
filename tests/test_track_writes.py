@@ -250,6 +250,33 @@ class TrackDeleteTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, "NOT_FOUND")
 
 
+class GroupTrackSafetyTests(unittest.TestCase):
+    def setUp(self):
+        self.song = build_song()
+        self.song.tracks.append(FakeTrack("Group", is_foldable=True))
+        self.adapter = FakeAdapter(self.song)
+
+    def test_a_group_track_is_never_listed_as_empty(self):
+        result = self.adapter.call("tracks.clean_empty", {"dry_run": True})
+        self.assertNotIn("Group", [row["track"] for row in result["empty"]])
+
+    def test_naming_a_group_track_is_refused(self):
+        with self.assertRaises(ScriptError) as ctx:
+            self.adapter.call(
+                "tracks.clean_empty", {"tracks": ["Group"], "confirm": True, "dry_run": False}
+            )
+        self.assertEqual(ctx.exception.code, "PRECONDITION_FAILED")
+        self.assertEqual(len(self.song.tracks), 4)
+
+    def test_deleting_a_group_track_is_refused(self):
+        with self.assertRaises(ScriptError) as ctx:
+            self.adapter.call(
+                "tracks.delete", {"track": "Group", "confirm": True, "dry_run": False}
+            )
+        self.assertEqual(ctx.exception.code, "PRECONDITION_FAILED")
+        self.assertEqual(len(self.song.tracks), 4)
+
+
 class CleanEmptyTests(unittest.TestCase):
     def setUp(self):
         self.song = build_song()

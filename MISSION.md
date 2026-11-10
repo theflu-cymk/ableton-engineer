@@ -246,6 +246,13 @@ empty-track finding now reports "cannot be undone" rather than "not implemented"
 of `Song.delete_track` is the one the M2 duplicate restore exercised on real Live; the LOM map's
 index signature stays **Unverified**.
 
+**`0.4.0` failed its first gate (Verified).** `tracks_clean_empty` raised `INTERNAL: tracks.clean_empty
+failed: Main, Group and Return Tracks have no arrangement clips` on `SCRATCH fortnight`: Live raises
+when `arrangement_clips` is read on a group track, and `song.tracks` includes them. Nothing was
+written. `0.4.1` reports `(None, None)` for a group without reading its clips, never lists a group
+as empty, and refuses `tracks_delete` on a group outright because deleting it would take the tracks
+inside it too.
+
 **Next:** the M4 catalogue accounting still needs its wrong rows corrected (`tracks_delete`,
 `tracks_clean_empty`, `ableton_undo` are implementable; `sections_move` is feasible via delete and
 create; `devices_insert` is confirmed, not Verified).

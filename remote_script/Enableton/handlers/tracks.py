@@ -643,9 +643,22 @@ def _restore_duplicates(args, song, dry_run):
 
 
 def _track_clip_counts(track):
-    arrangement = len(list(getattr(track, "arrangement_clips", []) or []))
+    """Clip counts, or (None, None) for a group track.
+
+    Group, Main and Return tracks have no clip slots: Live raises "Main, Group and Return Tracks
+    have no arrangement clips" when the attribute is read, which took down a whole clean_empty
+    dry run on real 0.4.0. A group is never empty and is never deleted by the cleanup, because
+    deleting it would take the tracks inside it too.
+    """
+    if getattr(track, "is_foldable", False):
+        return None, None
+    try:
+        arrangement = len(list(getattr(track, "arrangement_clips", []) or []))
+        slots = list(getattr(track, "clip_slots", []) or [])
+    except Exception:  # noqa: BLE001 - group tracks raise rather than report empty
+        return None, None
     session = 0
-    for slot in list(getattr(track, "clip_slots", []) or []):
+    for slot in slots:
         if getattr(slot, "has_clip", False) or getattr(slot, "clip", None) is not None:
             session += 1
     return arrangement, session
@@ -723,6 +736,12 @@ def delete(args, song):
         )
 
     name = str(getattr(track, "name", "") or "")
+    if getattr(track, "is_foldable", False):
+        raise ScriptError(
+            "PRECONDITION_FAILED",
+            "%r is a group track; deleting it would delete the tracks inside it, "
+            "so delete those first" % (name,),
+        )
     arrangement, session = _track_clip_counts(track)
     contents = {
         "track": name,
@@ -784,7 +803,7 @@ def clean_empty(args, song):
     if wanted is not None and occupied:
         raise ScriptError(
             "PRECONDITION_FAILED",
-            "%s holds clips, so the batch was refused"
+            "%s is not empty, so the batch was refused"
             % ", ".join(repr(row["track"]) for row in occupied),
         )
 
