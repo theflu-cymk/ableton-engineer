@@ -1566,7 +1566,7 @@
       "name": "devices_set_macro",
       "domain": "devices",
       "summary": "Set a rack macro by number, with the same undo token as a parameter write.",
-      "description": "A rack exposes Macro 1 to Macro 16 at parameter indexes 1 to 16, right after Device On, and Live reports whatever name the user gave each macro; the first real rack checked had Low Gain, Mid Gain, High Gain and Vintage on macros 1 to 4. The macro therefore resolves by position, so a renamed macro still responds to its number, and the row reports the name actually found. Only racks carry macros, so a bare EQ Eight is refused with a reason rather than guessed at. The value must sit inside the macro's own range, and the undo token restores the prior number.",
+      "description": "A rack exposes Macro 1 to Macro 16 at parameter indexes 1 to 16, right after Device On, and Live reports whatever name the user gave each macro; the first real rack checked had Low Gain, Mid Gain, High Gain and Vintage on macros 1 to 4. The macro therefore resolves by position, so a renamed macro still responds to its number, and the row reports the name actually found. Only racks carry macros, so a bare EQ Eight is refused with a reason rather than guessed at. Give exactly one of value or fraction: value is in the macro's native units, which on a real rack was a 0..127-style range rather than 0..1, while fraction takes 0..1 of that range and maps it. The undo token restores the prior number.",
       "examples": ["set macro 1 on the rack to half", "open the filter macro a little"],
       "input": {
         "type": "object",
@@ -1576,11 +1576,12 @@
           "device": {"type": "string", "description": "Exact rack name on that track."},
           "device_index": {"type": "integer", "minimum": 0},
           "macro": {"type": "integer", "minimum": 1, "maximum": 16},
-          "value": {"type": "number", "description": "The new macro value, normally 0 to 1."},
+          "value": {"type": "number", "description": "The new value in the macro's native units, e.g. 63.5 on a 0..127 macro."},
+          "fraction": {"type": "number", "minimum": 0, "maximum": 1, "description": "The new value as 0..1 of the macro's range; give this instead of value."},
           "dry_run": {"type": "boolean", "default": true},
           "restore": {"type": "array", "items": {"type": "object"}}
         },
-        "required": ["macro", "value"],
+        "required": ["macro"],
         "additionalProperties": false
       },
       "timeout_ms": 3000,

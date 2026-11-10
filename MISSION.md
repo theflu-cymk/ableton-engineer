@@ -213,14 +213,17 @@ no-op position. `0.3.8` takes the resolved `device_index` from both callers, tri
 position even when one raises, and the fake resolves a device by name when identity fails. The
 snapshot half of the `0.3.7` gate never ran, so exact-precision restore is still **Unverified**.
 
-**Open contract defect (Unverified).** `devices_set_macro`'s manifest still says the value is
-"normally 0 to 1", but a real rack macro uses its own units (`63.35` here). The tool works; its
-documentation is wrong and there is no 0..1 convenience argument yet.
+**Macro units, fixed in `0.3.9` (Unverified).** `devices_set_macro` documented "normally 0 to 1",
+but the real rack's `Low Gain` macro reads `63.35` on a 0..127-style range. The manifest now says
+`value` is in the macro's native units, and `fraction` takes 0..1 of that range and maps it.
+Exactly one of the two is required; the undo token is unchanged.
 
-**Next gate (Unverified until run):** restart onto `0.3.7` (`doctor` build `e7ec4fdd86ec`, no
-`stale`), then on `SCRATCH fortnight`: `devices_move` forward and backward with the undo token each
-way, and a `mix_snapshot_save` → perturb two faders, a pan and a send → dry run exactly four
-changes → apply → zero changes → undo → four changes again.
+**Next gate (Unverified until run):** restart onto `0.3.9` (`doctor` build `745b4fb993fb` before
+the macro change, then the new build, no `stale`), then on `SCRATCH fortnight`: `devices_move`
+forward and backward with the undo token each way, a `mix_snapshot_save` → perturb two faders, a
+pan and a send → dry run exactly four changes → apply → zero changes → undo → four changes again,
+and `devices_set_macro` macro 1 on `808 Core Kit` with `fraction: 0.5` landing on the midpoint of
+`Low Gain`'s own range, read back, and restored exactly.
 
 ### Tracks sends and name/colour (2026-11-10, `0.2.12`)
 

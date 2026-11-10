@@ -205,6 +205,50 @@ class MacroTests(unittest.TestCase):
             })
         self.assertEqual(ctx.exception.code, "BAD_ARGS")
 
+    def test_a_fraction_maps_onto_the_macros_own_range(self):
+        adapter = self.make_rack(
+            FakeDeviceParameter("Device On", 1.0, 0.0, 1.0),
+            FakeDeviceParameter("Low Gain", 63.0, 0.0, 127.0),
+        )
+        result = adapter.call("devices.set_macro", {
+            "track": "Drums", "device": "Instrument Rack", "macro": 1, "fraction": 0.5,
+        })
+        self.assertAlmostEqual(result["changes"][0]["to"], 63.5)
+
+    def test_fraction_outside_zero_to_one_is_refused(self):
+        adapter = self.make_rack(
+            FakeDeviceParameter("Device On", 1.0, 0.0, 1.0),
+            FakeDeviceParameter("Low Gain", 63.0, 0.0, 127.0),
+        )
+        with self.assertRaises(ScriptError) as ctx:
+            adapter.call("devices.set_macro", {
+                "track": "Drums", "device": "Instrument Rack", "macro": 1, "fraction": 1.5,
+            })
+        self.assertEqual(ctx.exception.code, "BAD_ARGS")
+
+    def test_value_and_fraction_together_are_refused(self):
+        adapter = self.make_rack(
+            FakeDeviceParameter("Device On", 1.0, 0.0, 1.0),
+            FakeDeviceParameter("Low Gain", 63.0, 0.0, 127.0),
+        )
+        with self.assertRaises(ScriptError) as ctx:
+            adapter.call("devices.set_macro", {
+                "track": "Drums", "device": "Instrument Rack", "macro": 1,
+                "value": 10.0, "fraction": 0.5,
+            })
+        self.assertEqual(ctx.exception.code, "BAD_ARGS")
+
+    def test_neither_value_nor_fraction_is_refused(self):
+        adapter = self.make_rack(
+            FakeDeviceParameter("Device On", 1.0, 0.0, 1.0),
+            FakeDeviceParameter("Low Gain", 63.0, 0.0, 127.0),
+        )
+        with self.assertRaises(ScriptError) as ctx:
+            adapter.call("devices.set_macro", {
+                "track": "Drums", "device": "Instrument Rack", "macro": 1,
+            })
+        self.assertEqual(ctx.exception.code, "BAD_ARGS")
+
 
 class _NoMoveTrack:
     """A track proxy without Track.move_device, like Live 12.2.5."""

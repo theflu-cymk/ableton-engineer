@@ -369,13 +369,15 @@ def set_macro(args, song):
         args,
         allowed=(
             "track", "track_index", "device", "device_index",
-            "macro", "value", "dry_run", "restore",
+            "macro", "value", "fraction", "dry_run", "restore",
         ),
     )
     dry_run = bool(args.get("dry_run", True))
     if args.get("restore") is not None:
         overlapping = [
-            key for key in ("track", "track_index", "device", "device_index", "macro", "value")
+            key for key in (
+                "track", "track_index", "device", "device_index", "macro", "value", "fraction"
+            )
             if key in args
         ]
         if overlapping:
@@ -389,8 +391,10 @@ def set_macro(args, song):
         raise ScriptError("BAD_ARGS", "macro must be an integer from 1 to 16")
     if macro < 1 or macro > MAX_MACRO:
         raise ScriptError("BAD_ARGS", "macro must be an integer from 1 to 16")
-    if "value" not in args:
-        raise ScriptError("BAD_ARGS", "missing argument(s): value")
+    if "value" in args and "fraction" in args:
+        raise ScriptError("BAD_ARGS", "give either value or fraction, not both")
+    if "value" not in args and "fraction" not in args:
+        raise ScriptError("BAD_ARGS", "missing argument(s): value or fraction")
 
     track_index, track = _track(song, args)
     device_index, device = _device(track, args)
@@ -412,7 +416,18 @@ def set_macro(args, song):
             % (str(_attr(device, "name", "") or ""), len(parameters), macro),
         )
     parameter_index, parameter = macro, parameters[macro]
-    value = _quantised(_bounded(_number(args.get("value"), "value"), parameter), parameter)
+    if "fraction" in args:
+        # A real rack reports its own units: the first one gated had Low Gain at 63.35 on a
+        # 0..127-style range, so a caller asking for "half" must not be sent to 0.5.
+        fraction = _number(args.get("fraction"), "fraction")
+        if fraction < 0.0 or fraction > 1.0:
+            raise ScriptError("BAD_ARGS", "fraction must be from 0 to 1")
+        low = float(_attr(parameter, "min", 0.0) or 0.0)
+        high = float(_attr(parameter, "max", 1.0) or 1.0)
+        target = low + fraction * (high - low)
+    else:
+        target = _number(args.get("value"), "value")
+    value = _quantised(_bounded(target, parameter), parameter)
     _writable(parameter)
 
     current = float(_attr(parameter, "value", 0.0) or 0.0)
