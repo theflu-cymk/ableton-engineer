@@ -33,7 +33,7 @@ test should assert that, or every count in the spec is wrong by 3×.
 
 ## 2. State of the build (measured, not claimed)
 
-`uv run pytest -q` is green as of `4d4978a`; the suite's count is deliberately not quoted here, because it changes with every test. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 acceptance gates are **real-Live verified on `0.2.3`**: duplicate dry-run matched apply, double-apply was a no-op, exact restore included the clip name, and a forced real mid-plan failure restored the arrangement object-for-object. M2 is complete. M3 is **complete and real-Live verified on `0.2.4`**: the three-fader autofix dropped findings from 25 to 22, a controlled count-rise probe halted and rolled back, `ableton_escalate` produced a stored plan that `ableton_plan_apply` executed from a separate CLI process, and `modes --findings` showed the per-mode counts before and after. All 14 needs-listening findings stayed out of every plan and apply. M4 is in progress: `ableton_guide` now returns the generated command sheet through the MCP tool surface, `enableton inspect`, `enableton plan` and `enableton run` are implemented, and `devices_read_chain`, `master_chain_read` and `sections_map` answer from one snapshot. The catalogue is now 63 tools in 7 modes (`auto 34`, `inspect 23`, `prep 21`, `edit 21`, `arrange 14`, `sound 15`, `mix 21`); the inspect domain has all 8 tools, the notes domain has all 8 (`notes_read` is **Verified on real `0.2.8`** from 46 notes in a real session clip plus an audio clip's unavailable reason; all six writes are **Verified on real `0.2.10`**: quantize, transform, humanize, strum, replace and scale-lock each changed the same 46-note clip and restored it exactly, and seeded humanize reproduced identically), the new `edit` mode loads them, and `tracks_set_pan` plus `clips_rename` are implemented and **Verified on real `0.2.7`**: pan `0.0 → 0.2` on `MUSIC | vOCALS` and a unique arrangement-clip rename both applied, read back from a fresh snapshot, restored exactly, and read back again. **Real `0.2.6` is verified**: `doctor` reported script `0.2.6`, build `d9d5fefaad68`, no `stale`; play/stop, locate (bar 10 → 36 beats, confirmed by the following snapshot), loop set/clear, and loop/playhead restoration all passed.
+`uv run pytest -q` is green as of `4d4978a`; the suite's count is deliberately not quoted here, because it changes with every test. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 acceptance gates are **real-Live verified on `0.2.3`**: duplicate dry-run matched apply, double-apply was a no-op, exact restore included the clip name, and a forced real mid-plan failure restored the arrangement object-for-object. M2 is complete. M3 is **complete and real-Live verified on `0.2.4`**: the three-fader autofix dropped findings from 25 to 22, a controlled count-rise probe halted and rolled back, `ableton_escalate` produced a stored plan that `ableton_plan_apply` executed from a separate CLI process, and `modes --findings` showed the per-mode counts before and after. All 14 needs-listening findings stayed out of every plan and apply. M4 is in progress: `ableton_guide` now returns the generated command sheet through the MCP tool surface, `enableton inspect`, `enableton plan` and `enableton run` are implemented, and `devices_read_chain`, `master_chain_read` and `sections_map` answer from one snapshot. The catalogue is now 65 tools in 7 modes (`auto 34`, `inspect 23`, `prep 22`, `edit 21`, `arrange 16`, `sound 15`, `mix 21`); the inspect domain has all 8 tools, the notes domain has all 8 (`notes_read` is **Verified on real `0.2.8`** from 46 notes in a real session clip plus an audio clip's unavailable reason; all six writes are **Verified on real `0.2.10`**: quantize, transform, humanize, strum, replace and scale-lock each changed the same 46-note clip and restored it exactly, and seeded humanize reproduced identically), the new `edit` mode loads them, and `tracks_set_pan` plus `clips_rename` are implemented and **Verified on real `0.2.7`**: pan `0.0 → 0.2` on `MUSIC | vOCALS` and a unique arrangement-clip rename both applied, read back from a fresh snapshot, restored exactly, and read back again. **Real `0.2.6` is verified**: `doctor` reported script `0.2.6`, build `d9d5fefaad68`, no `stale`; play/stop, locate (bar 10 → 36 beats, confirmed by the following snapshot), loop set/clear, and loop/playhead restoration all passed.
 
 ### Device bypass unavailable; warp-mode write (2026-11-10, `0.2.14`)
 
@@ -335,6 +335,108 @@ baseline held one locator.
 **Next:** the M4 catalogue accounting still needs its wrong rows corrected (`tracks_delete`,
 `tracks_clean_empty`, `ableton_undo` are implementable; `sections_move` is feasible via delete and
 create; `devices_insert` is confirmed, not Verified).
+
+### M4 catalogue audit (2026-11-10)
+
+**Method.** 65 unique tools in `tools.json`; each was matched against a named real-Live result in
+this file. A green fake test, an implemented handler or a mention in a tool list is not evidence.
+Counts and mode membership were read from the JSON, not copied from prose. Branch state at
+`b7c2e11`.
+
+**Mechanical checks (Verified).** 65 tools; per-mode totals including the five core tools:
+`auto 34`, `inspect 23`, `prep 22`, `edit 21`, `arrange 16`, `sound 15`, `mix 21`. Every non-core
+tool is in at least one mode, every mode escalates, no mode exceeds 34, and no mode names a tool
+missing from the catalogue. `pytest -q tests/test_drift.py tests/test_modes.py tests/test_manifest.py`
+→ **21 passed**. `doctor` at audit time: script `0.4.6`, build `981ecb5b07b5`, no `stale`.
+`status`: `SCRATCH fortnight`, 32 tracks, 2 returns, 11 scenes, 1 locator,
+137 arrangement / 113 Session clips, 114 devices, playhead 372.0.
+
+**Verified on real Live — 51 tools.** 35 applied a change or wrote a report file; 16 are read-only
+with a real result:
+
+- notes: `notes_read` (0.2.8); `notes_quantize`, `notes_transform`, `notes_humanize`, `notes_strum`,
+  `notes_replace`, `notes_scale_lock` (0.2.10); `notes_overlaps` (0.2.0).
+- clips: `clips_duplicate_range` (0.2.3), `clips_rename` (0.2.7), `clips_set_warp_mode` (0.2.14),
+  `clips_fix_loop_points` (0.2.16), `clips_warp_check`.
+- tracks: `tracks_list`, `tracks_set_sends` and `tracks_name_and_color` (0.2.12),
+  `tracks_set_volume` (M3 autofix), `tracks_gain_stage` (0.2.1), `tracks_set_pan` (0.2.7, again
+  on 0.4.6), `tracks_delete` and `tracks_clean_empty` (0.4.4).
+- devices: `devices_read_chain`, `devices_read_parameters`, `devices_browse_presets`,
+  `devices_set_parameter` (0.3.4), `devices_set_macro` (0.3.6, again on 0.3.9), `devices_move`
+  (0.3.9), `devices_delete` (0.3.6).
+- master and mix: `master_chain_read`, `master_set_gain` (0.3.6), `mix_headroom`,
+  `mix_snapshot_save` (0.3.6), `mix_snapshot_restore` (0.3.9).
+- sections and transport: `sections_map`; `sections_create_locators`, `sections_move` and
+  `sections_delete` (0.4.6); `transport_play`, `transport_stop`, `transport_locate`,
+  `transport_set_loop` (0.2.6).
+- core and inspect: `ableton_status`, `ableton_escalate`, `ableton_plan_apply`, `ableton_undo`,
+  `inspect_structure`, `inspect_unused`, `inspect_run`, `inspect_plan`, `inspect_autofix`,
+  `inspect_export`.
+
+`ableton_guide` is the one tool with no Live call to gate: it builds the command sheet locally and
+its MCP surface is covered by the suite.
+
+**Caveat on the three bulk track writes.** `tracks_set_volume`, `tracks_gain_stage` and
+`tracks_set_pan` are Verified only for uniquely named tracks. Their name resolution writes every
+match (defect below), so they must be re-gated after the ambiguity fix rather than counted as safe.
+
+**No real-Live gate yet — 13 tools.**
+
+| Tool | Modes | Evidence today | The gate must prove |
+|---|---|---|---|
+| `sections_scenes_from_sections` | arrange | 0.3.0 handler, fake tests | scenes created at real locators, read back, and a working cleanup path |
+| `clips_copy` | edit, arrange | 0.3.0 handler | Session→Session and Arrangement→Arrangement copies; Session↔Arrangement refusal; exact undo |
+| `clips_transpose` | edit, arrange | 0.3.0 handler | a real MIDI transpose and exact note restore |
+| `clips_clear` | edit | 0.3.0 handler | a real MIDI clear and exact restore; audio refusal |
+| `tracks_duplicate` | prep | one real apply in the 0.4.4 gate | double apply through `run_tool` is a no-op; exact cleanup |
+| `tracks_set_routing` | prep, mix | 0.3.0 handler | real input/output names, type before channel, exact restore |
+| `mix_routing_report` | inspect, mix | 0.3.0 handler | a real routing table |
+| `library_folders` | sound | 0.3.0 handler | real browser roots and paging |
+| `library_browse` | sound | 0.3.0 handler | a real folder page and its children |
+| `inspect_report` | auto, inspect, prep | fake tests | a report from a real findings run |
+| `inspect_finding` | auto, inspect, edit | fake tests | a real finding fetched by id |
+| `mix_levels_report` | auto, inspect, mix | fake tests | real faders; the master stays unmeasured with a reason |
+| `ableton_plan_discard` | core | fake tests | create → discard → second discard returns false |
+
+**Three bundles, one reset each.**
+
+- **A — clip and section writes:** `clips_copy`, `clips_transpose`, `clips_clear`,
+  `sections_scenes_from_sections`. No known code prerequisite, but check the scene handler's
+  cleanup path before writing: `Song.delete_scene` may be irreversible on this build and must not be
+  discovered mid-gate.
+- **B — track identity and routing:** `tracks_set_routing`, `mix_routing_report`,
+  `tracks_duplicate`, plus a re-gate of `tracks_set_volume`, `tracks_gain_stage` and
+  `tracks_set_pan`. Blocked until the duplicate-name and duplicate-idempotency findings are fixed in
+  one build with tests.
+- **C — reads, reports and local surface:** `library_folders`, `library_browse`, `inspect_report`,
+  `inspect_finding`, `mix_levels_report`, `ableton_plan_discard`. The note-overlap rounding fix and a
+  fresh `notes_overlaps` read belong in this reset because no write is involved.
+
+**Defects that must land before their gate (from the M1–M3 review).**
+
+- **Duplicate track names write to every match — confirmed in code.** In
+  `remote_script/Enableton/handlers/tracks.py`, `set_volume`, `gain_stage` and `set_pan` build
+  `targets` with `track.name in wanted`, so a duplicated name changes every matching track;
+  `_one_track` already refuses ambiguity for sends, name/colour, routing, delete and duplicate.
+  **Unverified on real Live** until a duplicate is exercised. Blocks bundle B and invalidates the
+  "unique names only" part of the three bulk writes above.
+- **Duplicate-plan applies are not idempotent through `run_tool`** — review finding, not reproduced
+  here. Blocks the `tracks_duplicate` re-gate.
+- **Rounding can hide tiny note overlaps** — review finding; the existing `notes_overlaps` evidence
+  counts 0.0001-beat intersections, so this is a report-correctness defect, not a missing gate.
+  Fix and re-read in bundle C.
+
+**Status of the `0.3.6` blocker.** That gate is already recorded as Verified in §2: on `0.3.6`,
+build `f844ded966e5`, `devices_set_macro` moved `Low Gain` `63.35280227661133 → 0.25 →` back exactly, a confirmed `devices_delete` removed one duplicate, `master_set_gain` moved
+`0.85 → 0.55 → 0.85`, and `mix_snapshot_save` wrote 32 tracks / 2 returns / 68 sends / 137 fields.
+Live is now on `0.4.6`; re-running `0.3.6` would mean downgrading the installed script for an
+already-passed gate, so the current read-only `doctor`/`status` output is the correct evidence.
+
+**Branches.** `m4-offline-accounting-5317737` edits only `MISSION.md` and is based before `0.4.6`;
+its claims (61 tools, `sections_move` unimplemented, `tracks_delete` deferred) are superseded by the
+evidence above. Merging it would regress the ledger; close or supersede it rather than merge.
+`m5-serve` is independent (8 files, +814 lines) and should merge only when M5 starts, which §3
+forbids before M4 is green.
 
 ### Tracks sends and name/colour (2026-11-10, `0.2.12`)
 
