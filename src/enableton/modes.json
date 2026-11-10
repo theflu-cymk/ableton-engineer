@@ -31,6 +31,7 @@
         "tracks_gain_stage",
         "clips_rename",
         "clips_set_warp_mode",
+        "clips_fix_loop_points",
         "inspect_run",
         "inspect_report",
         "inspect_finding",
@@ -85,6 +86,7 @@
         "clips_rename",
         "clips_duplicate_range",
         "clips_set_warp_mode",
+        "clips_fix_loop_points",
         "inspect_finding"
       ],
       "default_scope": "selected_clip",

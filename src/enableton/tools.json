@@ -1129,6 +1129,49 @@
       "needs": [],
       "min_live": null,
       "cmd": "clips.set_warp_mode"
+    },
+    {
+      "name": "clips_fix_loop_points",
+      "domain": "clips",
+      "summary": "Set a clip's loop boundaries, with dry-run and exact restore.",
+      "description": "Sets a MIDI or warped-audio clip's loop start and end in clip-relative beats. Both values are validated against the clip length; unwarped audio uses seconds and is unavailable with a reason. The clip's looping flag, start/end markers and notes are not changed. Duplicate clip names are refused. Dry-run by default; applying returns an undo token that restores the exact previous loop points.",
+      "examples": ["tighten this loop to whole bars", "set the loop points on this clip", "fix the loop range"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "clip": {"type": "string"},
+          "location": {"type": "string", "enum": ["arrangement", "session"]},
+          "slot": {"type": "integer", "minimum": 0, "description": "Zero-based session slot."},
+          "loop_start": {"type": "number", "minimum": 0, "description": "Clip-relative beat for the loop start."},
+          "loop_end": {"type": "number", "minimum": 0, "description": "Clip-relative beat for the loop end."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "location": {"type": "string", "enum": ["arrangement", "session"]},
+                "slot": {"type": ["integer", "null"], "minimum": 0},
+                "start": {"type": ["number", "null"]},
+                "clip": {"type": "string"},
+                "loop_start": {"type": "number", "minimum": 0},
+                "loop_end": {"type": "number", "minimum": 0}
+              },
+              "required": ["track_index", "location", "loop_start", "loop_end"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.fix_loop_points"
     }
   ]
 }

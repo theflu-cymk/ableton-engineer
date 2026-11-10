@@ -49,7 +49,8 @@ class ManifestTests(unittest.TestCase):
         catalogue = load_manifest()
         self.assertEqual(
             remote_commands(catalogue),
-            ["clips.duplicate_range", "clips.rename", "clips.set_warp_mode",
+            ["clips.duplicate_range", "clips.fix_loop_points", "clips.rename",
+             "clips.set_warp_mode",
              "notes.humanize", "notes.quantize",
              "notes.read", "notes.replace", "notes.scale_lock", "notes.strum", "notes.transform",
              "snapshot.get", "track.list", "tracks.gain_stage", "tracks.name_and_color",

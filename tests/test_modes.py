@@ -29,6 +29,8 @@ class ModeTests(unittest.TestCase):
         self.assertIn("tracks_name_and_color", modes.get("auto").tools)
         self.assertIn("clips_set_warp_mode", modes.get("auto").tools)
         self.assertIn("clips_set_warp_mode", modes.get("edit").tools)
+        self.assertIn("clips_fix_loop_points", modes.get("auto").tools)
+        self.assertIn("clips_fix_loop_points", modes.get("edit").tools)
         self.assertIn("notes_quantize", modes.get("edit").tools)
         self.assertIn("notes_read", modes.get("edit").tools)
 

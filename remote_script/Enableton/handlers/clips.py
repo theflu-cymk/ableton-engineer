@@ -12,6 +12,8 @@ later step fails.
 
 from __future__ import annotations
 
+import math
+
 from ..dispatch import check_args, command
 from ..errors import ScriptError
 from .structure import WARP_MODES
@@ -474,5 +476,214 @@ def set_warp_mode(args, song):
             "start": row[3],
             "clip": clip_name,
             "mode": current,
+        }],
+    }
+
+
+def _loop_value(value, name):
+    if isinstance(value, bool):
+        raise ScriptError("BAD_ARGS", "%s must be a number" % name)
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        raise ScriptError("BAD_ARGS", "%s must be a number" % name)
+    if not math.isfinite(value) or value < 0:
+        raise ScriptError("BAD_ARGS", "%s must be a finite non-negative number" % name)
+    return value
+
+
+def _clip_length(clip):
+    length = _attr(clip, "length", None)
+    if length is None:
+        start = _attr(clip, "start_time", None)
+        end = _attr(clip, "end_time", None)
+        if start is None or end is None:
+            raise ScriptError(
+                "UNSUPPORTED", "clip %r has no readable length"
+                % (str(_attr(clip, "name", "")),),
+            )
+        length = float(end) - float(start)
+    try:
+        length = float(length)
+    except (TypeError, ValueError):
+        raise ScriptError(
+            "UNSUPPORTED", "clip %r has an unreadable length"
+            % (str(_attr(clip, "name", "")),),
+        )
+    if not math.isfinite(length) or length <= 0:
+        raise ScriptError(
+            "UNSUPPORTED", "clip %r has no positive length"
+            % (str(_attr(clip, "name", "")),),
+        )
+    return length
+
+
+def _loop_state(clip):
+    start = _attr(clip, "loop_start", None)
+    end = _attr(clip, "loop_end", None)
+    if start is None or end is None:
+        raise ScriptError(
+            "UNSUPPORTED", "clip %r does not expose loop_start and loop_end"
+            % (str(_attr(clip, "name", "")),),
+        )
+    try:
+        start = float(start)
+        end = float(end)
+    except (TypeError, ValueError):
+        raise ScriptError(
+            "UNSUPPORTED", "clip %r has unreadable loop points"
+            % (str(_attr(clip, "name", "")),),
+        )
+    if not math.isfinite(start) or not math.isfinite(end):
+        raise ScriptError(
+            "UNSUPPORTED", "clip %r has non-finite loop points"
+            % (str(_attr(clip, "name", "")),),
+        )
+    return start, end, bool(_attr(clip, "looping", False))
+
+
+def _set_loop_points(clip, start, end):
+    old_start = _attr(clip, "loop_start", None)
+    old_end = _attr(clip, "loop_end", None)
+    try:
+        clip.loop_start = start
+        clip.loop_end = end
+    except Exception as exc:  # noqa: BLE001 - the Live reason belongs in the error
+        try:
+            if old_start is not None:
+                clip.loop_start = old_start
+            if old_end is not None:
+                clip.loop_end = old_end
+        except Exception:
+            pass
+        message = str(exc)
+        if isinstance(exc, AttributeError) or "setter" in message:
+            raise ScriptError(
+                "UNSUPPORTED", "this Live build exposes clip loop points read-only: %s" % message
+            )
+        raise ScriptError(
+            "LIVE_ERROR", "could not set loop points on %r: %s"
+            % (str(_attr(clip, "name", "")), message),
+        )
+
+
+@command("clips.fix_loop_points")
+def fix_loop_points(args, song):
+    check_args(args, allowed=(
+        "track", "clip", "location", "slot", "loop_start", "loop_end", "dry_run", "restore",
+    ))
+    dry_run = bool(args.get("dry_run", True))
+    restore = args.get("restore")
+    if restore is not None:
+        if any(key in args for key in (
+            "track", "clip", "location", "slot", "loop_start", "loop_end",
+        )):
+            raise ScriptError("BAD_ARGS", "restore cannot be combined with a clip selection")
+        if not isinstance(restore, list) or not restore:
+            raise ScriptError("BAD_ARGS", "restore must be a non-empty list")
+        changes, missing = [], []
+        for entry in reversed(restore):
+            if not isinstance(entry, dict):
+                raise ScriptError("BAD_ARGS", "restore entries must be objects")
+            try:
+                track_index = int(entry["track_index"])
+                location = str(entry["location"])
+            except (KeyError, TypeError, ValueError):
+                raise ScriptError(
+                    "BAD_ARGS", "restore entries need track_index and location"
+                )
+            target_start = _loop_value(entry.get("loop_start"), "loop_start")
+            target_end = _loop_value(entry.get("loop_end"), "loop_end")
+            if target_start >= target_end:
+                raise ScriptError("BAD_ARGS", "loop_start must be less than loop_end")
+            if track_index < 0 or track_index >= len(song.tracks):
+                raise ScriptError("NOT_FOUND", "no track at index %s" % (track_index,))
+            if location not in ("arrangement", "session"):
+                raise ScriptError("BAD_ARGS", "restore location must be arrangement or session")
+            track = song.tracks[track_index]
+            clip = _restore_clip(track, location, entry.get("slot"), entry.get("start"))
+            if clip is None:
+                missing.append({
+                    "track_index": track_index,
+                    "location": location,
+                    "slot": entry.get("slot"),
+                    "start": entry.get("start"),
+                })
+                continue
+            current_start, current_end, looping = _loop_state(clip)
+            if not dry_run:
+                _set_loop_points(clip, target_start, target_end)
+            changes.append({
+                "track": str(_attr(track, "name", "")),
+                "track_index": track_index,
+                "location": location,
+                "slot": entry.get("slot") if location == "session" else None,
+                "start": entry.get("start") if location == "arrangement" else None,
+                "clip": str(_attr(clip, "name", "")),
+                "looping": looping,
+                "from": {"loop_start": current_start, "loop_end": current_end},
+                "to": {"loop_start": target_start, "loop_end": target_end},
+            })
+        return {
+            "dry_run": dry_run,
+            "restored": len(changes),
+            "changes": changes,
+            "missing": missing,
+        }
+
+    track_name = args.get("track")
+    clip_name = args.get("clip")
+    if not isinstance(track_name, str) or not track_name:
+        raise ScriptError("BAD_ARGS", "track must be a non-empty string")
+    if not isinstance(clip_name, str) or not clip_name:
+        raise ScriptError("BAD_ARGS", "clip must be a non-empty string")
+    if "loop_start" not in args or "loop_end" not in args:
+        raise ScriptError("BAD_ARGS", "loop_start and loop_end are required")
+    target_start = _loop_value(args.get("loop_start"), "loop_start")
+    target_end = _loop_value(args.get("loop_end"), "loop_end")
+    if target_start >= target_end:
+        raise ScriptError("BAD_ARGS", "loop_start must be less than loop_end")
+
+    index, track, row = _resolve_clip(
+        song, track_name, clip_name, args.get("location"), args.get("slot")
+    )
+    clip = row[2]
+    midi = bool(_attr(clip, "is_midi_clip", False))
+    warping = bool(_attr(clip, "warping", False))
+    if not midi and not warping:
+        raise ScriptError(
+            "UNSUPPORTED",
+            "unwarped audio clips expose loop points in seconds; warp the clip first",
+        )
+    length = _clip_length(clip)
+    if target_start >= length or target_end > length + 0.001:
+        raise ScriptError(
+            "BAD_ARGS",
+            "loop points must lie inside the clip (length %s beats)" % round(length, 4),
+        )
+    current_start, current_end, looping = _loop_state(clip)
+    if not dry_run:
+        _set_loop_points(clip, target_start, target_end)
+    return {
+        "dry_run": dry_run,
+        "track": str(_attr(track, "name", "")),
+        "track_index": index,
+        "location": row[0],
+        "slot": row[1],
+        "start": row[3],
+        "clip": clip_name,
+        "length": round(length, 4),
+        "warping": warping,
+        "looping": looping,
+        "from": {"loop_start": current_start, "loop_end": current_end},
+        "to": {"loop_start": target_start, "loop_end": target_end},
+        "undo": [{
+            "track_index": index,
+            "location": row[0],
+            "slot": row[1],
+            "start": row[3],
+            "clip": clip_name,
+            "loop_start": current_start,
+            "loop_end": current_end,
         }],
     }

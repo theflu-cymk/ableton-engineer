@@ -57,6 +57,9 @@ class FakeClip:
     warping: bool = False
     warp_mode: int = 0
     warp_markers: List[Any] = field(default_factory=list)
+    loop_start: float = 0.0
+    loop_end: float = 4.0
+    looping: bool = True
     notes: List[FakeNote] = field(default_factory=list)
     _next_note_id: int = field(default=1, init=False, repr=False)
 
