@@ -33,7 +33,7 @@ test should assert that, or every count in the spec is wrong by 3×.
 
 ## 2. State of the build (measured, not claimed)
 
-`uv run pytest -q` → **142 passed**. Read-path reports committed through `c68ed54`; `notes_overlaps` is installed but not yet live-verified.
+`uv run pytest -q` → **146 passed**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`.
 
 **The real-Live gate has been passed once (2026-11-09).** `uv run enableton status` returned a real
 summary from Live 12.2.5 — 4 tracks, 2 returns, 8 scenes, 120 BPM, 2 devices, `is_playing false` —
@@ -194,9 +194,13 @@ clip plus `counts.notes_sources` and `captured.notes_reason`, and reports an unr
 vector still accepted; clip with no note API unavailable rather than empty). `setup --force`
 installed `0.2.0`: repo and install digests both `de1dad141c14`, 9 stale `__pycache__` files removed.
 
-**Live gate not passed for `0.2.0`.** Live holds `0.1.9` in memory. After a restart, `doctor` must
-show `0.2.0` with a matching build and those two clips must report 412 and 799 notes with
-`notes_source: "extended"`. Until then the note fix is implemented, not verified.
+**Live gate passed for `0.2.0` (2026-11-10, restarted Live).** `doctor` reported script `0.2.0`,
+`build de1dad141c14` with no `stale`, and `status` confirmed `fortnight` (32 tracks, 137 Arrangement
+and 113 Session clips). `notes_overlaps` read **3,364 notes across 192 MIDI clips** and found **16
+same-pitch overlaps in 14 clips**; `complete: true`, 0 truncated and 0 unreadable. That is the
+real-Live acceptance call. The earlier Crust Wumble 412/799-note clips were not separately re-read
+after this restart. All 16 collisions are 0.0001 beat: the tool currently counts any positive
+intersection, so these are boundary-level rather than necessarily audible overlaps.
 
 | Area | On disk |
 |---|---|
@@ -217,7 +221,7 @@ One milestone per mission; a mission ends when its acceptance test passes as a *
 | # | Spec | Scope | Done-when (from `SPEC.md` §19) |
 |---|---|---|---|
 | **1** | M0 | gap audit, then close M0 | `pytest` green ✔; `enableton doctor` against the fake reports connected; drift test green; `ableton_status` returns a real summary from the fake; a written gap report names each uncovered M0/M1 item |
-| 2 | M1 | read path | against `Crust Wumble.als` (19 tracks, 120 BPM, 22 Session clips) **and** `fortnight.als` (32 tracks, 250 clips; user-approved replacement for the unread 77-track remaster): three questions answered from the data, the trace shows **snapshot reads ≤ 1 per request**, and `tests/test_acceptance_read_path.py` replays the captured second snapshot for four answers at one read. `notes_overlaps` is implemented in `0.2.0`, which reads the extended note API after `0.1.9` read an absent legacy attribute and reported zero; its live gate is pending a Live restart. |
+| 2 | M1 | read path | against `Crust Wumble.als` (19 tracks, 120 BPM, 22 Session clips) **and** `fortnight.als` (32 tracks, 250 clips; user-approved replacement for the unread 77-track remaster): three questions answered from the data, the trace shows **snapshot reads ≤ 1 per request**, and `tests/test_acceptance_read_path.py` replays the captured second snapshot for four answers at one read. `notes_overlaps` is implemented in `0.2.0`, which reads the extended note API after `0.1.9` read an absent legacy attribute and reported zero; its live gate passed on `fortnight` (3,364 notes, 16 overlaps). |
 | 3 | M2 | write path + safety | dry-run trace matches applied trace; a forced mid-plan failure restores state exactly (object-by-object diff); double-apply is a no-op; a scratch copy exists before any write |
 | 4 | M3 | diagnostics | per-mode finding counts equal before/after; autofix halts when the count rises; `needs_listening` never auto-applies |
 | 5 | M4 | full catalogue + modes | drift test green; every mode ≤ 34 tools; every tool in ≥ 1 mode; escalation reaches every tool |
