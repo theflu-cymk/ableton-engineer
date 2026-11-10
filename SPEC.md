@@ -1054,9 +1054,11 @@ the fake.
 **M1 — Read path.** Snapshot cache + invalidation; `inspect_structure`, `inspect_unused`,
 `mix_levels_report`, `mix_headroom`, `clips_warp_check`, `notes_overlaps`; paging; traces.
 *Accept:* against two of the user's real Sets — `Crust Wumble.als` (19 tracks, 120 BPM, 22 Session
-clips) as the readable case and `paper tiger heart remaster.als` (77 tracks, 1825 warp markers) as
-the stress case — three questions answered from the data, and a trace shows the snapshot read count
-per request (target ≤ 1).
+clips) as the readable case and `fortnight.als` (32 tracks, 250 clips) as the second case, replacing
+the unread 77-track remaster by user decision on 2026-11-10 — three questions answered from the data,
+and a trace shows the snapshot read count per request (target ≤ 1).
+`tests/test_acceptance_read_path.py` replays the captured `fortnight` snapshot for four reports and
+asserts one read. `notes_overlaps` remains outstanding.
 
 **M2 — Write path + safety.** Executor, snapshot/restore, `tracks_gain_stage` and
 `clips_duplicate_range`. *Accept:* dry-run trace matches applied trace; forced mid-plan failure
@@ -1132,8 +1134,10 @@ isn't met.
 ## 22. Open questions
 
 1. **Which Set to test on** — resolved. `F:\ableton songs` holds 66 Sets; `Crust Wumble.als` is the
-   M1 readable fixture and `paper tiger heart remaster.als` the stress fixture. M2 still needs a
-   scratch copy made before any write test.
+   M1 readable fixture and `fortnight.als` (32 tracks, 250 clips) is the user-approved second fixture
+   as of 2026-11-10, with a captured-snapshot regression test. The 77-track
+   `paper tiger heart remaster.als` remains unread. M2 still needs a scratch copy made before any
+   write test.
 2. **Does the App open automatically on `ableton_start`,** or only when asked? Default: automatic
    on first run, remembered after that.
 3. **Live 12.4.5 upgrade** — unlocks warp-marker writes, envelopes, `insert_device`. Default: stay

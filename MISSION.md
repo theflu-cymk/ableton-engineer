@@ -20,7 +20,8 @@ Python 3.11 + `uv`, and that is correct.
 | Sets root | **`F:\ableton songs`** — **66 working Sets + 126 backups = 192 `.als`** | `find` scan |
 | `.als` format | gzip container (magic `1f 8b`) → compressed XML | `head -c 4` on a real Set |
 | M1 readable fixture | `F:\ableton songs\in hell Project\Crust Wumble.als` | located |
-| M1 stress fixture | `F:\ableton songs\beat Project\paper tiger heart remaster.als` | located |
+| M1 stress fixture (unread) | `F:\ableton songs\beat Project\paper tiger heart remaster.als` | located |
+| M1 acceptance second fixture | `F:\ableton songs\Fortnight\fortnight Project\fortnight.als` | real snapshot + regression test |
 | ABL user library at `Documents\Ableton` | absent — library is redirected (see `SPEC.md` §2) | directory listing |
 | Existing Remote Scripts | none — the installer is part of the deliverable | directory listing |
 
@@ -32,7 +33,7 @@ test should assert that, or every count in the spec is wrong by 3×.
 
 ## 2. State of the build (measured, not claimed)
 
-`uv run pytest -q` → **131 passed**. Report work committed through `1ea0512`.
+`uv run pytest -q` → **132 passed**. Read-path reports committed through `4fc7233`; the M1 acceptance test is part of this change.
 
 **The real-Live gate has been passed once (2026-11-09).** `uv run enableton status` returned a real
 summary from Live 12.2.5 — 4 tracks, 2 returns, 8 scenes, 120 BPM, 2 devices, `is_playing false` —
@@ -160,13 +161,17 @@ markers), and one `MidiClip` sits under a Groove. Excluding those gives **250 cl
 markers**, exactly matching Live, with modes 56 / 1 / 1. This is a file-scan trap, not a snapshot
 defect: future `.als` comparisons must exclude `FreezeSequencer` audio clips and Groove MIDI clips.
 
-This is another real Set, not the required 77-track remaster; M1 remains open on that fixture.
+**User-approved M1 acceptance fixture (2026-11-10):** because the 77-track remaster has never
+loaded, `fortnight` replaces it as the second fixture. `tests/test_acceptance_read_path.py` replays
+the captured snapshot through four reports and asserts exactly one `snapshot.get`. The remaster
+remains unread and no longer blocks the fixture gate. `notes_overlaps` is still the one M1 tool not
+built, so M1 is not fully closed.
 
 | Area | On disk |
 |---|---|
 | server | `src/enableton/`: `cli.py`, `manifest.py`, `modes.json`, `modes.py`, `reports.py`, `setup.py`, `tools.json`, `tools.py`, plus `live/`, `protocol/`, `state/` packages |
 | remote script | `remote_script/Enableton/`: `dispatch.py`, `errors.py`, `framing.py`, `server.py`, `handlers/` |
-| tests | `tests/` incl. `test_bridge.py`, `test_build_digest.py`, `test_drift.py`, `test_framing.py`, `test_manifest.py`, `test_modes.py`, `test_snapshot.py`, `test_adapter_conformance.py`, `test_cli.py`, `test_setup.py` |
+| tests | `tests/` incl. `test_acceptance_read_path.py`, `test_bridge.py`, `test_build_digest.py`, `test_drift.py`, `test_framing.py`, `test_manifest.py`, `test_modes.py`, `test_snapshot.py`, `test_adapter_conformance.py`, `test_cli.py`, `test_setup.py` |
 
 M0's acceptance test is green. M1 (snapshot, reports) is partly built. **Mission 1 therefore starts
 with a gap audit against `SPEC.md` §19**, not with a rewrite — writing code over already-landed work
@@ -181,7 +186,7 @@ One milestone per mission; a mission ends when its acceptance test passes as a *
 | # | Spec | Scope | Done-when (from `SPEC.md` §19) |
 |---|---|---|---|
 | **1** | M0 | gap audit, then close M0 | `pytest` green ✔; `enableton doctor` against the fake reports connected; drift test green; `ableton_status` returns a real summary from the fake; a written gap report names each uncovered M0/M1 item |
-| 2 | M1 | read path | against `Crust Wumble.als` (19 tracks, 120 BPM, 22 Session clips) **and** `paper tiger heart remaster.als` (77 tracks, 1825 warp markers): three questions answered from the data, and the trace shows **snapshot reads ≤ 1 per request** |
+| 2 | M1 | read path | against `Crust Wumble.als` (19 tracks, 120 BPM, 22 Session clips) **and** `fortnight.als` (32 tracks, 250 clips; user-approved replacement for the unread 77-track remaster): three questions answered from the data, the trace shows **snapshot reads ≤ 1 per request**, and `tests/test_acceptance_read_path.py` replays the captured second snapshot for four answers at one read. `notes_overlaps` remains outstanding. |
 | 3 | M2 | write path + safety | dry-run trace matches applied trace; a forced mid-plan failure restores state exactly (object-by-object diff); double-apply is a no-op; a scratch copy exists before any write |
 | 4 | M3 | diagnostics | per-mode finding counts equal before/after; autofix halts when the count rises; `needs_listening` never auto-applies |
 | 5 | M4 | full catalogue + modes | drift test green; every mode ≤ 34 tools; every tool in ≥ 1 mode; escalation reaches every tool |
