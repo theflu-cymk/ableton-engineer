@@ -12,6 +12,7 @@
         "mix_headroom",
         "clips_warp_check",
         "notes_overlaps",
+        "clips_duplicate_range",
         "tracks_list",
         "tracks_gain_stage",
         "transport_play"

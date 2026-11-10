@@ -155,6 +155,45 @@
       "cmd": null
     },
     {
+      "name": "clips_duplicate_range",
+      "domain": "clips",
+      "summary": "Duplicate arrangement clips from one bar range to another.",
+      "description": "Copies every arrangement clip whose start falls in the half-open bar range [from_bar, to_bar) on the selected tracks, preserving its offset from the range start. Dry-run by default and returns the predicted destination for each clip. Applying is one transactional write; the returned undo token deletes exactly the clips it created.",
+      "examples": ["duplicate bars 1 to 9 at bar 17", "copy the drop section later"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "tracks": {"type": "array", "items": {"type": "string"}, "description": "Track names; omit for all tracks."},
+          "from_bar": {"type": "number", "minimum": 1},
+          "to_bar": {"type": "number", "minimum": 1},
+          "destination_bar": {"type": "number", "minimum": 1},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "description": "Internal rollback token returned by an applied duplicate.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "name": {"type": "string"},
+                "start": {"type": "number", "minimum": 0}
+              },
+              "required": ["track_index", "start"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["from_bar", "to_bar", "destination_bar"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 5000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.duplicate_range"
+    },
+    {
       "name": "tracks_list",
       "domain": "tracks",
       "summary": "List tracks with name, role, volume and pan.",

@@ -11,6 +11,7 @@ drift, the tests fail. The fake objects mimic the LOM shape the handlers read (`
 
 from __future__ import annotations
 
+import copy
 import socket
 import threading
 from dataclasses import dataclass, field
@@ -95,6 +96,17 @@ class FakeTrack:
     @property
     def has_midi_input(self) -> bool:
         return self.is_midi
+
+    def duplicate_clip_to_arrangement(self, clip: "FakeClip", destination_time: float):
+        duplicate = copy.deepcopy(clip)
+        duplicate.start_time = float(destination_time)
+        duplicate.end_time = duplicate.start_time + clip.length
+        self.arrangement_clips.append(duplicate)
+        self.arrangement_clips.sort(key=lambda item: item.start_time)
+        return duplicate
+
+    def delete_clip(self, clip: "FakeClip") -> None:
+        self.arrangement_clips.remove(clip)
 
 
 @dataclass

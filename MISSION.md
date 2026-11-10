@@ -33,7 +33,7 @@ test should assert that, or every count in the spec is wrong by 3×.
 
 ## 2. State of the build (measured, not claimed)
 
-`uv run pytest -q` → **151 passed**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 safety foundation is implemented, with a real scratch-Set write/restore verified; `clips_duplicate_range` and full M2 acceptance remain.
+`uv run pytest -q` → **160 passed, 7 subtests**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 safety foundation and `clips_duplicate_range` handler are implemented, with a real gain-stage scratch-Set write/restore verified; the real duplicate and forced mid-plan failure gates remain.
 
 **The real-Live gate has been passed once (2026-11-09).** `uv run enableton status` returned a real
 summary from Live 12.2.5 — 4 tracks, 2 returns, 8 scenes, 120 BPM, 2 devices, `is_playing false` —
@@ -210,9 +210,11 @@ the first applied call, and reverses tool-owned undo tokens when a step fails. `
 now returns the track index and exact undo values, and accepts the executor's `restore` token.
 `run_tool` routes an applied gain stage through the executor instead of calling the handler directly.
 
-**Tested:** **151 passed**, 7 subtests. New safety tests cover dry-run trace equality, scratch-copy
+**Tested:** **160 passed**, 7 subtests. New safety tests cover dry-run trace equality, scratch-copy
 bytes and pre-write timing, refusal when the Set has no path, exact rollback after a synthetic
-second-step failure, and double-apply on one executor.
+second-step failure, and double-apply on one executor. `clips_duplicate_range` has handler tests for
+the half-open bar window, predicted destinations, applied changes, exact clip-list restoration,
+transactional rollback, double-apply, and an unavailable duplicate primitive reporting a reason.
 
 **Real scratch-Set write verified (2026-11-10, `0.2.1`, restarted Live):** `doctor` reported script
 `0.2.1`, `build d70bd71e8360` with no `stale`. On `SCRATCH fortnight`, `run_tool` applied the
@@ -221,8 +223,14 @@ second-step failure, and double-apply on one executor.
 two copies. This verifies the scratch-copy and exact-restore path on real Live. The forced mid-plan
 failure is still covered by the fake executor test, not real Live.
 
-**Still pending.** `clips_duplicate_range` is unimplemented and a forced real mid-plan failure has
-not been exercised. M2 is not done.
+**`clips_duplicate_range` implemented (2026-11-10, `0.2.2`, installed but not loaded by Live).**
+The handler duplicates arrangement clips whose starts fall in `[from_bar, to_bar)`, preserving each
+clip's offset from the range start, and returns an undo token that deletes exactly the created clips.
+The manifest exposes it in `auto`, and `PlanExecutor` covers it with dry-run, scratch-copy, trace and
+rollback tests. **Unverified on real Live:** `setup --force` installed `0.2.2`, but Live still reports
+`0.2.1` / `build d70bd71e8360` / `stale`. Restart was not attempted because the open scratch Set was
+marked unsaved (`SCRATCH fortnight*`). No real duplicate has run, and no forced real mid-plan failure
+has been exercised. M2 is not done.
 
 | Area | On disk |
 |---|---|
@@ -244,7 +252,7 @@ One milestone per mission; a mission ends when its acceptance test passes as a *
 |---|---|---|---|
 | **1** | M0 | gap audit, then close M0 | `pytest` green ✔; `enableton doctor` against the fake reports connected; drift test green; `ableton_status` returns a real summary from the fake; a written gap report names each uncovered M0/M1 item |
 | 2 | M1 | read path | against `Crust Wumble.als` (19 tracks, 120 BPM, 22 Session clips) **and** `fortnight.als` (32 tracks, 250 clips; user-approved replacement for the unread 77-track remaster): three questions answered from the data, the trace shows **snapshot reads ≤ 1 per request**, and `tests/test_acceptance_read_path.py` replays the captured second snapshot for four answers at one read. `notes_overlaps` is implemented in `0.2.0`, which reads the extended note API after `0.1.9` read an absent legacy attribute and reported zero; its live gate passed on `fortnight` (3,364 notes, 16 overlaps). |
-| 3 | M2 | write path + safety | dry-run trace matches applied trace; a forced mid-plan failure restores state exactly (object-by-object diff); double-apply is a no-op; a scratch copy exists before any write. Safety executor, scratch copy and real gain-stage restore are verified; `clips_duplicate_range` and a forced real mid-plan failure remain pending. |
+| 3 | M2 | write path + safety | dry-run trace matches applied trace; a forced mid-plan failure restores state exactly (object-by-object diff); double-apply is a no-op; a scratch copy exists before any write. Safety executor, scratch copy and real gain-stage restore are verified; `clips_duplicate_range` is implemented and fake-tested, but its real gate and a forced real mid-plan failure remain pending. |
 | 4 | M3 | diagnostics | per-mode finding counts equal before/after; autofix halts when the count rises; `needs_listening` never auto-applies |
 | 5 | M4 | full catalogue + modes | drift test green; every mode ≤ 34 tools; every tool in ≥ 1 mode; escalation reaches every tool |
 | 6 | M5 | UX | every screen renders as text with working `ableton_choose` ids; scope chip matches the loaded tool set; a full flow completes with Apps disabled |

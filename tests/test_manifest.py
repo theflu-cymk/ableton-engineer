@@ -49,7 +49,8 @@ class ManifestTests(unittest.TestCase):
         catalogue = load_manifest()
         self.assertEqual(
             remote_commands(catalogue),
-            ["snapshot.get", "track.list", "tracks.gain_stage", "transport.play"],
+            ["clips.duplicate_range", "snapshot.get", "track.list", "tracks.gain_stage",
+             "transport.play"],
         )
 
     def test_rejects_duplicate_names(self):

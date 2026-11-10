@@ -1071,7 +1071,8 @@ restores state exactly (object-by-object diff); double-apply is a no-op.
 *Status (2026-11-10):* the executor, scratch-copy guard, dry-run trace and exact gain-stage
 rollback are implemented in `0.2.1`. A real scratch-Set write/restore was verified: a backup was
 made before the write and REVocals was restored from 0.5 to exactly 0.85. `clips_duplicate_range`
-and a forced real mid-plan failure remain pending; the current `fortnight` Set must not be used for
+is implemented and fake-tested in `0.2.2`, installed but not yet loaded by Live. Its real gate and a
+forced real mid-plan failure remain pending; the current `fortnight` Set must not be used for
 writes.
 
 **M3 — Diagnostics.** Findings, phases, `inspect_run/plan/autofix`, `ableton_escalate`,
