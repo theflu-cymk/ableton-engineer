@@ -10,6 +10,7 @@ import unittest
 import support  # noqa: F401
 from enableton.live.fake import (
     FakeAdapter,
+    FakeBrowserItem,
     FakeDevice,
     FakeDeviceParameter,
     build_song,
@@ -284,6 +285,36 @@ class BrowsePresetTests(unittest.TestCase):
         with self.assertRaises(ScriptError) as ctx:
             self.adapter.call("devices.browse_presets", {"category": "samples"})
         self.assertEqual(ctx.exception.code, "BAD_ARGS")
+
+    def test_a_device_past_the_old_eight_folder_cap_is_found(self):
+        # The real browser puts EQ Eight well past the eighth audio-effect folder.
+        song = build_song()
+        song.browser.audio_effects.children = [
+            FakeBrowserItem("Filler %02d" % index, True, False, "query:x")
+            for index in range(12)
+        ] + [FakeBrowserItem("EQ Eight", True, False, "query:AudioEffects#EQ Eight", [
+            FakeBrowserItem("Vocal EQ.adv", False, True, "file:Vocal EQ.adv"),
+        ])]
+        result = FakeAdapter(song).call("devices.browse_presets", {"device": "EQ Eight"})
+        self.assertEqual([row["name"] for row in result["items"]], ["Vocal EQ.adv"])
+
+    def test_the_folder_list_pages_past_the_old_cap(self):
+        song = build_song()
+        song.browser.audio_effects.children = [
+            FakeBrowserItem("FX %02d" % index, True, False, "query:x") for index in range(20)
+        ]
+        adapter = FakeAdapter(song)
+        first = adapter.call(
+            "devices.browse_presets", {"category": "audio_effects", "limit": 5}
+        )
+        self.assertEqual(first["total"], 20)
+        self.assertEqual(first["next_offset"], 5)
+
+        last = adapter.call("devices.browse_presets", {
+            "category": "audio_effects", "offset": 15, "limit": 5,
+        })
+        self.assertEqual(len(last["items"]), 5)
+        self.assertIsNone(last["next_offset"])
 
 
 if __name__ == "__main__":

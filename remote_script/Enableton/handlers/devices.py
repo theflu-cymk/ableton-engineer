@@ -28,7 +28,7 @@ MAX_LIMIT = 200
 
 #: A browse that matched the whole library must not walk it. Eight device folders is already more
 #: than one question needs, and the count is reported so a capped answer cannot look complete.
-MAX_FOLDERS = 8
+MAX_SCAN = 2000  # safety stop for a hostile browser tree, never a page size
 
 
 def _attr(obj, name, default=None):
@@ -621,6 +621,7 @@ def browse_presets(args, song):
     browser = _browser(song)
     wanted = device.strip().lower() if device else None
     searched, folders, missing, problems = [], [], [], []
+    scanned = 0
     for name in ((category,) if category else PRESET_CATEGORIES):
         searched.append(name)
         try:
@@ -638,12 +639,13 @@ def browse_presets(args, song):
             continue
         for child in children:
             label = str(_attr(child, "name", "") or "")
-            if wanted is not None and label.lower() != wanted:
+            if wanted is not None and (
+                label.lower() != wanted or not bool(_attr(child, "is_folder", False))
+            ):
                 continue
-            if wanted is not None and not bool(_attr(child, "is_folder", False)):
-                continue
-            if len(folders) >= MAX_FOLDERS:
-                problems.append("stopped after %d matching folders" % MAX_FOLDERS)
+            scanned += 1
+            if scanned > MAX_SCAN:
+                problems.append("stopped after %d preset folders" % MAX_SCAN)
                 break
             folders.append((name, label, child))
         if problems:
@@ -652,12 +654,13 @@ def browse_presets(args, song):
     if wanted is not None and not folders:
         raise ScriptError(
             "NOT_FOUND",
-            "no preset folder named %r under %s" % (device.strip(), ", ".join(searched)),
+            "no preset folder named %r under %s (%d folders searched)"
+            % (device.strip(), ", ".join(searched), scanned),
         )
 
-    rows = []
-    for name, label, item in folders:
-        if wanted is not None:
+    if wanted is not None:
+        rows = []
+        for name, label, item in folders:
             try:
                 children = _children(item)
             except ScriptError as exc:
@@ -670,7 +673,12 @@ def browse_presets(args, song):
                 row = _item_row(child)
                 row.update({"category": name, "folder": label})
                 rows.append(row)
-        else:
+        page = rows[offset:offset + limit]
+        total = len(rows)
+    else:
+        # child_count costs one browser read per folder, so only the page pays it.
+        page = []
+        for name, label, item in folders[offset:offset + limit]:
             row = _item_row(item)
             try:
                 row["child_count"] = len(_children(item))
@@ -678,18 +686,18 @@ def browse_presets(args, song):
                 row["child_count"] = None
                 row["reason"] = str(exc)
             row.update({"category": name, "folder": label})
-            rows.append(row)
+            page.append(row)
+        total = len(folders)
 
-    page = rows[offset:offset + limit]
     next_offset = offset + len(page)
     return {
         "device": device,
         "categories": searched,
         "items": page,
-        "total": len(rows),
+        "total": total,
         "offset": offset,
         "limit": limit,
-        "next_offset": next_offset if next_offset < len(rows) else None,
+        "next_offset": next_offset if next_offset < total else None,
         "missing": missing,
         "notes": problems,
     }
