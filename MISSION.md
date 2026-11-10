@@ -132,6 +132,17 @@ was meant to follow tempo.
 Script change, so no version bump or restart was needed — the report reads the snapshot that
 `0.1.8` already produces.
 
+### `mix_headroom` (2026-11-10)
+
+Snapshot-only fader report: Live's own dB display per track, counts above/at/below unity, silent,
+muted and soloed, and an explicit refusal to turn fader trim into a headroom number. `headroom`
+carries `measured: false` with the reason and `mix_meter_poll` as the missing capability; the master
+fader is reported unavailable because the snapshot carries only the master device chain.
+
+**Verified on `paper tiger heart update og*`:** 54 tracks, 54 faders measured, span 0.0 to -16.0 dB,
+no faders above unity, 14 muted, 1 soloed, no silent tracks. Suite **131 passed**. No Remote Script
+change, no restart.
+
 | Area | On disk |
 |---|---|
 | server | `src/enableton/`: `cli.py`, `manifest.py`, `modes.json`, `modes.py`, `reports.py`, `setup.py`, `tools.json`, `tools.py`, plus `live/`, `protocol/`, `state/` packages |

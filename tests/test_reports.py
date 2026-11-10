@@ -10,7 +10,7 @@ import unittest
 import support  # noqa: F401
 from enableton.live.fake import FakeAdapter, build_song
 from enableton.reports import (
-    ReportError, levels, structure, summary_from_snapshot, unused, warp_check,
+    ReportError, levels, mix_headroom, structure, summary_from_snapshot, unused, warp_check,
 )
 
 
@@ -311,6 +311,44 @@ class WarpCheckTests(unittest.TestCase):
                 warp_check(data, args)
 
 
+class HeadroomTests(unittest.TestCase):
+    def _data(self):
+        return _snapshot([
+            _track(0, name="hot", volume=1.0, volume_str="+3.0 dB"),
+            _track(1, name="unity", volume=0.85, volume_str="0.0 dB"),
+            _track(2, name="trim", volume=0.5, volume_str="-12.0 dB"),
+            _track(3, name="unknown", volume=0.7, volume_str=None),
+        ])
+
+    def test_reports_fader_trim_and_refuses_to_invent_headroom(self):
+        report = mix_headroom(self._data(), {})
+
+        self.assertEqual(report["total"], 4)
+        self.assertEqual(report["summary"]["faders_measured"], 3)
+        self.assertEqual(report["summary"]["faders_unmeasured"], 1)
+        self.assertEqual(report["summary"]["at_unity"], ["unity"])
+        self.assertEqual(report["summary"]["above_unity"], ["hot"])
+        self.assertEqual(report["summary"]["below_unity"], ["trim"])
+        self.assertEqual(report["summary"]["fader_span_db"], {"min": -12.0, "max": 3.0})
+        self.assertFalse(report["headroom"]["measured"])
+        self.assertIn("mix_meter_poll", report["headroom"]["requires"])
+        self.assertFalse(report["master"]["available"])
+        self.assertIn("master", report["master"]["reason"].lower())
+
+    def test_pages(self):
+        report = mix_headroom(self._data(), {"offset": 1, "limit": 2})
+
+        self.assertEqual([row["name"] for row in report["items"]], ["unity", "trim"])
+        self.assertEqual(report["next_offset"], 3)
+        self.assertEqual(report["total"], 4)
+
+    def test_bad_arguments_are_rejected(self):
+        data = self._data()
+        for args in ({"limit": 0}, {"offset": -1}, {"bogus": 1}):
+            with self.assertRaises(ReportError, msg=repr(args)):
+                mix_headroom(data, args)
+
+
 class ToolRouterTests(unittest.TestCase):
     """A tool's output must match its description, whatever the command returns."""
 
@@ -353,6 +391,14 @@ class ToolRouterTests(unittest.TestCase):
 
         self.assertEqual(cache.epoch, epoch + 1)
         self.assertLess(self.adapter.song.tracks[0].volume, 0.82)
+
+    def test_mix_headroom_runs_from_the_snapshot(self):
+        from enableton.tools import run_tool
+
+        result = run_tool("mix_headroom", {}, self.adapter)
+
+        self.assertEqual(result["summary"]["tracks"], 3)
+        self.assertFalse(result["headroom"]["measured"])
 
     def test_warp_check_runs_from_the_snapshot(self):
         from enableton.tools import run_tool

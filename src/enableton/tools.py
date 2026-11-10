@@ -11,13 +11,16 @@ from typing import Any, Callable, Dict, Optional
 
 from .manifest import load_manifest
 from .protocol.codes import LiveError
-from .reports import ReportError, levels, structure, summary_from_snapshot, unused, warp_check
+from .reports import (
+    ReportError, levels, mix_headroom, structure, summary_from_snapshot, unused, warp_check,
+)
 from .state.snapshot import SnapshotCache
 
 LOCAL = {
     "inspect_structure": structure,
     "inspect_unused": unused,
     "mix_levels_report": levels,
+    "mix_headroom": mix_headroom,
     "clips_warp_check": warp_check,
 }  # type: Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, Any]]]
 

@@ -92,6 +92,27 @@
       "cmd": null
     },
     {
+      "name": "mix_headroom",
+      "domain": "mix",
+      "summary": "Fader trim, and the headroom that still needs meter data.",
+      "description": "Reports each track's fader in Live's own dB display, with flags for fader trim above unity, at unity, below unity, silent, muted and soloed. It does not derive a headroom number from faders: peak data is not in the snapshot, so true headroom is reported as unmeasured and mix_meter_poll is named as the missing capability. The master fader is likewise reported unavailable because the snapshot carries only the master device chain.",
+      "examples": ["how much headroom do I have", "check my mix headroom", "which faders are above unity"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "offset": {"type": "integer", "minimum": 0, "default": 0},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 2000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
       "name": "clips_warp_check",
       "domain": "clips",
       "summary": "Warp state for every audio clip, with unreadable or empty data flagged.",

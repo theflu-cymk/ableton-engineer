@@ -9,6 +9,7 @@
         "inspect_structure",
         "inspect_unused",
         "mix_levels_report",
+        "mix_headroom",
         "clips_warp_check",
         "tracks_list",
         "tracks_gain_stage",
@@ -25,6 +26,7 @@
         "inspect_structure",
         "inspect_unused",
         "mix_levels_report",
+        "mix_headroom",
         "clips_warp_check",
         "tracks_list"
       ],

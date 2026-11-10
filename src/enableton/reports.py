@@ -428,3 +428,83 @@ def warp_check(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> D
             "unreadable": sum(1 for row in rows if row["warp_markers"] is None),
         },
     }
+
+
+_FADER_DB_RE = re.compile(r"^\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*dB\s*$", re.IGNORECASE)
+
+
+def _fader_db(row: Dict[str, Any]) -> Optional[float]:
+    text = row.get("volume_str")
+    if not isinstance(text, str):
+        return None
+    match = _FADER_DB_RE.match(text)
+    return float(match.group(1)) if match else None
+
+
+def mix_headroom(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Fader trim, and the headroom that cannot be measured from this snapshot.
+
+    A fader's dB value is a trim, not a signal level: two tracks at the same position can peak
+    12 dB apart. True headroom needs peaks, which the snapshot does not contain, so this report
+    never derives a headroom number from faders. It reports what is observable and names what
+    is missing rather than estimating it.
+    """
+    args = dict(args or {})
+    _only(args, ("offset", "limit"))
+    offset, limit = _paging(args)
+
+    tracks = data.get("tracks") or []
+    rows = []  # type: List[Dict[str, Any]]
+    for track in tracks:
+        rows.append(
+            {
+                "index": track.get("index"),
+                "name": track.get("name"),
+                "kind": track.get("kind"),
+                "volume": track.get("volume"),
+                "volume_str": track.get("volume_str"),
+                "fader_db": _fader_db(track),
+                "mute": bool(track.get("mute")),
+                "solo": bool(track.get("solo")),
+            }
+        )
+
+    dbs = [row["fader_db"] for row in rows if row["fader_db"] is not None]
+
+    def named(predicate) -> List[Any]:
+        return [row["name"] for row in rows if predicate(row)]
+
+    page = _page(rows, offset, limit)
+    return {
+        "items": page["items"],
+        "total": page["total"],
+        "next_offset": page["next_offset"],
+        "summary": {
+            "tracks": len(rows),
+            "faders_measured": len(dbs),
+            "faders_unmeasured": len(rows) - len(dbs),
+            "at_unity": named(_at_unity),
+            "above_unity": named(
+                lambda row: row["fader_db"] is not None and row["fader_db"] > 0
+            ),
+            "below_unity": named(
+                lambda row: row["fader_db"] is not None and row["fader_db"] < 0
+            ),
+            "silent": named(
+                lambda row: row["volume"] is not None and row["volume"] <= 0.001
+            ),
+            "muted": named(lambda row: row["mute"]),
+            "soloed": named(lambda row: row["solo"]),
+            "fader_span_db": {"min": min(dbs), "max": max(dbs)} if dbs else None,
+        },
+        "headroom": {
+            "measured": False,
+            "reason": "The snapshot has fader positions but no signal peaks, so headroom cannot be measured.",
+            "requires": "mix_meter_poll",
+            "note": "Fader dB is trim, not level; do not read it as peak headroom.",
+        },
+        "master": {
+            "available": False,
+            "reason": "The snapshot carries the master device chain, not its fader.",
+        },
+    }

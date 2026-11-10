@@ -95,9 +95,13 @@ instrument markers inside a Simpler `MultiSampleMap` (`SampleWarpProperties` und
 well; those are not clip markers. `paper tiger heart update og` was verified the same way on
 `0.1.8`: 932 clip markers under 299 clips, exact per-clip distribution. `clips_warp_check` now
 reads this field: on that Set (2026-11-10) it reported 299 audio clips, 932 markers, 127 warping
-on and 172 off, all `beats` and no flags. `mix_headroom` and `notes_overlaps` still do not exist,
-and the remaining Sets' warp columns are still claims to check. Treat the locator and device
-columns the same way.
+on and 172 off, all `beats` and no flags. `mix_headroom` now exists too: it reports Live's fader
+dB and counts above/at/below unity, silent, muted and soloed tracks, but never derives headroom
+from faders — `headroom.measured` is false, `mix_meter_poll` is named, and the master fader is
+unavailable because the snapshot carries only the master device chain. Against that Set it read
+54 faders spanning 0.0 to -16.0 dB, none above unity, 14 muted and 1 soloed. `notes_overlaps`
+still does not exist, and the remaining Sets' warp columns are still claims to check. Treat the
+locator and device columns the same way.
 
 **The User Library is not at `Documents\Ableton` on this machine.** Live's library is
 redirected to `C:\Users\brian\OneDrive\Attachments\Documentos\Ableton\User Library`, while the
