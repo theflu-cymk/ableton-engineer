@@ -27,6 +27,7 @@ counters, not by re-reading code.
 
 | Reading | Cause | Next |
 |---|---|---|
+| `display` frozen, `script` current, Live's log shows a `RemoteScriptError` during `create_instance` | Construction aborted — the surface died while its socket thread stayed alive. | Fix the `__init__` fault. Note that a *diagnostic* call can be the cause: `log_message` does not exist on the surface in 12.2.5, and it killed the surface here. |
 | `display` frozen, `script` current | Live is not ticking the surface. Check the Control Surface slot still holds `Enableton`, and that no modal dialog is open. `hello` answers on the socket thread, so `connected yes` proves nothing. | Fix the slot or dismiss the dialog; no code change. |
 | `display` growing, `drains` frozen | `super().update_display()` is raising before our drain. | Read `last_super_error` in `doctor --json`. |
 | `drains` growing, `ran` frozen, `queued` > 0 | Work is queued and the drain runs, but dispatch never fires. | Suspect `dispatch` / handler registration, not transport. |
@@ -53,3 +54,7 @@ after a restart, find which script holds the port before suspecting the code.
 - With `0.1.1` installed and live: `script 0.1.1`, then `status` answered `LIVE_BUSY` in 6 s instead
   of silence — the structured error working — while `display` and `drains` stayed at 0, which is the
   "Live is not ticking the surface" row above.
+- The cause was our own diagnostics: `self.log_message(...)` raised `'EnabletonSurface' object has no
+  attribute 'log_message'` inside `__init__`, so the surface never finished constructing while the
+  daemon socket thread kept answering `hello`. Logging now goes through `_safe_log`, which tries the
+  surface, then `_c_instance`, and swallows everything.

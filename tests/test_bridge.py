@@ -13,7 +13,7 @@ from enableton.live.fake import build_song
 from enableton.protocol.client import LiveClient
 from enableton.protocol.codes import LiveError
 
-from Enableton.server import Bridge, resolve_song
+from Enableton.server import Bridge, _safe_log, resolve_song
 
 
 class BridgeTests(unittest.TestCase):
@@ -133,6 +133,48 @@ class BridgeTests(unittest.TestCase):
         info = client.handshake()
         self.assertEqual(info["stats"]["ran"], 1)
         self.assertGreaterEqual(info["stats"]["drains"], 1)
+
+
+class SafeLogTests(unittest.TestCase):
+    """Logging is diagnostics: it must never be able to abort construction.
+
+    Live 12.2.5 has no ``log_message`` on the surface, and raising from ``__init__`` left the socket
+    alive with no surface to tick ``update_display`` — ``connected yes``, ``display 0``, every command
+    stalled.
+    """
+
+    def test_uses_log_message_when_present(self):
+        calls = []
+
+        class Target(object):
+            def log_message(self, text):
+                calls.append(text)
+
+        _safe_log(Target(), "hi")
+        self.assertEqual(calls, ["hi"])
+
+    def test_falls_back_to_the_c_instance(self):
+        calls = []
+
+        class Instance(object):
+            def log_message(self, text):
+                calls.append(text)
+
+        class Target(object):
+            _c_instance = Instance()
+
+        _safe_log(Target(), "hi")
+        self.assertEqual(calls, ["hi"])
+
+    def test_never_raises_when_nothing_can_log(self):
+        _safe_log(object(), "hi")
+
+    def test_survives_a_logger_that_raises(self):
+        class Target(object):
+            def log_message(self, text):
+                raise RuntimeError("nope")
+
+        _safe_log(Target(), "hi")
 
 
 class CallableSong(object):

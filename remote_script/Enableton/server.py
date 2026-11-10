@@ -24,8 +24,34 @@ from .framing import FrameReader, FramingError, encode_frame
 
 DEFAULT_PORT = 9878
 PROTOCOL_VERSION = 1
-SCRIPT_VERSION = "0.1.2"
+SCRIPT_VERSION = "0.1.3"
 MAX_QUEUED = 8
+
+
+def _safe_log(target, text):
+    """Best-effort diagnostics: a log call must never be able to abort the surface.
+
+    ``ControlSurface`` does not reliably expose ``log_message`` — Live 12.2.5 raises
+    ``'EnabletonSurface' object has no attribute 'log_message'`` — and an exception during
+    construction kills the surface while leaving the daemon socket thread alive. The result is the
+    worst failure shape available: ``hello`` answers forever, ``display`` stays at 0, and every real
+    command stalls, looking exactly like a dead main thread.
+    """
+    for name in ("log_message", "show_message"):
+        log = getattr(target, name, None)
+        if callable(log):
+            try:
+                log(text)
+                return
+            except Exception:
+                pass
+    instance = getattr(target, "_c_instance", None)
+    log = getattr(instance, "log_message", None) if instance is not None else None
+    if callable(log):
+        try:
+            log(text)
+        except Exception:
+            pass
 
 
 def resolve_song(holder):
@@ -238,14 +264,14 @@ def make_surface(c_instance):
             try:
                 self._bridge.start()
             except OSError as exc:
-                self.log_message("Enableton: could not listen on %s:%s: %s"
-                                 % (self._bridge.host, self._bridge.port, exc))
+                _safe_log(self, "Enableton: could not listen on %s:%s: %s"
+                          % (self._bridge.host, self._bridge.port, exc))
                 self.show_message("Enableton could not start: %s" % exc)
             else:
                 # Silence here made "did the script load?" unanswerable from Live's log, which
                 # is the only diagnostic a user can reach without a terminal.
-                self.log_message("Enableton: listening on %s:%s"
-                                 % (self._bridge.host, self._bridge.port))
+                _safe_log(self, "Enableton: listening on %s:%s"
+                          % (self._bridge.host, self._bridge.port))
 
         def _current_song(self):
             """Live 12 exposes ``ControlSurface.song`` as a property.
@@ -261,7 +287,7 @@ def make_surface(c_instance):
             # only one of them is our code.
             self._bridge.stats["display"] += 1
             if self._bridge.stats["display"] == 1:
-                self.log_message("Enableton: first update_display tick")
+                _safe_log(self, "Enableton: first update_display tick")
             try:
                 super(EnabletonSurface, self).update_display()
             except Exception as exc:

@@ -44,6 +44,9 @@ Rules only — the reasoning behind them lives in `SPEC.md` §3 and the module d
 - `update_display` must call `super().update_display()` first, or components and scheduled work stop
   and every real command times out while ping still answers.
 - All LOM access happens on Live's main thread, never on the socket thread.
+- `ControlSurface` has **no** `log_message` on this build. Log through `_safe_log`, never directly: an
+  exception from a diagnostic call in `__init__` kills the surface while its daemon socket survives,
+  which looks exactly like a dead main thread (`connected yes`, `display 0`).
 
 ## Data safety
 
