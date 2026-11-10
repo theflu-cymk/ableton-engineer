@@ -12,7 +12,7 @@ from .modes import ModeError, load_modes
 from .protocol.client import DEFAULT_PORT, LiveClient
 from .protocol.codes import LiveError
 from .reports import summary_from_snapshot
-from .setup import InstallError, install, instructions
+from .setup import InstallError, default_source, digest, install, instructions
 from .tools import run_tool
 
 EXIT_OK, EXIT_FINDINGS, EXIT_CONNECTION = 0, 1, 2
@@ -36,6 +36,7 @@ def doctor(host: str = "127.0.0.1", port: int = DEFAULT_PORT) -> Dict[str, Any]:
                 # surface (drains frozen), or the work ran and the reply was lost (ran grows).
                 "queued": info.get("queued"),
                 "stats": info.get("stats") or {},
+                "build": info.get("build"),
             }
         )
     except LiveError as exc:
@@ -94,6 +95,10 @@ def main(argv: Optional[list] = None) -> int:
         else:
             verb = "Would install" if result.dry_run else "Installed"
             print("%s %d file(s) into %s" % (verb, len(result.files), result.target))
+            if result.removed:
+                print("%s %d stale file(s): %s"
+                      % ("Would remove" if result.dry_run else "Removed",
+                         len(result.removed), ", ".join(result.removed)))
         print("")
         for line in instructions():
             print("  %s" % line)
@@ -120,6 +125,16 @@ def main(argv: Optional[list] = None) -> int:
                           % (stats.get("display"), stats.get("super_errors")))
                     if stats.get("last_super_error"):
                         print("  super_err %s" % stats["last_super_error"])
+                if report.get("build"):
+                    print("  build     %s" % report["build"])
+                    try:
+                        expected = digest(default_source())
+                    except Exception:
+                        expected = None
+                    if expected and expected != report["build"]:
+                        print("  stale     Live loaded %s; this repo is %s"
+                              % (report["build"], expected))
+                        print("            run `enableton setup --force`, then restart Live.")
             else:
                 print("  error     %s" % report.get("error"))
                 print("  fix       select 'Enableton' as a Control Surface in Live's")

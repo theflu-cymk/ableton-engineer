@@ -52,6 +52,31 @@ class InstallerTests(unittest.TestCase):
         self.assertTrue(forced.changed)
         self.assertFalse(forced.created)
 
+    def test_force_removes_what_the_new_build_no_longer_ships(self):
+        install(target=self.target, source=self.source)
+        stale = os.path.join(self.target, "handlers", "gone.py")
+        with open(stale, "w", encoding="utf-8") as fh:
+            fh.write("# a module this build no longer has\n")
+        cache = os.path.join(self.target, "__pycache__")
+        os.makedirs(cache, exist_ok=True)
+        with open(os.path.join(cache, "server.cpython-311.pyc"), "w") as fh:
+            fh.write("bytecode")
+
+        forced = install(target=self.target, source=self.source, force=True)
+        self.assertIn("handlers/gone.py", forced.removed)
+        self.assertFalse(os.path.exists(stale))
+        self.assertFalse(os.path.exists(cache))
+
+    def test_dry_run_reports_stale_files_without_deleting_them(self):
+        install(target=self.target, source=self.source)
+        stale = os.path.join(self.target, "handlers", "gone.py")
+        with open(stale, "w", encoding="utf-8") as fh:
+            fh.write("# stale\n")
+
+        result = install(target=self.target, source=self.source, force=True, dry_run=True)
+        self.assertIn("handlers/gone.py", result.removed)
+        self.assertTrue(os.path.exists(stale), "a dry run must not delete")
+
     def test_user_library_override_wins(self):
         import os as _os
         from pathlib import Path as _Path

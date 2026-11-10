@@ -17,8 +17,11 @@ and that call is named in the milestone's acceptance.
 2. `uv run enableton setup --force`. Without `--force` setup reports success having written **0
    files**, because an existing install counts as done.
 3. Restart Live. It scans Remote Scripts only at startup and holds the old build in RAM until then.
-4. `uv run enableton doctor` must report the new version. A file on disk is not evidence of what
-   Live is running.
+4. `uv run enableton doctor` must report the new version **and** a `build` digest matching this repo.
+   A file on disk is not evidence of what Live is running: `doctor` compares the digest of what Live
+   loaded with what the repo ships and prints `stale` when they differ, so a forgotten version bump
+   can no longer hide an old build. A forced install is clean — files the build no longer ships and
+   any `__pycache__` are removed.
 
 Editing `remote_script/` alone changes nothing: Live loads the copy in the User Library, so step 2 is
 the only thing that moves a change into Live's process. `AbletonMureka` sits in that same folder and

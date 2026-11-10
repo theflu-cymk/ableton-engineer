@@ -1,13 +1,16 @@
 """Install the Remote Script where Live will find it.
 
-Idempotent by construction: running it twice leaves one installed copy, because setup is
-something people run again after every update. It never deletes anything — replacing an existing
-install needs ``force``, and a dry run is available so the user can see what would change.
+Idempotent by construction: running it twice leaves one installed copy, because setup is something
+people run again after every update. Replacing an existing install needs ``force``, and a forced
+install is *clean*: anything the new build no longer ships — a renamed module, a stale
+``__pycache__`` — is removed, so an old file cannot outlive an upgrade. A dry run reports the same
+changes without touching disk.
 """
 
 from __future__ import annotations
 
 import glob
+import hashlib
 import os
 import shutil
 from dataclasses import dataclass, field
@@ -76,6 +79,7 @@ class InstallResult:
     dry_run: bool = False
     created: bool = False
     already_present: bool = False
+    removed: List[str] = field(default_factory=list)
 
     @property
     def changed(self) -> bool:
@@ -91,6 +95,51 @@ def _script_files(source: Path) -> List[Path]:
     if not files:
         raise InstallError("no .py files found in %s" % source)
     return files
+
+
+def digest(source: Optional[Path] = None) -> str:
+    """Content hash of a script package, matching the Remote Script's ``build_digest``.
+
+    Two implementations exist because they run in different interpreters — the server cannot reach
+    Live's Python, and the script cannot import ``enableton``. ``tests/test_build_digest.py`` asserts
+    they agree, so ``doctor`` can compare what Live loaded with what this repo ships.
+    """
+    root = Path(source) if source else default_source()
+    entries = []
+    for path in sorted(root.rglob("*.py")):
+        if "__pycache__" in path.parts:
+            continue
+        relative = str(path.relative_to(root)).replace(os.sep, "/")
+        entries.append("%s:%s" % (relative, hashlib.sha256(path.read_bytes()).hexdigest()))
+    return hashlib.sha256("\n".join(sorted(entries)).encode("utf-8")).hexdigest()[:12]
+
+
+def _prune(target: Path, source: Path, dry_run: bool) -> List[str]:
+    """Remove what this build no longer ships.
+
+    Copying over the top was fine only while the file set never shrank: the first renamed or deleted
+    module would have stayed behind in the User Library, and Live could still have imported it.
+    """
+    keep = set()
+    for path in _script_files(source):
+        keep.add(str(path.relative_to(source)).replace(os.sep, "/"))
+
+    removed = []
+    for path in sorted(target.rglob("*.py")):
+        relative = str(path.relative_to(target)).replace(os.sep, "/")
+        if relative in keep:
+            continue
+        removed.append(relative)
+        if not dry_run:
+            path.unlink()
+    for stale in sorted(target.rglob("*.pyc")):
+        removed.append(str(stale.relative_to(target)).replace(os.sep, "/"))
+        if not dry_run:
+            stale.unlink()
+    for cache in sorted(target.rglob("__pycache__")):
+        if not dry_run:
+            shutil.rmtree(str(cache), ignore_errors=True)
+    return removed
 
 
 def install(
@@ -124,7 +173,10 @@ def install(
             shutil.copy2(str(path), str(destination))
         written.append(str(relative).replace(os.sep, "/"))
 
-    return InstallResult(target=target, files=written, dry_run=dry_run, created=created)
+    removed = _prune(target, source, dry_run) if exists else []
+
+    return InstallResult(target=target, files=written, dry_run=dry_run, created=created,
+                         removed=removed)
 
 
 def instructions() -> List[str]:

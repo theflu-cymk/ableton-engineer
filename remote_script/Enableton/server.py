@@ -12,6 +12,7 @@ out while ping still answers.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import queue
 import socket
@@ -24,8 +25,36 @@ from .framing import FrameReader, FramingError, encode_frame
 
 DEFAULT_PORT = 9878
 PROTOCOL_VERSION = 1
-SCRIPT_VERSION = "0.1.3"
+SCRIPT_VERSION = "0.1.4"
 MAX_QUEUED = 8
+
+
+def build_digest(root=None):
+    """A content hash of the loaded script, so a stale build names itself.
+
+    ``SCRIPT_VERSION`` is hand-bumped and therefore forgettable — which is exactly how three rounds
+    of debugging happened against a build nobody had actually loaded. ``doctor`` compares this
+    digest with the repo's and says so outright instead of trusting a string someone must remember.
+    """
+    here = root or os.path.dirname(os.path.abspath(__file__))
+    entries = []
+    for base, dirs, files in os.walk(here):
+        dirs[:] = [d for d in dirs if d != "__pycache__"]
+        for name in sorted(files):
+            if not name.endswith(".py"):
+                continue
+            path = os.path.join(base, name)
+            try:
+                with open(path, "rb") as handle:
+                    body = handle.read()
+            except OSError:
+                continue
+            relative = os.path.relpath(path, here).replace(os.sep, "/")
+            entries.append("%s:%s" % (relative, hashlib.sha256(body).hexdigest()))
+    return hashlib.sha256("\n".join(sorted(entries)).encode("utf-8")).hexdigest()[:12]
+
+
+BUILD = build_digest()
 
 
 def _safe_log(target, text):
@@ -216,6 +245,7 @@ class Bridge(object):
                 # that Live never ticked, which is the one failure this design can't see.
                 "queued": self._queue.qsize(),
                 "stats": dict(self.stats),
+                "build": BUILD,
             })
 
         if self._queue.qsize() >= MAX_QUEUED:

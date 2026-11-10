@@ -9,6 +9,10 @@ counters, not by re-reading code.
 
 - Version older than the repo → `uv run enableton setup --force`, then **restart Live**. Without
   `--force`, setup reports success having written 0 files, because an existing install counts as done.
+- `doctor` also prints `build`, a content hash of the loaded script, and prints `stale` when it differs
+  from this repo's hash. That check does not depend on anyone remembering to bump a version.
+- `--force` is a clean install: files the build no longer ships and any `__pycache__` are removed, so
+  a renamed or deleted module cannot linger in the User Library where Live could still import it.
 - Editing `remote_script/` changes nothing on its own. Live loads the copy in the User Library.
 
 ## 2. Read the counters
