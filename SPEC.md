@@ -1079,17 +1079,18 @@ mid-plan failure after one real duplicate also restored exactly. M2 is complete.
 `ableton_plan_apply`. *Accept:* count on the modes screen equals findings per mode before and after;
 autofix halts when count rises; `needs_listening` never auto-applies.
 
-*Status (2026-11-10, `0.2.4`):* M3 is complete and **real-Live verified** on `SCRATCH fortnight`.
-`doctor` reported script `0.2.4`, build `c9e993ad42da`, no `stale`. `inspect_run` returned 25
-findings (3 auto, 22 inspect, 14 needs_listening, 9 info, 16 warn, 0 error); `inspect_plan` produced
-three gain steps, excluded every needs-listening finding and named the eight unimplemented hygiene
-fixes as unavailable; dry-run autofix kept the 25/25 counts and wrote nothing. Applying the plan
-changed exactly three `tracks_set_volume` faders to `0.85`, dropped the total to 22 (auto 0,
-inspect 22), and left all 14 needs-listening findings in place without applying them. A controlled
-real-Live count-rise probe (test-only detector, scratch track) raised the count 1 → 2, and
-autofix returned `stopped: finding_count_rose`, `rolled_back: true`, restored the fader from `0.5`
-to `0.85` with `restore.ok: true`, and returned to one finding. The write was on the scratch Set,
-not the working `fortnight` Set.
+*Status (2026-11-10, `0.2.4`):* M3's autofix acceptance is **real-Live verified** on `SCRATCH
+fortnight`. `doctor` reported script `0.2.4`, build `c9e993ad42da`, no `stale`. `inspect_run`
+returned 25 findings (3 auto, 22 inspect, 14 needs_listening, 9 info, 16 warn, 0 error);
+`inspect_plan` produced three gain steps, excluded every needs-listening finding and named the eight
+unimplemented hygiene fixes as unavailable; dry-run autofix kept the 25/25 counts and wrote nothing.
+Applying the plan changed exactly three `tracks_set_volume` faders to `0.85`, dropped the total to 22
+(auto 0, inspect 22), and left all 14 needs-listening findings in place without applying them. A
+controlled real-Live count-rise probe (test-only detector, scratch track) raised the count 1 → 2,
+and autofix returned `stopped: finding_count_rose`, `rolled_back: true`, restored the fader from
+`0.5` to `0.85` with `restore.ok: true`, and returned to one finding. The write was on the scratch
+Set, not the working `fortnight` Set. **Still unimplemented:** `ableton_escalate`,
+`ableton_plan_apply`, and the modes-screen finding count; M3 is therefore not complete.
 
 **M4 — Full catalogue + modes.** All 86 tools, all 9 modes, guide generation. *Accept:* drift test
 green; each mode ≤ 34 tools; every tool appears in ≥ 1 mode; every mode's escalate path reaches

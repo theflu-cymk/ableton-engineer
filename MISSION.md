@@ -33,7 +33,7 @@ test should assert that, or every count in the spec is wrong by 3×.
 
 ## 2. State of the build (measured, not claimed)
 
-`uv run pytest -q` → **179 passed, 7 subtests**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 acceptance gates are **real-Live verified on `0.2.3`**: duplicate dry-run matched apply, double-apply was a no-op, exact restore included the clip name, and a forced real mid-plan failure restored the arrangement object-for-object. M2 is complete. M3 is **complete and real-Live verified on `0.2.4`**: the three-fader autofix dropped findings from 25 to 22, a controlled count-rise probe halted and rolled back, and all 14 needs-listening findings stayed out of the plan and the apply.
+`uv run pytest -q` → **179 passed, 7 subtests**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 acceptance gates are **real-Live verified on `0.2.3`**: duplicate dry-run matched apply, double-apply was a no-op, exact restore included the clip name, and a forced real mid-plan failure restored the arrangement object-for-object. M2 is complete. M3's autofix core is **real-Live verified on `0.2.4`**: the three-fader autofix dropped findings from 25 to 22, a controlled count-rise probe halted and rolled back, and all 14 needs-listening findings stayed out of the plan and the apply. M3 is **not complete**: `ableton_escalate`, `ableton_plan_apply` and the modes-screen finding count are still unimplemented.
 
 **The real-Live gate has been passed once (2026-11-09).** `uv run enableton status` returned a real
 summary from Live 12.2.5 — 4 tracks, 2 returns, 8 scenes, 120 BPM, 2 devices, `is_playing false` —
@@ -283,9 +283,10 @@ The 25-finding real `inspect_run` exposed a bug the fake suite had not covered: 
 dataclasses rather than dictionaries, so JSON serialization failed. `run()` now converts at the
 output boundary, and the test asserts `json.dumps` on the result.
 
-M3's acceptance is met: per-mode counts tracked the findings before and after, a real count rise
-halted and rolled back, and `needs_listening` never auto-applied. The write was on the scratch Set,
-not the working `fortnight` Set.
+M3's **autofix acceptance** is met: per-mode counts tracked the findings before and after, a real
+count rise halted and rolled back, and `needs_listening` never auto-applied. The write was on the
+scratch Set, not the working `fortnight` Set. M3 itself is not complete: `ableton_escalate`,
+`ableton_plan_apply` and the modes-screen finding count are absent from the catalogue.
 
 | Area | On disk |
 |---|---|
@@ -295,7 +296,9 @@ not the working `fortnight` Set.
 
 M0's acceptance test is green. M1's read path is closed on real evidence: all six reports are
 implemented, `Crust Wumble` and `fortnight` have been read, and the one-read acceptance test is
-green. M2 and M3 are complete on real evidence. **Mission 4 (full catalogue + modes) is next.**
+green. M2 is complete. M3's autofix gate passed on real `0.2.4`, but its spec-listed
+`ableton_escalate`, `ableton_plan_apply` and modes-screen count are still missing. **Finish those
+before Mission 4.**
 
 ---
 
@@ -308,14 +311,15 @@ One milestone per mission; a mission ends when its acceptance test passes as a *
 | **1** | M0 | gap audit, then close M0 | `pytest` green ✔; `enableton doctor` against the fake reports connected; drift test green; `ableton_status` returns a real summary from the fake; a written gap report names each uncovered M0/M1 item |
 | 2 | M1 | read path | against `Crust Wumble.als` (19 tracks, 120 BPM, 22 Session clips) **and** `fortnight.als` (32 tracks, 250 clips; user-approved replacement for the unread 77-track remaster): three questions answered from the data, the trace shows **snapshot reads ≤ 1 per request**, and `tests/test_acceptance_read_path.py` replays the captured second snapshot for four answers at one read. `notes_overlaps` is implemented in `0.2.0`, which reads the extended note API after `0.1.9` read an absent legacy attribute and reported zero; its live gate passed on `fortnight` (3,364 notes, 16 overlaps). |
 | 3 | M2 | write path + safety | dry-run trace matches applied trace; a forced mid-plan failure restores state exactly (object-by-object diff); double-apply is a no-op; a scratch copy exists before any write. M2 acceptance gates passed on real `0.2.3`: dry-run trace matched apply, double-apply was a no-op, a scratch copy preceded every write, exact restore (including the restored clip name) passed, and a forced real mid-plan failure restored the arrangement object-for-object. |
-| 4 | M3 | diagnostics | per-mode finding counts equal before/after; autofix halts when the count rises; `needs_listening` never auto-applies. Passed on real `0.2.4`: 25 → 22 after the three-fader apply, a controlled 1 → 2 rise halted and rolled back, and 14 needs-listening findings stayed out. |
+| 4 | M3 | diagnostics | per-mode finding counts equal before/after; autofix halts when the count rises; `needs_listening` never auto-applies. Autofix gate passed on real `0.2.4`: 25 → 22, a controlled 1 → 2 rise halted and rolled back, and 14 needs-listening findings stayed out. Still missing: `ableton_escalate`, `ableton_plan_apply`, modes-screen count. |
 | 5 | M4 | full catalogue + modes | drift test green; every mode ≤ 34 tools; every tool in ≥ 1 mode; escalation reaches every tool |
 | 6 | M5 | UX | every screen renders as text with working `ableton_choose` ids; scope chip matches the loaded tool set; a full flow completes with Apps disabled |
 | 7 | M6 | audio tiers | capture produces a WAV, analysis reads it, routing verification catches a failed arm |
 | 8 | M7 | library, build, recipes | the user's own sentence — "create a dubstep drum beat using loops from my riddim one shots folder" — builds a playable 2-bar pattern whose every sample came from that folder; `recipe_learn` recovers tempo and half-time feel with per-lane confidence and refuses below 0.6 |
 
-Missions 2 and 3 are complete. Mission 4 is next; everything after is catalogue breadth on a proven
-frame. **Do not start Mission 5 before Mission 4 is green.**
+Mission 2 is complete. M3's autofix gate passed, but the spec-listed M3 wrappers and modes-screen
+count are unfinished. **Do not start Mission 4 until those are in place.** Everything after is
+catalogue breadth on a proven frame.
 
 ---
 
@@ -365,11 +369,11 @@ frame. **Do not start Mission 5 before Mission 4 is green.**
 
 ---
 
-## 7. What M4 needs
+## 7. What M3 still needs
 
-M3 is closed on real evidence: `inspect_run` found 25 issues, the three-fader autofix dropped that
-to 22, a controlled real count rise halted and rolled back, and needs-listening findings never
-entered a step. M4 now audits the full catalogue: the drift test must stay green, every mode must
-stay at or below 34 tools, every tool must appear in at least one mode, and every mode's escalation
-path must reach every tool. This is catalogue and mode coverage, not new Live semantics; keep the
-M3 evidence intact while expanding the surface.
+The autofix evidence is real: `inspect_run` found 25 issues, the three-fader autofix dropped that to
+22, a controlled real count rise halted and rolled back, and needs-listening findings never entered
+a step. M3's remaining work is the catalogue surface named in `SPEC.md`: implement
+`ableton_escalate` and `ableton_plan_apply`, and expose the per-mode finding counts on the modes
+screen. Until those exist, M3 is not complete and Mission 4 should not start; keep the verified
+scratch-Set evidence intact while adding them.
