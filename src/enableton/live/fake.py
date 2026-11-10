@@ -32,6 +32,8 @@ class FakeDeviceParameter:
     min: float = 0.0
     max: float = 1.0
     is_enabled: bool = True
+    is_quantized: bool = False
+    value_items: List[str] = field(default_factory=list)
 
 
 @dataclass

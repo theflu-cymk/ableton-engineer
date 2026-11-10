@@ -79,7 +79,7 @@ holds the old build in RAM until it restarts.
 build `15586a5c8528` with no `stale`, then each new write is exercised on `SCRATCH fortnight` with
 a dry run, an apply, a fresh read-back and an exact restore.
 
-### Device chain writes (2026-11-10, `0.3.2`)
+### Device chain writes (2026-11-10, `0.3.3`)
 
 **Implemented; the real-Live gate has not run.** Five tools, catalogue 52 → 57:
 
@@ -107,7 +107,7 @@ because `is_active` is read-only on this build.
 
 Modes, counting the five injected core tools the way `enableton modes` does: `sound` 9 → 14,
 `mix` 17 → 18; `auto` stays at the 34-tool cap. `uv run pytest -q` →
-**313 passed, 7 subtests**, including a new test that the executor refuses a multi-step plan
+**321 passed, 7 subtests**, including a new test that the executor refuses a multi-step plan
 containing `devices_delete`.
 
 **A real-Live find, fixed in `0.3.2` (Verified).** On loaded `0.3.1`,
@@ -119,7 +119,20 @@ paid only by the folders on the page. Covered by two tests — 12 filler folders
 and a 20-folder walk that pages to the end. The read-only browse worked against the real browser
 otherwise: 8 instrument folders and 8 audio-effect folders listed with real URIs and preset counts.
 
-**Next gate (Unverified until run):** with `doctor` reporting `0.3.2` and no `stale`,
+**A second real-Live find, fixed in `0.3.3` (Verified).** The first applied write came back
+`PRECONDITION_FAILED: applied trace did not match the dry-run trace`, and the executor rolled it
+back: a fresh read showed `Utility / Stereo Width` still at `1.0`. Three of the five tools returned
+a field only when applying — `applied`, `moved`, and `requires_confirm` inside the deleted row — so
+their applied trace could never equal their own preflight. Every payload is now identical in both
+modes; `devices_move` reports only `from_index`/`to_index` and verifies the landing internally;
+quantised parameters are snapped to the step Live stores before the write; and `_write` raises if
+Live reads back a different number. The Set was unchanged by the failed attempt.
+
+**Found, not yet fixed:** no tool lists a device's parameters, so a caller must know
+`Stereo Width` by name or page `parameter_index` until the names appear, which is how the gate
+recovered them. `devices_read_parameters` is the next read tool this batch needs.
+
+**Next gate (Unverified until run):** with `doctor` reporting `0.3.3` and no `stale`,
 `devices_set_parameter` gets a dry run, an apply, a fresh read-back and an exact restore on
 `SCRATCH fortnight`; then `devices_set_macro` on a rack, `devices_move` in both directions, and
 `devices_browse_presets` against the real browser tree. `devices_delete` runs last, on a device

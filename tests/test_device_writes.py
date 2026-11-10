@@ -17,7 +17,7 @@ from enableton.live.fake import (
 )
 from enableton.manifest import load_manifest
 from enableton.modes import load_modes
-from enableton.plans.executor import PlanError, PlanExecutor, Step
+from enableton.plans.executor import PlanError, PlanExecutor, Step, _clean
 
 from Enableton.errors import ScriptError
 
@@ -85,7 +85,7 @@ class ParameterTests(unittest.TestCase):
             "value": -6.0, "dry_run": False,
         })
         self.assertAlmostEqual(self.gain.value, -6.0)
-        self.assertAlmostEqual(result["changes"][0]["applied"], -6.0)
+        self.assertAlmostEqual(result["changes"][0]["to"], -6.0)
 
         self.adapter.call("devices.set_parameter", {
             "restore": result["undo"], "dry_run": False,
@@ -130,6 +130,16 @@ class ParameterTests(unittest.TestCase):
                 "track": "Missing", "device": "EQ Eight", "parameter": "Gain", "value": 1.0,
             })
         self.assertEqual(ctx.exception.code, "NOT_FOUND")
+
+    def test_a_quantised_parameter_snaps_before_the_write(self):
+        # Live stores a quantised parameter as an index, so 1.6 on a three-way switch is step 2.
+        self.song.tracks[0].devices[0].parameters.append(FakeDeviceParameter(
+            "Mode", 0.0, 0.0, 2.0, is_quantized=True, value_items=["Off", "A", "B"],
+        ))
+        result = self.adapter.call("devices.set_parameter", {
+            "track": "Drums", "device": "EQ Eight", "parameter": "Mode", "value": 1.6,
+        })
+        self.assertEqual(result["changes"][0]["to"], 2.0)
 
     def test_both_track_and_track_index_is_an_argument_error(self):
         with self.assertRaises(ScriptError) as ctx:
@@ -187,7 +197,8 @@ class MoveTests(unittest.TestCase):
         result = self.adapter.call("devices.move", {
             "track": "Drums", "device": "EQ Eight", "to_index": 1, "dry_run": False,
         })
-        self.assertTrue(result["changes"][0]["moved"])
+        self.assertEqual(result["changes"][0]["from_index"], 0)
+        self.assertEqual(result["changes"][0]["to_index"], 1)
         self.assertEqual([device.name for device in self.track.devices], ["Glue", "EQ Eight"])
 
         self.adapter.call("devices.move", {"restore": result["undo"], "dry_run": False})
@@ -208,7 +219,8 @@ class MoveTests(unittest.TestCase):
         result = self.adapter.call("devices.move", {
             "track": "Drums", "device": "Glue", "to_index": 1,
         })
-        self.assertFalse(result["changes"][0]["moved"])
+        self.assertEqual(result["changes"][0]["from_index"], 1)
+        self.assertEqual(result["changes"][0]["to_index"], 1)
         self.assertEqual(result["undo"], [])
 
 
@@ -220,7 +232,7 @@ class DeleteTests(unittest.TestCase):
     def test_dry_run_previews_and_requires_confirmation(self):
         result = self.adapter.call("devices.delete", {"track": "Drums", "device": "Glue"})
         self.assertTrue(result["dry_run"])
-        self.assertTrue(result["deleted"][0]["requires_confirm"])
+        self.assertTrue(result["requires_confirm"])
         self.assertFalse(result["reversible"])
         self.assertEqual(len(self.track.devices), 2)
 
@@ -315,6 +327,84 @@ class BrowsePresetTests(unittest.TestCase):
         })
         self.assertEqual(len(last["items"]), 5)
         self.assertIsNone(last["next_offset"])
+
+
+class TraceShapeTests(unittest.TestCase):
+    """The transactional path compares an applied result to its own preflight, field for field."""
+
+    def test_parameter_write_payload_is_the_same_in_both_modes(self):
+        adapter = FakeAdapter()
+        args = {"track": "Drums", "device": "EQ Eight", "parameter": "Gain", "value": -4.0}
+        self.assertEqual(
+            _clean(adapter.call("devices.set_parameter", args)),
+            _clean(adapter.call("devices.set_parameter", dict(args, dry_run=False))),
+        )
+
+    def test_macro_write_payload_is_the_same_in_both_modes(self):
+        song = build_song()
+        song.tracks[0].devices.append(FakeDevice(
+            "Instrument Rack", "InstrumentGroupDevice",
+            parameters=[FakeDeviceParameter("Macro 1", 0.0, 0.0, 1.0)],
+        ))
+        adapter = FakeAdapter(song)
+        args = {"track": "Drums", "device": "Instrument Rack", "macro": 1, "value": 0.5}
+        self.assertEqual(
+            _clean(adapter.call("devices.set_macro", args)),
+            _clean(adapter.call("devices.set_macro", dict(args, dry_run=False))),
+        )
+
+    def test_move_payload_is_the_same_in_both_modes(self):
+        adapter = FakeAdapter()
+        args = {"track": "Drums", "device": "EQ Eight", "to_index": 1}
+        self.assertEqual(
+            _clean(adapter.call("devices.move", args)),
+            _clean(adapter.call("devices.move", dict(args, dry_run=False))),
+        )
+
+    def test_delete_payload_is_the_same_in_both_modes(self):
+        adapter = FakeAdapter()
+        args = {"track": "Drums", "device": "Glue", "confirm": True}
+        self.assertEqual(
+            _clean(adapter.call("devices.delete", args)),
+            _clean(adapter.call("devices.delete", dict(args, dry_run=False))),
+        )
+
+
+class _StubScratch:
+    def ensure(self):
+        return "scratch.als"
+
+
+class TransactionTests(unittest.TestCase):
+    """A single write must survive the executor's preflight-versus-applied comparison."""
+
+    def test_a_parameter_write_applies_through_the_executor(self):
+        adapter = FakeAdapter()
+        outcome = PlanExecutor(adapter, scratch=_StubScratch()).apply([
+            Step("devices_set_parameter", {
+                "track": "Drums", "device": "EQ Eight", "parameter": "Gain", "value": -6.0,
+            }),
+        ])
+        self.assertTrue(outcome["applied"])
+        self.assertAlmostEqual(adapter.song.tracks[0].devices[0].parameters[0].value, -6.0)
+
+    def test_a_move_applies_through_the_executor(self):
+        adapter = FakeAdapter()
+        outcome = PlanExecutor(adapter, scratch=_StubScratch()).apply([
+            Step("devices_move", {"track": "Drums", "device": "EQ Eight", "to_index": 1}),
+        ])
+        self.assertTrue(outcome["applied"])
+        self.assertEqual(
+            [device.name for device in adapter.song.tracks[0].devices], ["Glue", "EQ Eight"]
+        )
+
+    def test_a_confirmed_delete_applies_through_the_executor(self):
+        adapter = FakeAdapter()
+        outcome = PlanExecutor(adapter, scratch=_StubScratch()).apply([
+            Step("devices_delete", {"track": "Drums", "device": "Glue", "confirm": True}),
+        ])
+        self.assertTrue(outcome["applied"])
+        self.assertEqual([device.name for device in adapter.song.tracks[0].devices], ["EQ Eight"])
 
 
 if __name__ == "__main__":

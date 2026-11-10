@@ -168,11 +168,27 @@ def _display(parameter, value):
         return None
 
 
-def _write(parameter, value):
-    """Write one parameter value and return what Live reads back.
+def _quantised(value, parameter):
+    """Snap a quantised parameter to the step Live will actually store.
 
-    Quantised parameters legitimately snap, so a read-back that differs is reported rather than
-    treated as failure. Live raises for a value it will not take, and that reason is surfaced.
+    Live keeps a quantised parameter as an integer index, so asking for 1.5 on a three-way switch
+    silently lands on 2. Snapping here means the dry run names the value that will be written, so
+    the applied result can still match the preflight the executor approved.
+    """
+    if not bool(_attr(parameter, "is_quantized", False)):
+        return value
+    snapped = float(round(value))
+    items = _attr(parameter, "value_items", None)
+    if isinstance(items, (list, tuple)) and items:
+        snapped = max(0.0, min(float(len(items) - 1), snapped))
+    return snapped
+
+
+def _write(parameter, value):
+    """Write one parameter and refuse to claim a value Live did not store.
+
+    Any remaining difference after the write means the applied result no longer matches the dry
+    run, so it is a Live error rather than a rounding detail.
     """
     try:
         parameter.value = value
@@ -180,7 +196,14 @@ def _write(parameter, value):
         raise ScriptError(
             "UNSUPPORTED", "this Live build refused the parameter write: %s" % (exc,)
         )
-    return float(_attr(parameter, "value", value) or 0.0)
+    read_back = float(_attr(parameter, "value", value) or 0.0)
+    if abs(read_back - value) > 1e-6 * max(1.0, abs(value)):
+        raise ScriptError(
+            "LIVE_ERROR",
+            "Live read back %s after being asked for %s on %r"
+            % (read_back, value, str(_attr(parameter, "name", "") or "")),
+        )
+    return read_back
 
 
 def _restore_parameters(entries, song, dry_run):
@@ -230,7 +253,8 @@ def _restore_parameters(entries, song, dry_run):
             )
             continue
         _bounded(value, parameter)
-        applied = value if dry_run else _write(parameter, value)
+        if not dry_run:
+            _write(parameter, value)
         changes.append({
             "track": str(_attr(track, "name", "") or ""),
             "track_index": track_index,
@@ -239,7 +263,6 @@ def _restore_parameters(entries, song, dry_run):
             "parameter": str(_attr(parameter, "name", "") or ""),
             "parameter_index": parameter_index,
             "to": value,
-            "applied": applied,
         })
     return {
         "dry_run": dry_run,
@@ -278,7 +301,7 @@ def set_parameter(args, song):
     track_index, track = _track(song, args)
     device_index, device = _device(track, args)
     parameter_index, parameter = _resolve_parameter(device, args)
-    value = _bounded(_number(args.get("value"), "value"), parameter)
+    value = _quantised(_bounded(_number(args.get("value"), "value"), parameter), parameter)
     _writable(parameter)
 
     current = float(_attr(parameter, "value", 0.0) or 0.0)
@@ -303,7 +326,7 @@ def set_parameter(args, song):
         "value": current,
     }]
     if not dry_run:
-        change["applied"] = _write(parameter, value)
+        _write(parameter, value)
     return {"dry_run": dry_run, "changes": [change], "undo": undo}
 
 
@@ -388,7 +411,7 @@ def set_macro(args, song):
             "AMBIGUOUS_REF", "%d parameters are named %r" % (len(matches), wanted)
         )
     parameter_index, parameter = matches[0]
-    value = _bounded(_number(args.get("value"), "value"), parameter)
+    value = _quantised(_bounded(_number(args.get("value"), "value"), parameter), parameter)
     _writable(parameter)
 
     current = float(_attr(parameter, "value", 0.0) or 0.0)
@@ -412,7 +435,7 @@ def set_macro(args, song):
         "value": current,
     }]
     if not dry_run:
-        change["applied"] = _write(parameter, value)
+        _write(parameter, value)
     return {"dry_run": dry_run, "changes": [change], "undo": undo}
 
 
@@ -455,7 +478,6 @@ def move(args, song):
         "to_index": to_index,
     }
     if to_index == device_index:
-        change["moved"] = False
         return {"dry_run": dry_run, "changes": [change], "undo": []}
 
     undo = [{
@@ -485,9 +507,6 @@ def move(args, song):
                 "Live did not move %r to index %d; index %d holds %r"
                 % (name, to_index, to_index, str(_attr(moved, "name", "") or "")),
             )
-        change["moved"] = True
-    else:
-        change["moved"] = False
     return {"dry_run": dry_run, "changes": [change], "undo": undo}
 
 
@@ -579,8 +598,10 @@ def delete(args, song):
             "12.3; pass confirm: true to delete it",
         )
     if dry_run:
-        row["requires_confirm"] = True
-        return {"dry_run": True, "deleted": [row], "count": 1, "reversible": False}
+        return {
+            "dry_run": True, "deleted": [row], "count": 1,
+            "reversible": False, "requires_confirm": True,
+        }
 
     remover = _attr(track, "delete_device", None)
     if not callable(remover):
@@ -596,7 +617,10 @@ def delete(args, song):
             "LIVE_ERROR",
             "the chain held %d devices before the delete and %d after" % (before, after),
         )
-    return {"dry_run": False, "deleted": [row], "count": 1, "reversible": False}
+    return {
+        "dry_run": False, "deleted": [row], "count": 1,
+        "reversible": False, "requires_confirm": True,
+    }
 
 
 @command("devices.browse_presets")
