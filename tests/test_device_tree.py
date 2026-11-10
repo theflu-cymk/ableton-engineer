@@ -49,6 +49,18 @@ def make_track(name="Track", devices=(), **extra):
     return Obj(**fields)
 
 
+def make_clip(**extra):
+    fields = dict(
+        name="clip",
+        start_time=0.0,
+        end_time=4.0,
+        is_midi_clip=False,
+        warping=True,
+    )
+    fields.update(extra)
+    return Obj(**fields)
+
+
 def make_device(class_name, name=None, chains=None, **extra):
     fields = dict(class_name=class_name, name=name or class_name, is_active=True)
     if chains is not None:
@@ -121,6 +133,59 @@ class MasterChainTests(unittest.TestCase):
         self.assertEqual(data["counts"]["devices_master"], 0)
         self.assertFalse(data["captured"]["master_available"])
         self.assertIn("master_track: RuntimeError: not exposed", data["captured"]["master_reason"])
+
+
+class WarpFieldTests(unittest.TestCase):
+    def test_an_audio_clip_carries_its_warp_state(self):
+        clip = make_clip(warp_mode=4, warp_markers=[Obj(), Obj(), Obj()])
+        data = handler.snapshot({}, make_song([make_track(arrangement_clips=[clip])]))
+        row = data["tracks"][0]["arrangement"][0]
+
+        self.assertTrue(row["warping"])
+        self.assertEqual(row["warp_mode"], 4)
+        self.assertEqual(row["warp_mode_name"], "complex")
+        self.assertEqual(row["warp_markers"], 3)
+        self.assertEqual(data["counts"]["warp_markers"], 3)
+        self.assertEqual(data["counts"]["warp_markers_unreadable"], 0)
+
+    def test_a_session_audio_clip_carries_the_same_fields(self):
+        clip = make_clip(name="loop", warp_mode=0, warp_markers=[Obj(), Obj()])
+        track = make_track(clip_slots=[Obj(clip=clip)])
+        data = handler.snapshot({}, make_song([track]))
+        row = data["tracks"][0]["session"]["clips"][0]
+
+        self.assertEqual(row["warp_mode"], 0)
+        self.assertEqual(row["warp_mode_name"], "beats")
+        self.assertEqual(row["warp_markers"], 2)
+        self.assertEqual(data["counts"]["warp_markers"], 2)
+
+    def test_midi_clips_have_no_warp_fields(self):
+        clip = make_clip(is_midi_clip=True, warping=True)
+        data = handler.snapshot({}, make_song([make_track(arrangement_clips=[clip])]))
+        row = data["tracks"][0]["arrangement"][0]
+
+        self.assertNotIn("warp_mode", row)
+        self.assertNotIn("warp_markers", row)
+        self.assertNotIn("warping", row)
+        self.assertEqual(data["counts"]["warp_markers"], 0)
+
+    def test_an_unreadable_marker_vector_is_not_zero(self):
+        class _UnreadableClip(Obj):
+            @property
+            def warp_markers(self):
+                raise RuntimeError("no marker vector")
+
+        clip = _UnreadableClip(
+            name="broken", start_time=0.0, end_time=4.0,
+            is_midi_clip=False, warping=True, warp_mode=2,
+        )
+        data = handler.snapshot({}, make_song([make_track(arrangement_clips=[clip])]))
+        row = data["tracks"][0]["arrangement"][0]
+
+        self.assertIsNone(row["warp_markers"])
+        self.assertIn("no marker vector", row["warp_markers_reason"])
+        self.assertEqual(data["counts"]["warp_markers"], 0)
+        self.assertEqual(data["counts"]["warp_markers_unreadable"], 1)
 
 
 class _NoLocators:

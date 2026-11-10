@@ -38,6 +38,8 @@ class FakeClip:
     end_time: float = 4.0
     is_midi_clip: bool = False
     warping: bool = False
+    warp_mode: int = 0
+    warp_markers: List[Any] = field(default_factory=list)
 
     @property
     def length(self) -> float:

@@ -55,6 +55,17 @@ def _kind(track):
 # the row is marked truncated, so a capped tree can never be mistaken for a complete one.
 MAX_DEVICE_DEPTH = 3
 
+#: ``Clip.warp_mode`` is a documented enum. The raw integer stays in the payload as the
+#: authoritative value; the name is only there so a report does not have to repeat this table.
+WARP_MODES = {
+    0: "beats",
+    1: "tones",
+    2: "texture",
+    3: "re-pitch",
+    4: "complex",
+    5: "complex_pro",
+}
+
 
 def _device_row(device, index, depth):
     class_name = str(_attr(device, "class_name", "") or "")
@@ -113,6 +124,35 @@ def _master_devices(song):
     return _devices(master), True, None
 
 
+def _warp_fields(clip, row):
+    """Add warp state to an audio clip row.
+
+    ``Clip.warp_markers`` is a Live-built vector and its length is the number of markers the clip
+    actually has, so this counts without copying Marker objects into the payload. When the read
+    fails the count is ``None`` and the reason travels beside it: zero markers and an unreadable
+    vector are different answers, and a check that treated them alike would flag nothing.
+    """
+    row["warping"] = bool(_attr(clip, "warping", False))
+    mode = _attr(clip, "warp_mode", None)
+    try:
+        mode = None if mode is None else int(mode)
+    except (TypeError, ValueError):
+        mode = None
+    row["warp_mode"] = mode
+    row["warp_mode_name"] = WARP_MODES.get(mode)
+    try:
+        markers = clip.warp_markers
+    except Exception as exc:  # noqa: BLE001 - the reason is the point
+        row["warp_markers"] = None
+        row["warp_markers_reason"] = "warp_markers: %s: %s" % (type(exc).__name__, exc)
+        return
+    try:
+        row["warp_markers"] = 0 if markers is None else len(markers)
+    except Exception as exc:  # noqa: BLE001 - the reason is the point
+        row["warp_markers"] = None
+        row["warp_markers_reason"] = "warp_markers: %s: %s" % (type(exc).__name__, exc)
+
+
 def _clip(clip):
     start = float(_attr(clip, "start_time", 0.0) or 0.0)
     end = float(_attr(clip, "end_time", start) or start)
@@ -124,7 +164,7 @@ def _clip(clip):
         "midi": bool(_attr(clip, "is_midi_clip", False)),
     }
     if not row["midi"]:
-        row["warping"] = bool(_attr(clip, "warping", False))
+        _warp_fields(clip, row)
     return row
 
 
@@ -135,14 +175,32 @@ def _session(track):
         clip = _attr(slot, "clip")
         if clip is None:
             continue
-        filled.append(
-            {
-                "slot": index,
-                "name": str(_attr(clip, "name", "")),
-                "midi": bool(_attr(clip, "is_midi_clip", False)),
-            }
-        )
+        entry = {
+            "slot": index,
+            "name": str(_attr(clip, "name", "")),
+            "midi": bool(_attr(clip, "is_midi_clip", False)),
+        }
+        if not entry["midi"]:
+            _warp_fields(clip, entry)
+        filled.append(entry)
     return {"filled": len(filled), "empty": max(0, len(slots) - len(filled)), "clips": filled}
+
+
+def _warp_totals(rows):
+    """Marker count across every audio clip, and how many marker reads failed."""
+    markers = 0
+    unreadable = 0
+    for row in rows:
+        clips = list(row["arrangement"]) + list(row["session"]["clips"])
+        for clip in clips:
+            if clip.get("midi") or "warp_markers" not in clip:
+                continue
+            count = clip["warp_markers"]
+            if count is None:
+                unreadable += 1
+            else:
+                markers += count
+    return markers, unreadable
 
 
 def _track_row(track, index, kind, group):
@@ -231,6 +289,7 @@ def snapshot(args, song):
     devices_total = sum(row["device_count"] for row in rows)
     master_devices, master_available, master_reason = _master_devices(song)
     master_total = _count_devices(master_devices)
+    warp_markers, warp_unreadable = _warp_totals(rows)
 
     return {
         "song": {
@@ -267,6 +326,8 @@ def snapshot(args, song):
             "devices": devices,
             "devices_master": master_total,
             "devices_total": devices_total + master_total,
+            "warp_markers": warp_markers,
+            "warp_markers_unreadable": warp_unreadable,
             "empty_session_slots": sum(row["session"]["empty"] for row in rows),
         },
         "captured": {
