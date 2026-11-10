@@ -290,7 +290,7 @@ renumbered track; the gate compares kind, clip counts and device counts instead 
 
 ### Section move and transaction undo (`0.4.6`)
 
-**Implemented, real-Live gate pending.**
+**Verified on `0.4.6`** (build `981ecb5b07b5`, `doctor` clean with no `stale`, on `SCRATCH fortnight`).
 
 The first `0.4.5` gate failed at its first write, before any move: `sections_create_locators` asked
 for bar 1 and Live put the cue at beat 368, the old playhead. Live applies `current_song_time`
@@ -298,8 +298,25 @@ between display ticks, so a handler cannot seek and toggle in the same call. The
 `sections_delete` returning `deleted: 0` on the dry run and `deleted: n` on apply, which made the
 executor roll every delete back on a trace mismatch. Both are fixed in `0.4.6`: cue handlers are
 resumable steps, the bridge keeps the request pending until the next `update_display`, and the fake
-now models the tick so a regression fails in the suite. The failed probe left one auto-named
-locator `2` at beat 368 in `SCRATCH fortnight`; the gate removes it before taking its baseline.
+now models the tick so a regression fails in the suite. The failed probe's auto-named cue `2` at
+beat 368 was gone after the restart because the Set had not been saved; the gate confirmed the
+baseline held one locator.
+
+- Baseline: one locator (`1` at beat 64.7414), 34 tracks, playhead 372.0.
+- `sections_create_locators` created `Enableton gate move` at bar 1 and put the playhead back
+  unchanged — the first real proof that the deferred seek/toggle path works.
+- `sections_move` gave the same `moved` payload in dry run and apply; the marker landed at bar 5
+  (beat 16) with its name, the old beat was clear, the locator count was unchanged, and the
+  playhead was preserved. `scratch_copy` is the only extra key on the applied single-tool result
+  and is envelope metadata, not part of the tool payload.
+- `ableton_undo` restored the marker to bar 1 (`ok: true`, `restored: 1`); a second undo refused
+  with `PRECONDITION_FAILED: no applied transaction to undo`.
+- An occupied destination was refused with `PRECONDITION_FAILED`, naming the marker already at bar
+  9; both markers stayed in place.
+- `tracks_set_pan` took `2-Vocals …` from raw pan `0.0` to `0.25`, and `ableton_undo` restored
+  exactly `0.0`.
+- After cleanup the locator list, the 34-row track projection and the playhead matched the
+  baseline exactly. The Set was not saved.
 
 - `sections_move` selects one locator by exact bar or unique name and moves it to `to_bar` as a
   create at the destination followed by a delete at the source, because `Locator.time` has no
