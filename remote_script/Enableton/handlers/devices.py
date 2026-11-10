@@ -732,3 +732,55 @@ def browse_presets(args, song):
         "missing": missing,
         "notes": problems,
     }
+
+
+@command("devices.read_parameters")
+def read_parameters(args, song):
+    """List one device's parameters, paged, with the exact names a write needs.
+
+    ``devices.set_parameter`` takes a parameter by name, which is only usable if the caller can see
+    the names; without this read, finding "Stereo Width" means probing indexes until the refusals
+    spell it out.
+    """
+    check_args(
+        args,
+        allowed=("track", "track_index", "device", "device_index", "offset", "limit"),
+    )
+    offset = args.get("offset", 0)
+    limit = args.get("limit", 64)
+    if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+        raise ScriptError("BAD_ARGS", "offset must be a non-negative integer")
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1 or limit > MAX_LIMIT:
+        raise ScriptError("BAD_ARGS", "limit must be an integer from 1 to %d" % (MAX_LIMIT,))
+
+    track_index, track = _track(song, args)
+    device_index, device = _device(track, args)
+    parameters = _parameters(device)
+    page = parameters[offset:offset + limit]
+    items = []
+    for position, parameter in enumerate(page, start=offset):
+        value = float(_attr(parameter, "value", 0.0) or 0.0)
+        enabled = _attr(parameter, "is_enabled", True)
+        items.append({
+            "index": position,
+            "name": str(_attr(parameter, "name", "") or ""),
+            "value": value,
+            "display": _display(parameter, value),
+            "min": _attr(parameter, "min", None),
+            "max": _attr(parameter, "max", None),
+            "quantised": bool(_attr(parameter, "is_quantized", False)),
+            "enabled": True if enabled is None else bool(enabled),
+        })
+    next_offset = offset + len(items)
+    return {
+        "track": str(_attr(track, "name", "") or ""),
+        "track_index": track_index,
+        "device": str(_attr(device, "name", "") or ""),
+        "device_index": device_index,
+        "class": str(_attr(device, "class_name", "") or ""),
+        "items": items,
+        "total": len(parameters),
+        "offset": offset,
+        "limit": limit,
+        "next_offset": next_offset if next_offset < len(parameters) else None,
+    }

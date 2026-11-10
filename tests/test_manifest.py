@@ -52,7 +52,7 @@ class ManifestTests(unittest.TestCase):
             ["clips.clear", "clips.copy", "clips.duplicate_range", "clips.fix_loop_points",
              "clips.rename", "clips.set_warp_mode", "clips.transpose",
              "devices.browse_presets", "devices.delete", "devices.move",
-             "devices.set_macro", "devices.set_parameter",
+             "devices.read_parameters", "devices.set_macro", "devices.set_parameter",
              "library.browse", "library.folders",
              "mix.routing_report",
              "notes.humanize", "notes.quantize",

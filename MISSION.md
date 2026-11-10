@@ -79,7 +79,7 @@ holds the old build in RAM until it restarts.
 build `15586a5c8528` with no `stale`, then each new write is exercised on `SCRATCH fortnight` with
 a dry run, an apply, a fresh read-back and an exact restore.
 
-### Device chain writes (2026-11-10, `0.3.3`)
+### Device chain writes (2026-11-10, `0.3.4`)
 
 **Implemented; the real-Live gate has not run.** Five tools, catalogue 52 → 57:
 
@@ -107,7 +107,7 @@ because `is_active` is read-only on this build.
 
 Modes, counting the five injected core tools the way `enableton modes` does: `sound` 9 → 14,
 `mix` 17 → 18; `auto` stays at the 34-tool cap. `uv run pytest -q` →
-**323 passed, 7 subtests**, including a new test that the executor refuses a multi-step plan
+**330 passed, 7 subtests**, including a new test that the executor refuses a multi-step plan
 containing `devices_delete`.
 
 **A real-Live find, fixed in `0.3.2` (Verified).** On loaded `0.3.1`,
@@ -136,9 +136,13 @@ modes; `devices_move` reports only `from_index`/`to_index` and verifies the land
 quantised parameters are snapped to the step Live stores before the write; and `_write` raises if
 Live reads back a different number. The Set was unchanged by the failed attempt.
 
-**Found, not yet fixed:** no tool lists a device's parameters, so a caller must know
-`Stereo Width` by name or page `parameter_index` until the names appear, which is how the gate
-recovered them. `devices_read_parameters` is the next read tool this batch needs.
+**Found and fixed in `0.3.4`:** no tool listed a device's parameters, so the gate recovered
+`Stereo Width` by paging `parameter_index` until each refusal named its neighbour. The new
+`devices_read_parameters` returns one page of the vector with each parameter's exact name, value,
+display string, min, max, quantised flag and enabled flag — the read that makes
+`devices_set_parameter` usable without guessing. Catalogue 57 → 58; `sound` 9 → 10 named tools and
+`inspect` 17 → 18, which is 15 and 23 with the five core tools. The next real-Live gate reads the
+parameters of `Utility` first, then writes one of them.
 
 **Next gate (Unverified until run):** with `doctor` reporting `0.3.3` and no `stale`,
 `devices_set_parameter` gets a dry run, an apply, a fresh read-back and an exact restore on

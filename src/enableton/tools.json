@@ -1664,6 +1664,31 @@
       "needs": ["browser"],
       "min_live": null,
       "cmd": "devices.browse_presets"
+    },
+    {
+      "name": "devices_read_parameters",
+      "domain": "devices",
+      "summary": "List a device's parameters with the exact names, values and ranges a write needs.",
+      "description": "Reads one device's parameter vector from Live, one page at a time. Every row carries the exact name devices_set_parameter takes, the current value in Live's own units, its display string, its min and max, whether Live quantises it, and whether it is enabled. This is the read that makes a parameter write usable: without it, finding Stereo Width means probing indexes. The device resolves by exact name or index, and a duplicate device name is refused with the candidate indexes rather than guessed.",
+      "examples": ["what parameters does this compressor have", "what is the EQ gain called on this device"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
+          "track_index": {"type": "integer", "minimum": 0},
+          "device": {"type": "string", "description": "Exact device name on that track."},
+          "device_index": {"type": "integer", "minimum": 0},
+          "offset": {"type": "integer", "minimum": 0, "default": 0},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 64}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "devices.read_parameters"
     }
   ]
 }

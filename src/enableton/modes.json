@@ -59,6 +59,7 @@
         "notes_read",
         "notes_overlaps",
         "devices_read_chain",
+        "devices_read_parameters",
         "master_chain_read",
         "sections_map",
         "tracks_list",
@@ -143,6 +144,7 @@
       "summary": "Device chains, presets and browser material. No sample loading.",
       "tools": [
         "devices_read_chain",
+        "devices_read_parameters",
         "devices_set_parameter",
         "devices_set_macro",
         "devices_move",
