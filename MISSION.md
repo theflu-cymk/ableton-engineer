@@ -32,13 +32,20 @@ test should assert that, or every count in the spec is wrong by 3×.
 
 ## 2. State of the build (measured, not claimed)
 
-`uv run pytest -q` → **84 passed in 5.64s**. Everything below is **untracked** (no commit yet).
+`uv run pytest -q` → **98 passed**. Committed through `e5a12db`.
+
+**The real-Live gate has been passed once (2026-11-09).** `uv run enableton status` returned a real
+summary from Live 12.2.5 — 4 tracks, 2 returns, 8 scenes, 120 BPM, 2 devices, `is_playing false` —
+with the script reporting `0.1.4`, `build 8639fd918559` matching this repo, and `display`/`drains`
+advancing between two `doctor` calls (432 → 437). That is one command's worth of evidence, on an
+untitled Set: enough to prove the transport, the main-thread queue and `resolve_song`, not enough to
+call M1 done.
 
 | Area | On disk |
 |---|---|
 | server | `src/enableton/`: `cli.py`, `manifest.py`, `modes.json`, `modes.py`, `reports.py`, `setup.py`, `tools.json`, `tools.py`, plus `live/`, `protocol/`, `state/` packages |
 | remote script | `remote_script/Enableton/`: `dispatch.py`, `errors.py`, `framing.py`, `server.py`, `handlers/` |
-| tests | 12 files incl. `test_drift.py`, `test_framing.py`, `test_manifest.py`, `test_modes.py`, `test_snapshot.py`, `test_adapter_conformance.py`, `test_cli.py`, `test_setup.py` |
+| tests | `tests/` incl. `test_bridge.py`, `test_build_digest.py`, `test_drift.py`, `test_framing.py`, `test_manifest.py`, `test_modes.py`, `test_snapshot.py`, `test_adapter_conformance.py`, `test_cli.py`, `test_setup.py` |
 
 M0's acceptance test is green. M1 (snapshot, reports) is partly built. **Mission 1 therefore starts
 with a gap audit against `SPEC.md` §19**, not with a rewrite — writing code over already-landed work
