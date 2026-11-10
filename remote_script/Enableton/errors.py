@@ -38,5 +38,19 @@ class ScriptError(Exception):
         return {"code": self.code, "message": self.message, "detail": self.detail}
 
 
+class Deferred(Exception):
+    """A command that must continue on a later display tick.
+
+    Live applies ``Song.current_song_time`` between display ticks, so a cue write cannot seek and
+    toggle in the same handler call: the toggle would fire at the old playhead. A handler raises
+    this with a continuation; the bridge keeps the request pending and runs that continuation on
+    the next ``update_display``, when the seek has landed.
+    """
+
+    def __init__(self, run):
+        super(Deferred, self).__init__("deferred to the next display tick")
+        self.run = run
+
+
 def unsupported(feature, reason):
     return ScriptError("UNSUPPORTED", reason, {"feature": feature})

@@ -20,12 +20,12 @@ import threading
 import types
 
 from . import dispatch
-from .errors import ScriptError
+from .errors import Deferred, ScriptError
 from .framing import FrameReader, FramingError, encode_frame
 
 DEFAULT_PORT = 9878
 PROTOCOL_VERSION = 1
-SCRIPT_VERSION = "0.4.5"
+SCRIPT_VERSION = "0.4.6"
 MAX_QUEUED = 8
 
 
@@ -144,7 +144,7 @@ class Bridge(object):
         # ``drains`` separates "Live never ticked the surface" from "the queue ran the work but
         # the reply was lost". Without it both look identical: a timeout.
         self.stats = {"requests": 0, "busy": 0, "errors": 0, "drains": 0, "ran": 0,
-                      "display": 0, "super_errors": 0}
+                      "defers": 0, "display": 0, "super_errors": 0}
 
     # -- lifecycle ---------------------------------------------------------
     def start(self):
@@ -181,24 +181,48 @@ class Bridge(object):
 
     # -- main thread -------------------------------------------------------
     def drain(self, max_tasks=8):
-        """Run queued work. Called from ``update_display`` on Live's main thread."""
+        """Run queued work. Called from ``update_display`` on Live's main thread.
+
+        A handler that raises ``Deferred`` is asking to continue after Live has applied a playhead
+        move. Its continuation is put back only after this drain finishes, so it cannot run again
+        in the same display tick; the request stays pending and the socket keeps waiting.
+        """
         self.stats["drains"] += 1
-        for _ in range(max_tasks):
-            try:
-                cmd, args, box, done = self._queue.get_nowait()
-            except queue.Empty:
-                return
-            self.stats["ran"] += 1
-            try:
-                box["result"] = dispatch.call(cmd, args, self._song_provider())
-            except ScriptError as exc:
-                self.stats["errors"] += 1
-                box["error"] = exc.to_payload()
-            except Exception as exc:
-                self.stats["errors"] += 1
-                box["error"] = {"code": "INTERNAL", "message": str(exc), "detail": {}}
-            finally:
-                done.set()
+        deferred = []
+        try:
+            for _ in range(max_tasks):
+                try:
+                    cmd, payload, box, done = self._queue.get_nowait()
+                except queue.Empty:
+                    return
+                self.stats["ran"] += 1
+                try:
+                    if cmd is None:
+                        outcome = payload(self._song_provider())
+                    else:
+                        outcome = dispatch.call(cmd, payload, self._song_provider())
+                    if isinstance(outcome, Deferred):
+                        # Handlers return the continuation; a raised one is handled below too.
+                        self.stats["defers"] += 1
+                        deferred.append((None, outcome.run, box, done))
+                        continue
+                    box["result"] = outcome
+                except Deferred as exc:
+                    self.stats["defers"] += 1
+                    deferred.append((None, exc.run, box, done))
+                except ScriptError as exc:
+                    self.stats["errors"] += 1
+                    box["error"] = exc.to_payload()
+                    done.set()
+                except Exception as exc:
+                    self.stats["errors"] += 1
+                    box["error"] = {"code": "INTERNAL", "message": str(exc), "detail": {}}
+                    done.set()
+                else:
+                    done.set()
+        finally:
+            for item in deferred:
+                self._queue.put(item)
 
     # -- socket thread -----------------------------------------------------
     def _accept_loop(self):

@@ -288,9 +288,18 @@ renumbered track; the gate compares kind, clip counts and device counts instead 
 - Every applied step went through `run_tool`, so the dry-run/apply trace check passed each time;
   the Set was not saved, and Live's default audio-track renumbering was observed again.
 
-### Section move and transaction undo (`0.4.5`)
+### Section move and transaction undo (`0.4.6`)
 
 **Implemented, real-Live gate pending.**
+
+The first `0.4.5` gate failed at its first write, before any move: `sections_create_locators` asked
+for bar 1 and Live put the cue at beat 368, the old playhead. Live applies `current_song_time`
+between display ticks, so a handler cannot seek and toggle in the same call. The same run exposed
+`sections_delete` returning `deleted: 0` on the dry run and `deleted: n` on apply, which made the
+executor roll every delete back on a trace mismatch. Both are fixed in `0.4.6`: cue handlers are
+resumable steps, the bridge keeps the request pending until the next `update_display`, and the fake
+now models the tick so a regression fails in the suite. The failed probe left one auto-named
+locator `2` at beat 368 in `SCRATCH fortnight`; the gate removes it before taking its baseline.
 
 - `sections_move` selects one locator by exact bar or unique name and moves it to `to_bar` as a
   create at the destination followed by a delete at the source, because `Locator.time` has no

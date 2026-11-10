@@ -115,6 +115,16 @@ class LocatorTests(unittest.TestCase):
             [("intro", 0.0), ("drop", 16.0)],
         )
 
+    def test_delete_reports_the_same_count_in_dry_and_apply(self):
+        song = self.adapter.song
+        song.locators = [FakeLocator("intro", 0.0), FakeLocator("drop", 16.0)]
+        preview = self.adapter.call("sections.delete", {"names": ["intro"]})
+        applied = self.adapter.call(
+            "sections.delete", {"names": ["intro"], "dry_run": False}
+        )
+        self.assertEqual(preview["deleted"], 1)
+        self.assertEqual(applied["deleted"], 1)
+
     def test_delete_all_is_one_selector_with_others(self):
         with self.assertRaises(ScriptError) as ctx:
             self.adapter.call("sections.delete", {"all": True, "names": ["x"]})

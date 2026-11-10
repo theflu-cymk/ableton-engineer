@@ -135,6 +135,37 @@ class BridgeTests(unittest.TestCase):
         self.assertGreaterEqual(info["stats"]["drains"], 1)
 
 
+    def test_a_deferred_command_resumes_on_a_later_tick(self):
+        """The playhead moves between ticks, so a cue command must not answer in one drain."""
+        song = build_song()
+        bridge = Bridge(lambda: song, port=0)
+        bridge.start()
+        self.addCleanup(bridge.stop)
+
+        box, done = {}, threading.Event()
+        bridge._queue.put((
+            "sections.create_locators",
+            {"sections": [{"name": "gate", "bar": 2}], "dry_run": False},
+            box,
+            done,
+        ))
+        bridge.drain()
+        self.assertFalse(done.is_set(), "a deferred command answered inside one tick")
+        self.assertEqual(song.locators, [])
+
+        for _ in range(20):
+            if done.is_set():
+                break
+            song.tick()
+            bridge.drain()
+        self.assertTrue(done.is_set(), "the deferred command never finished")
+        self.assertIn("result", box)
+        self.assertEqual(
+            [(locator.name, locator.time) for locator in song.locators],
+            [("gate", 4.0)],
+        )
+
+
 class SafeLogTests(unittest.TestCase):
     """Logging is diagnostics: it must never be able to abort construction.
 

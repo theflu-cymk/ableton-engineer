@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional
 from ..protocol.framing import FrameReader, FramingError, encode_frame
 
 from Enableton import dispatch as _dispatch  # type: ignore  # remote_script is on sys.path
-from Enableton.errors import ScriptError
+from Enableton.errors import Deferred, ScriptError
 
 FEATURES = frozenset({"levels", "snapshot"})
 
@@ -275,6 +275,9 @@ class FakeSong:
     signature_denominator: int = 4
     is_playing: bool = False
     current_song_time: float = 0.0
+    #: Live applies ``current_song_time`` between display ticks; cue writes use this value.
+    rendered_song_time: float = 0.0
+    ticks: int = 0
     loop_start: float = 0.0
     loop_length: float = 16.0
     loop: bool = True
@@ -290,9 +293,14 @@ class FakeSong:
     def stop_playing(self) -> None:
         self.is_playing = False
 
+    def tick(self) -> None:
+        """A display tick: the pending playhead becomes the one cue writes use."""
+        self.rendered_song_time = float(self.current_song_time)
+        self.ticks += 1
+
     def set_or_delete_cue(self) -> None:
-        """Live toggles one cue at the playhead; a second call at the same beat removes it."""
-        time = float(self.current_song_time)
+        """Live toggles one cue at the *ticked* playhead, not at an unapplied seek."""
+        time = float(self.rendered_song_time)
         for index, locator in enumerate(self.locators):
             if abs(float(locator.time) - time) <= 1e-6:
                 del self.locators[index]
@@ -406,6 +414,17 @@ def build_song() -> FakeSong:
     )
 
 
+def _run_with_ticks(cmd: str, args: Dict[str, Any], song: FakeSong) -> Dict[str, Any]:
+    """Run a command the way the bridge does: a Deferred step resumes after one tick."""
+    result = _dispatch.call(cmd, args, song)
+    for _ in range(1000):
+        if not isinstance(result, Deferred):
+            return result
+        song.tick()
+        result = result.run(song)
+    raise RuntimeError("%s deferred more than 1000 times" % (cmd,))
+
+
 class FakeAdapter:
     """In-process adapter: same handlers as the script, no socket."""
 
@@ -416,7 +435,7 @@ class FakeAdapter:
 
     def call(self, cmd: str, args: Optional[Dict[str, Any]] = None,
              timeout_ms: Optional[int] = None) -> Dict[str, Any]:
-        return _dispatch.call(cmd, args or {}, self.song)
+        return _run_with_ticks(cmd, args or {}, self.song)
 
     def describe(self) -> Dict[str, Any]:
         return {"backend": "fake", "features": sorted(self.features)}
@@ -495,7 +514,7 @@ class FakeServer:
                 "features": sorted(FEATURES)}}
 
         try:
-            result = _dispatch.call(cmd, request.get("args") or {}, self.song)
+            result = _run_with_ticks(cmd, request.get("args") or {}, self.song)
             return {"id": request_id, "ok": True, "result": result}
         except ScriptError as exc:
             return {"id": request_id, "ok": False, "error": exc.to_payload()}
