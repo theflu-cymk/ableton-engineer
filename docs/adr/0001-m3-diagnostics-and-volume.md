@@ -44,3 +44,12 @@ script version despite the new command living in a handler module.
   visible and named, not hidden.
 - Autofix is all-or-nothing across its selected phases. A count rise triggers rollback, so the
   report may show `counts_after_change` higher than the final `counts_after`.
+
+## Verification
+
+**Verified on real Live `0.2.4` (2026-11-10, build `c9e993ad42da`, `SCRATCH fortnight`):** the
+three-fader apply dropped findings from 25 to 22, with `auto` 3 → 0 and all 14 needs-listening
+findings unchanged and never applied. A controlled real-Live count-rise probe on a scratch track
+wrote `0.85` → `0.5`, raised the count 1 → 2, and autofix halted with
+`finding_count_rose`, rolled back, and restored `0.5` → `0.85`. The working `fortnight` Set was not
+written.
