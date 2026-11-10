@@ -55,7 +55,13 @@ def _key(steps: Sequence[Step]) -> str:
 
 
 def _error_payload(exc: Exception) -> Dict[str, Any]:
-    return {"type": type(exc).__name__, "message": str(exc)}
+    # The tool's own code is the useful part: a refused delete is PRECONDITION_FAILED, not a
+    # generic rollback notice.
+    return {
+        "type": type(exc).__name__,
+        "code": getattr(exc, "code", None),
+        "message": str(exc),
+    }
 
 
 class PlanExecutor:

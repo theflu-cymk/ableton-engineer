@@ -319,6 +319,11 @@ class FakeSong:
     def delete_scene(self, index: int) -> None:
         del self.scenes[index]
 
+    def move_device(self, device: "FakeDevice", track: "FakeTrack", position: int) -> int:
+        """Live 12.2.5's mover lives on Song, not Track; the position it used is returned."""
+        track.devices.insert(position, track.devices.pop(track.devices.index(device)))
+        return position
+
 
 def build_song() -> FakeSong:
     """A small arrangement-first Set: 2 sections, one empty track, one empty scene.

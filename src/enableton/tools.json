@@ -1566,7 +1566,7 @@
       "name": "devices_set_macro",
       "domain": "devices",
       "summary": "Set a rack macro by number, with the same undo token as a parameter write.",
-      "description": "Live names rack macros Macro 1 to Macro 16, so this resolves the rack, then the macro parameter by that name, and refuses a device without it rather than inventing a mapping. Only racks carry macros; a bare EQ Eight reports that with a reason. The value must sit inside the macro's own range, and the undo token restores the prior number.",
+      "description": "A rack exposes Macro 1 to Macro 16 at parameter indexes 1 to 16, right after Device On, and Live reports whatever name the user gave each macro; the first real rack checked had Low Gain, Mid Gain, High Gain and Vintage on macros 1 to 4. The macro therefore resolves by position, so a renamed macro still responds to its number, and the row reports the name actually found. Only racks carry macros, so a bare EQ Eight is refused with a reason rather than guessed at. The value must sit inside the macro's own range, and the undo token restores the prior number.",
       "examples": ["set macro 1 on the rack to half", "open the filter macro a little"],
       "input": {
         "type": "object",
@@ -1594,7 +1594,7 @@
       "name": "devices_move",
       "domain": "devices",
       "summary": "Reorder one device within its chain, with an exact undo token.",
-      "description": "Moves the resolved device to a final index in the same track's chain and reads the chain back to confirm the device landed there. The undo token moves it back from where it ended up, so a restore is exact rather than positional guesswork. The chain length must be unchanged; a backend that loses or duplicates devices during the move is reported as a Live error.",
+      "description": "Moves the resolved device to a final index in the same track's chain and reads the chain back to confirm the device landed there. It uses Track.move_device where this build exposes it and Song.move_device(device, track, position) where only the song-level mover exists, which is the case on 12.2.5. The undo token moves it back from where it ended up, so a restore is exact rather than positional guesswork. The chain length must be unchanged; a backend that loses or duplicates devices during the move is reported as a Live error.",
       "examples": ["put the compressor before the EQ", "move the saturation to the end of the chain"],
       "input": {
         "type": "object",

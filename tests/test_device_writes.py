@@ -159,15 +159,31 @@ class MacroTests(unittest.TestCase):
         return FakeAdapter(song)
 
     def test_macro_write_and_restore(self):
-        adapter = self.make_rack(FakeDeviceParameter("Macro 1", 0.0, 0.0, 1.0))
+        adapter = self.make_rack(
+            FakeDeviceParameter("Device On", 1.0, 0.0, 1.0),
+            FakeDeviceParameter("Low Gain", 0.0, 0.0, 1.0),
+        )
         result = adapter.call("devices.set_macro", {
             "track": "Drums", "device": "Instrument Rack", "macro": 1,
             "value": 0.5, "dry_run": False,
         })
-        parameter = adapter.song.tracks[0].devices[-1].parameters[0]
+        parameter = adapter.song.tracks[0].devices[-1].parameters[1]
         self.assertAlmostEqual(parameter.value, 0.5)
         adapter.call("devices.set_macro", {"restore": result["undo"], "dry_run": False})
         self.assertAlmostEqual(parameter.value, 0.0)
+
+    def test_a_renamed_macro_resolves_by_position(self):
+        # Live reports the user's macro name, not "Macro 1"; the real rack exposed Low Gain at the
+        # index Macro 1 occupies.
+        adapter = self.make_rack(
+            FakeDeviceParameter("Device On", 1.0, 0.0, 1.0),
+            FakeDeviceParameter("Low Gain", 0.0, 0.0, 1.0),
+        )
+        result = adapter.call("devices.set_macro", {
+            "track": "Drums", "device": "Instrument Rack", "macro": 1, "value": 0.25,
+        })
+        self.assertEqual(result["changes"][0]["parameter"], "Low Gain")
+        self.assertEqual(result["changes"][0]["parameter_index"], 1)
 
     def test_a_device_without_macros_reports_why(self):
         adapter = FakeAdapter()
@@ -179,12 +195,27 @@ class MacroTests(unittest.TestCase):
         self.assertIn("racks only", str(ctx.exception))
 
     def test_macro_number_is_bounded(self):
-        adapter = self.make_rack(FakeDeviceParameter("Macro 1", 0.0, 0.0, 1.0))
+        adapter = self.make_rack(
+            FakeDeviceParameter("Device On", 1.0, 0.0, 1.0),
+            FakeDeviceParameter("Low Gain", 0.0, 0.0, 1.0),
+        )
         with self.assertRaises(ScriptError) as ctx:
             adapter.call("devices.set_macro", {
                 "track": "Drums", "device": "Instrument Rack", "macro": 17, "value": 0.5,
             })
         self.assertEqual(ctx.exception.code, "BAD_ARGS")
+
+
+class _NoMoveTrack:
+    """A track proxy without Track.move_device, like Live 12.2.5."""
+
+    def __init__(self, track):
+        object.__setattr__(self, "_track", track)
+
+    def __getattr__(self, name):
+        if name == "move_device":
+            raise AttributeError(name)
+        return getattr(object.__getattribute__(self, "_track"), name)
 
 
 class MoveTests(unittest.TestCase):
@@ -223,6 +254,16 @@ class MoveTests(unittest.TestCase):
         self.assertEqual(result["changes"][0]["to_index"], 1)
         self.assertEqual(result["undo"], [])
 
+    def test_the_song_level_mover_is_used_when_the_track_has_none(self):
+        adapter = FakeAdapter()
+        adapter.song.tracks[0] = _NoMoveTrack(adapter.song.tracks[0])
+        adapter.call("devices.move", {
+            "track": "Drums", "device": "EQ Eight", "to_index": 1, "dry_run": False,
+        })
+        self.assertEqual(
+            [device.name for device in adapter.song.tracks[0].devices], ["Glue", "EQ Eight"]
+        )
+
 
 class DeleteTests(unittest.TestCase):
     def setUp(self):
@@ -243,6 +284,13 @@ class DeleteTests(unittest.TestCase):
             })
         self.assertEqual(ctx.exception.code, "PRECONDITION_FAILED")
         self.assertEqual(len(self.track.devices), 2)
+
+    def test_a_refused_delete_reports_its_own_code(self):
+        outcome = PlanExecutor(FakeAdapter(), scratch=_StubScratch()).apply([
+            Step("devices_delete", {"track": "Drums", "device": "Glue"}),
+        ])
+        self.assertFalse(outcome["applied"])
+        self.assertEqual(outcome["error"]["code"], "PRECONDITION_FAILED")
 
     def test_apply_with_confirm_removes_one_device(self):
         result = self.adapter.call("devices.delete", {
@@ -360,7 +408,10 @@ class TraceShapeTests(unittest.TestCase):
         song = build_song()
         song.tracks[0].devices.append(FakeDevice(
             "Instrument Rack", "InstrumentGroupDevice",
-            parameters=[FakeDeviceParameter("Macro 1", 0.0, 0.0, 1.0)],
+            parameters=[
+                FakeDeviceParameter("Device On", 1.0, 0.0, 1.0),
+                FakeDeviceParameter("Drive", 0.0, 0.0, 1.0),
+            ],
         ))
         adapter = FakeAdapter(song)
         args = {"track": "Drums", "device": "Instrument Rack", "macro": 1, "value": 0.5}

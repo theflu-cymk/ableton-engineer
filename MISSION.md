@@ -107,7 +107,7 @@ because `is_active` is read-only on this build.
 
 Modes, counting the five injected core tools the way `enableton modes` does: `sound` 9 → 14,
 `mix` 17 → 18; `auto` stays at the 34-tool cap. `uv run pytest -q` →
-**339 passed, 7 subtests**, including a new test that the executor refuses a multi-step plan
+**342 passed, 7 subtests**, including a new test that the executor refuses a multi-step plan
 containing `devices_delete`.
 
 **A real-Live find, fixed in `0.3.2` (Verified).** On loaded `0.3.1`,
@@ -152,12 +152,35 @@ exact prior number. Catalogue 58 → 59; `mix` 18 → 19 with the five core tool
 the dry run, apply, read-back, exact restore, range refusal, a Set with no master track, and the
 executor applying it for real.
 
-**Next gate (Unverified until run):** with `doctor` reporting `0.3.5` and no `stale`,
-`devices_read_parameters` names `Utility`'s parameters first, then `devices_set_parameter` gets a
-dry run, an apply, a fresh read-back and an exact restore on `SCRATCH fortnight`; then
-`devices_set_macro` on a rack, `devices_move` in both directions, `master_set_gain` with the same
-four steps, and `devices_browse_presets` against the real browser tree. `devices_delete` runs last,
-on a device whose loss would not matter.
+**Device gate on `0.3.4` (Verified).** `doctor` reported script `0.3.4`, build `f4484257c3ce`, no
+`stale`. The Set was `SCRATCH fortnight`,
+`F:\ableton songs\Fortnight\fortnight Project\SCRATCH fortnight.als`. `devices_read_parameters`
+listed `Utility` (track 24, device 4): 12 parameters, `Stereo Width` at index 4, value `1.0`.
+`devices_set_parameter` moved it `1.0` → `0.5`, a fresh dry run read back `0.5`, and the undo token
+restored `1.0` exactly; a scratch copy was taken. `devices_browse_presets` found `EQ Eight` with 5
+presets after the name fix. The duplicate `Flanger Rebound` devices were refused as `AMBIGUOUS_REF`
+with indexes 4 and 5. `devices_delete`'s dry run reported `requires_confirm`, and the unconfirmed
+apply wrote nothing.
+
+**Three more real-Live finds, fixed in `0.3.5`.**
+- `devices_set_macro` resolved `Macro N` by name. The real `808 Core Kit` rack exposes `Low Gain`,
+  `Mid Gain`, `High Gain`, `Gain`, `Drive Amount`, `Drive Tone`, `Glue`, `Vintage` at indexes 1–8,
+  then `Macro 9`–`Macro 16` at 9–16. Macros now resolve by position, so a renamed macro still
+  answers to its number.
+- `devices_move` called `Track.move_device`, which 12.2.5 does not expose. The LOM's mover here is
+  `Song.move_device(device, track, position)`; the handler tries the track form first and falls back
+  to the song form, verifying the landing either way. **Assumed** until the next gate: the fallback
+  is exercised against the fake and against the documented signature, not yet against Live.
+- The executor's error payload dropped the tool's code, so an unconfirmed delete surfaced as
+  `LIVE_ERROR: write failed and was rolled back`. `_error_payload` now carries `code`, and
+  `run_tool` raises with it, so the caller sees `PRECONDITION_FAILED` and the confirm instruction.
+  Covered by a fake test; the real-Live confirmation needs the next restart.
+
+**Next gate (Unverified until run):** restart onto `0.3.5` (`doctor` build must match, no `stale`),
+then on `SCRATCH fortnight`: `devices_move` on `Remove Mud` both ways, `devices_set_macro` macro 1
+on `808 Core Kit` with a fresh read-back and exact restore, the unconfirmed-delete refusal showing
+`PRECONDITION_FAILED`, one confirmed delete of a duplicate `Flanger Rebound`, and `master_set_gain`
+with dry run → apply → read-back → restore.
 
 ### Tracks sends and name/colour (2026-11-10, `0.2.12`)
 

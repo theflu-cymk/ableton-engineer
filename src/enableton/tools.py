@@ -136,12 +136,12 @@ def run_tool(
                 "restore": restore,
                 "scratch_copy": outcome.get("scratch_copy"),
             }
-            message = (
-                "write failed and was rolled back"
-                if restore.get("ok")
-                else "write failed; rollback needs attention"
-            )
-            raise LiveError("LIVE_ERROR", message, detail)
+            # Surface the tool's own code and message: a delete without confirm is
+            # PRECONDITION_FAILED with an instruction, not a generic rollback notice.
+            code = error.get("code") or "LIVE_ERROR"
+            message = error.get("message") or "write failed"
+            message += " (rolled back)" if restore.get("ok") else "; rollback needs attention"
+            raise LiveError(code, message, detail)
 
         result = dict(outcome["results"][-1])
         result["scratch_copy"] = outcome.get("scratch_copy")

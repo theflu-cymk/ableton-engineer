@@ -394,23 +394,24 @@ def set_macro(args, song):
 
     track_index, track = _track(song, args)
     device_index, device = _device(track, args)
-    wanted = "Macro %d" % macro
-    parameters = _parameters(device)
-    matches = [
-        (position, parameter) for position, parameter in enumerate(parameters)
-        if str(_attr(parameter, "name", "") or "") == wanted
-    ]
-    if not matches:
+    klass = str(_attr(device, "class_name", "") or "")
+    if not klass.endswith("GroupDevice"):
         raise ScriptError(
             "UNSUPPORTED",
-            "device %r has no %s; macros exist on racks only"
-            % (str(_attr(device, "name", "") or ""), wanted),
+            "device %r is %s, not a rack; macros exist on racks only"
+            % (str(_attr(device, "name", "") or ""), klass or "not a rack"),
         )
-    if len(matches) > 1:
+    # Live puts Macro 1..16 at parameter indexes 1..16 (index 0 is Device On), whatever names the
+    # user gave them. Resolving by the literal name "Macro N" failed on the first real rack whose
+    # macros were renamed, because Live reports the custom names instead.
+    parameters = _parameters(device)
+    if macro >= len(parameters):
         raise ScriptError(
-            "AMBIGUOUS_REF", "%d parameters are named %r" % (len(matches), wanted)
+            "UNSUPPORTED",
+            "rack %r exposes %d parameters, so it has no Macro %d"
+            % (str(_attr(device, "name", "") or ""), len(parameters), macro),
         )
-    parameter_index, parameter = matches[0]
+    parameter_index, parameter = macro, parameters[macro]
     value = _quantised(_bounded(_number(args.get("value"), "value"), parameter), parameter)
     _writable(parameter)
 
@@ -421,7 +422,7 @@ def set_macro(args, song):
         "device": str(_attr(device, "name", "") or ""),
         "device_index": device_index,
         "macro": macro,
-        "parameter": wanted,
+        "parameter": str(_attr(parameter, "name", "") or ""),
         "parameter_index": parameter_index,
         "from": current,
         "to": value,
@@ -431,12 +432,35 @@ def set_macro(args, song):
         "device_index": device_index,
         "device": change["device"],
         "parameter_index": parameter_index,
-        "parameter": wanted,
+        "parameter": str(_attr(parameter, "name", "") or ""),
         "value": current,
     }]
     if not dry_run:
         _write(parameter, value)
     return {"dry_run": dry_run, "changes": [change], "undo": undo}
+
+
+def _move(song, track, device, to_index):
+    """Move a device with whichever primitive this Live build exposes.
+
+    12.2.5 has no ``Track.move_device``; ``Song.move_device(device, target, position)`` is the one
+    that works there, and its return value is the position the device landed at. The track form is
+    kept first for builds that have it.
+    """
+    mover = _attr(track, "move_device", None)
+    if callable(mover):
+        try:
+            mover(device, to_index)
+        except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
+            raise ScriptError("LIVE_ERROR", "Live refused the device move: %s" % (exc,))
+        return
+    song_mover = _attr(song, "move_device", None)
+    if not callable(song_mover):
+        raise ScriptError("UNSUPPORTED", "this Live build cannot reorder devices")
+    try:
+        song_mover(device, track, to_index)
+    except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
+        raise ScriptError("LIVE_ERROR", "Live refused the device move: %s" % (exc,))
 
 
 @command("devices.move")
@@ -487,13 +511,7 @@ def move(args, song):
         "to_index": device_index,
     }]
     if not dry_run:
-        mover = _attr(track, "move_device", None)
-        if not callable(mover):
-            raise ScriptError("UNSUPPORTED", "this Live build cannot reorder devices")
-        try:
-            mover(device, to_index)
-        except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
-            raise ScriptError("LIVE_ERROR", "Live refused the device move: %s" % (exc,))
+        _move(song, track, device, to_index)
         landed = _devices(track)
         if len(landed) != count:
             raise ScriptError(
@@ -556,13 +574,7 @@ def _restore_moves(entries, song, dry_run):
             changes.append({"track_index": track_index, "device": wanted,
                             "from_index": device_index, "to_index": to_index})
             continue
-        mover = _attr(track, "move_device", None)
-        if not callable(mover):
-            raise ScriptError("UNSUPPORTED", "this Live build cannot reorder devices")
-        try:
-            mover(device, to_index)
-        except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
-            raise ScriptError("LIVE_ERROR", "Live refused the device move: %s" % (exc,))
+        _move(song, track, device, to_index)
         changes.append({"track_index": track_index, "device": wanted,
                         "from_index": device_index, "to_index": to_index})
     return {
