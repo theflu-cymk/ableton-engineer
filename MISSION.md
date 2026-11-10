@@ -33,7 +33,7 @@ test should assert that, or every count in the spec is wrong by 3×.
 
 ## 2. State of the build (measured, not claimed)
 
-`uv run pytest -q` → **205 passed, 7 subtests**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 acceptance gates are **real-Live verified on `0.2.3`**: duplicate dry-run matched apply, double-apply was a no-op, exact restore included the clip name, and a forced real mid-plan failure restored the arrangement object-for-object. M2 is complete. M3 is **complete and real-Live verified on `0.2.4`**: the three-fader autofix dropped findings from 25 to 22, a controlled count-rise probe halted and rolled back, `ableton_escalate` produced a stored plan that `ableton_plan_apply` executed from a separate CLI process, and `modes --findings` showed the per-mode counts before and after. All 14 needs-listening findings stayed out of every plan and apply. M4 is in progress: `ableton_guide` now returns the generated command sheet through the MCP tool surface, `enableton inspect`, `enableton plan` and `enableton run` are implemented, and `devices_read_chain`, `master_chain_read` and `sections_map` answer from one snapshot. The catalogue is now 27 tools in 2 modes. **Real `0.2.6` is verified**: `doctor` reported script `0.2.6`, build `d9d5fefaad68`, no `stale`; play/stop, locate (bar 10 → 36 beats, confirmed by the following snapshot), loop set/clear, and loop/playhead restoration all passed.
+`uv run pytest -q` → **208 passed, 7 subtests**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 acceptance gates are **real-Live verified on `0.2.3`**: duplicate dry-run matched apply, double-apply was a no-op, exact restore included the clip name, and a forced real mid-plan failure restored the arrangement object-for-object. M2 is complete. M3 is **complete and real-Live verified on `0.2.4`**: the three-fader autofix dropped findings from 25 to 22, a controlled count-rise probe halted and rolled back, `ableton_escalate` produced a stored plan that `ableton_plan_apply` executed from a separate CLI process, and `modes --findings` showed the per-mode counts before and after. All 14 needs-listening findings stayed out of every plan and apply. M4 is in progress: `ableton_guide` now returns the generated command sheet through the MCP tool surface, `enableton inspect`, `enableton plan` and `enableton run` are implemented, and `devices_read_chain`, `master_chain_read` and `sections_map` answer from one snapshot. The catalogue is now 28 tools in 2 modes; the inspect domain has all 8 tools. **Real `0.2.6` is verified**: `doctor` reported script `0.2.6`, build `d9d5fefaad68`, no `stale`; play/stop, locate (bar 10 → 36 beats, confirmed by the following snapshot), loop set/clear, and loop/playhead restoration all passed.
 
 **The real-Live gate has been passed once (2026-11-09).** `uv run enableton status` returned a real
 summary from Live 12.2.5 — 4 tracks, 2 returns, 8 scenes, 120 BPM, 2 devices, `is_playing false` —
@@ -210,7 +210,7 @@ the first applied call, and reverses tool-owned undo tokens when a step fails. `
 now returns the track index and exact undo values, and accepts the executor's `restore` token.
 `run_tool` routes an applied gain stage through the executor instead of calling the handler directly.
 
-**Tested at that milestone:** **160 passed**, 7 subtests; the current suite is **205 passed**.
+**Tested at that milestone:** **160 passed**, 7 subtests; the current suite is **208 passed**.
 New safety tests cover dry-run trace equality, scratch-copy
 bytes and pre-write timing, refusal when the Set has no path, exact rollback after a synthetic
 second-step failure, and double-apply on one executor. `clips_duplicate_range` has handler tests for
@@ -389,7 +389,7 @@ one derived section with one named locator, all from one shared snapshot. M4 sti
 catalogue: the drift test must stay green, every mode must stay at or below 34 tools, every tool
 must appear in at least one mode, and every mode's escalation path must reach every tool. This is
 catalogue and mode coverage, not new Live semantics; keep the M3 evidence intact while expanding
-the surface. The catalogue is still 27 tools across 2 modes, so M4 is not complete.
+the surface. The catalogue is still 28 tools across 2 modes, so M4 is not complete. The inspect domain is complete: `inspect_export` writes an atomic, versioned JSON audit, and a real Live export produced a 3,043-byte document with four findings and matching counts.
 
 The transport domain is complete in code: `transport_stop`, `transport_locate` and
 `transport_set_loop` join the existing `transport_play`, with closed arguments and eight focused

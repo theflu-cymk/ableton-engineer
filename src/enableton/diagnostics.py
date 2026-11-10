@@ -15,7 +15,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from .manifest import Tool, load_manifest
@@ -297,6 +300,66 @@ def counts(findings: Sequence[Finding], catalogue: Optional[Dict[str, Tool]] = N
         "by_severity": by_severity,
         "needs_listening": sum(1 for f in findings if f.needs_listening),
         "auto_fixable": sum(1 for f in findings if _has_available_fix(f, catalogue)),
+    }
+
+
+def export(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Write the diagnostic findings to an atomic JSON file.
+
+    This is a report, not a Live edit. A caller may name a .json path; otherwise the file goes
+    under ``%APPDATA%\\Enableton\\exports`` (or ``~/.enableton/exports``) with a UTC timestamp.
+    The write is atomic so an interrupted export cannot leave a half-valid audit behind.
+    """
+    args = dict(args or {})
+    _only(args, ("tier", "path"))
+    tier = args.get("tier", "standard")
+    if tier not in TIERS:
+        raise DiagnosticsError("tier must be one of %s" % ", ".join(TIERS))
+
+    destination = args.get("path")
+    if destination is not None and (
+        not isinstance(destination, str) or not destination.strip()
+    ):
+        raise DiagnosticsError("path must be a non-empty string")
+
+    findings = detect(data, tier)
+    document = {
+        "version": 1,
+        "tier": tier,
+        "counts": counts(findings),
+        "findings": [finding.as_dict() for finding in findings],
+    }
+
+    if destination is None:
+        appdata = os.environ.get("APPDATA")
+        root = Path(appdata) / "Enableton" / "exports" if appdata else Path.home() / ".enableton" / "exports"
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        path = root / ("findings-%s.json" % stamp)
+    else:
+        path = Path(destination).expanduser()
+    if path.suffix.lower() != ".json":
+        raise DiagnosticsError("path must end in .json")
+
+    temporary = path.with_name(path.name + ".tmp")
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary.write_text(
+            json.dumps(document, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        os.replace(str(temporary), str(path))
+    except OSError as exc:
+        try:
+            temporary.unlink()
+        except OSError:
+            pass
+        raise DiagnosticsError("could not export findings: %s" % (exc,)) from exc
+
+    return {
+        "path": str(path),
+        "tier": tier,
+        "counts": document["counts"],
+        "findings": len(findings),
+        "bytes": path.stat().st_size,
     }
 
 

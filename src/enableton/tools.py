@@ -33,6 +33,7 @@ LOCAL = {
     "sections_map": sections_map,
     "inspect_run": diagnostics.run,
     "inspect_report": diagnostics.report,
+    "inspect_export": diagnostics.export,
     "inspect_finding": diagnostics.get,
 }  # type: Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, Any]]]
 

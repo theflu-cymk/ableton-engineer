@@ -597,6 +597,27 @@
       "needs": [],
       "min_live": null,
       "cmd": "transport.set_loop"
+    },
+    {
+      "name": "inspect_export",
+      "domain": "inspect",
+      "summary": "Export the diagnostic findings to JSON.",
+      "description": "Runs the requested diagnostic tier and writes the complete findings document to an atomic .json file. The path is optional; without one the export goes under %APPDATA%\\Enableton\\exports with a UTC timestamp. This does not edit the Live Set, and it refuses a path that is not a .json file.",
+      "examples": ["export the audit", "save the findings to a file"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "tier": {"type": "string", "enum": ["fast", "standard", "deep"], "default": "standard"},
+          "path": {"type": "string", "description": "Destination ending in .json; omitted uses the exports directory."}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 1500,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
     }
   ]
 }

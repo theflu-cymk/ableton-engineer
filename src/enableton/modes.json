@@ -56,7 +56,8 @@
         "inspect_run",
         "inspect_report",
         "inspect_finding",
-        "inspect_plan"
+        "inspect_plan",
+        "inspect_export"
       ],
       "default_scope": "set",
       "escalate": true,
