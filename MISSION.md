@@ -85,6 +85,16 @@ six file devices: `KIS_FREE Techno Mastering Chain` (`AudioEffectGroupDevice`) c
 `counts.devices_master` was 6, `master_available` true, `master_reason` null. The 102 → 108 gap is
 closed on real Live, not just in a fixture.
 
+### Warp state added (2026-11-10, `0.1.7`)
+
+`clips_warp_check` had nothing to check: the snapshot carried a bare `warping` boolean and no
+marker data. `0.1.7` gives every audio clip — arrangement and Session — `warping`, `warp_mode`
+(the raw enum plus its name) and `warp_markers` (the vector's length, or `None` with
+`warp_markers_reason`), and adds `counts.warp_markers` / `counts.warp_markers_unreadable`. The
+suite covers the readable, unreadable and MIDI cases (**120 passed**), and `setup --force` installed
+it, but Live still runs `0.1.6` (`stale`: repo `c24656d7b906`). **Unverified on real material**
+until the next restart — including whether the 930-marker figure for Crust Wumble is reproduced.
+
 | Area | On disk |
 |---|---|
 | server | `src/enableton/`: `cli.py`, `manifest.py`, `modes.json`, `modes.py`, `reports.py`, `setup.py`, `tools.json`, `tools.py`, plus `live/`, `protocol/`, `state/` packages |

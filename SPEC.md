@@ -86,8 +86,9 @@ scenes, **0 locators** and **18 top-level devices**.
   along; `Song.locators` simply does not answer on 12.2.5 (`cue_points` does), which is what made
   `locators_available` false on 0.1.4.
 
-Warp markers (930) are **unmeasured**: `clips_warp_check` does not exist. Treat the locator and
-device columns as claims to check, not facts.
+Warp markers (930) are **unmeasured on Live**: `clips_warp_check` does not exist, and the snapshot
+that would feed it reads a clip's marker count only from `0.1.7` onward — installed but **Unverified**
+until Live restarts onto it. Treat the locator and device columns as claims to check, not facts.
 
 **The User Library is not at `Documents\Ableton` on this machine.** Live's library is
 redirected to `C:\Users\brian\OneDrive\Attachments\Documentos\Ableton\User Library`, while the
