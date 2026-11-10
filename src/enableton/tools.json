@@ -1646,7 +1646,7 @@
       "name": "devices_browse_presets",
       "domain": "devices",
       "summary": "List device preset folders, or one device's presets, from the browser.",
-      "description": "Reads the instruments, audio-effects and MIDI-effects categories. Without a device it lists the preset folders with child counts; with an exact device name it lists that folder's presets and their URIs. It never loads anything. Every folder is read before the page is sliced, so a paging count is real and a named device is found wherever it sits in the tree; a category that cannot be read reports the reason, and only a scan past 2000 folders is reported as stopped.",
+      "description": "Reads the instruments, audio-effects and MIDI-effects categories. Without a device it lists the preset folders with child counts; with an exact device name it lists that folder's presets and their URIs. It never loads anything. Every folder is read before the page is sliced, so a paging count is real and a named device is found wherever it sits in the tree, whatever Live reports for is_folder, and a name that exists in two categories is refused rather than guessed; a category that cannot be read reports the reason, and only a scan past 2000 folders is reported as stopped.",
       "examples": ["what presets do I have for EQ Eight", "which instrument folders are in my library"],
       "input": {
         "type": "object",

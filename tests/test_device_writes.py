@@ -304,11 +304,27 @@ class BrowsePresetTests(unittest.TestCase):
         song.browser.audio_effects.children = [
             FakeBrowserItem("Filler %02d" % index, True, False, "query:x")
             for index in range(12)
-        ] + [FakeBrowserItem("EQ Eight", True, False, "query:AudioEffects#EQ Eight", [
+        ] + [FakeBrowserItem("EQ Eight", False, False, "query:AudioEffects#EQ Eight", [
             FakeBrowserItem("Vocal EQ.adv", False, True, "file:Vocal EQ.adv"),
         ])]
         result = FakeAdapter(song).call("devices.browse_presets", {"device": "EQ Eight"})
         self.assertEqual([row["name"] for row in result["items"]], ["Vocal EQ.adv"])
+
+    def test_a_device_folder_live_marks_as_not_a_folder_is_still_found(self):
+        # Live's browser reports is_folder False for a device's preset folder, because the folder
+        # holds presets rather than more folders; the default fake now matches that.
+        result = self.adapter.call("devices.browse_presets", {"device": "EQ Eight"})
+        self.assertEqual(result["total"], 1)
+
+    def test_the_same_device_folder_in_two_categories_is_ambiguous(self):
+        song = build_song()
+        song.browser.midi_effects.children = [FakeBrowserItem(
+            "EQ Eight", False, False, "query:MidiEffects#EQ Eight",
+            [FakeBrowserItem("MIDI EQ.adv", False, True, "file:MIDI EQ.adv")],
+        )]
+        with self.assertRaises(ScriptError) as ctx:
+            FakeAdapter(song).call("devices.browse_presets", {"device": "EQ Eight"})
+        self.assertEqual(ctx.exception.code, "AMBIGUOUS_REF")
 
     def test_the_folder_list_pages_past_the_old_cap(self):
         song = build_song()

@@ -645,7 +645,7 @@ def browse_presets(args, song):
     browser = _browser(song)
     wanted = device.strip().lower() if device else None
     searched, folders, missing, problems = [], [], [], []
-    scanned = 0
+    seen = 0
     for name in ((category,) if category else PRESET_CATEGORIES):
         searched.append(name)
         try:
@@ -663,23 +663,30 @@ def browse_presets(args, song):
             continue
         for child in children:
             label = str(_attr(child, "name", "") or "")
-            if wanted is not None and (
-                label.lower() != wanted or not bool(_attr(child, "is_folder", False))
-            ):
-                continue
-            scanned += 1
-            if scanned > MAX_SCAN:
+            seen += 1
+            if seen > MAX_SCAN:
                 problems.append("stopped after %d preset folders" % MAX_SCAN)
                 break
+            if wanted is not None and label.lower() != wanted:
+                continue
+            # Live marks a device's preset folder with is_folder False while still giving it
+            # children, so a name match must not require is_folder. Requiring it reported EQ Eight
+            # as missing on a real browser that holds it.
             folders.append((name, label, child))
         if problems:
             break
 
+    if wanted is not None and len(folders) > 1:
+        raise ScriptError(
+            "AMBIGUOUS_REF",
+            "%d preset folders are named %r (%s); pass category to choose one"
+            % (len(folders), device.strip(), ", ".join(name for name, _, _ in folders)),
+        )
     if wanted is not None and not folders:
         raise ScriptError(
             "NOT_FOUND",
-            "no preset folder named %r under %s (%d folders searched)"
-            % (device.strip(), ", ".join(searched), scanned),
+            "no preset folder named %r under %s (%d folders read)"
+            % (device.strip(), ", ".join(searched), seen),
         )
 
     if wanted is not None:

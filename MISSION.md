@@ -107,7 +107,7 @@ because `is_active` is read-only on this build.
 
 Modes, counting the five injected core tools the way `enableton modes` does: `sound` 9 → 14,
 `mix` 17 → 18; `auto` stays at the 34-tool cap. `uv run pytest -q` →
-**321 passed, 7 subtests**, including a new test that the executor refuses a multi-step plan
+**323 passed, 7 subtests**, including a new test that the executor refuses a multi-step plan
 containing `devices_delete`.
 
 **A real-Live find, fixed in `0.3.2` (Verified).** On loaded `0.3.1`,
@@ -118,6 +118,14 @@ afterwards: a named device is found wherever it sits, the paging total is real, 
 paid only by the folders on the page. Covered by two tests — 12 filler folders ahead of `EQ Eight`,
 and a 20-folder walk that pages to the end. The read-only browse worked against the real browser
 otherwise: 8 instrument folders and 8 audio-effect folders listed with real URIs and preset counts.
+
+On `0.3.2` the paging fix was **Verified** on the real browser — 93 preset folders across
+instruments, audio effects and MIDI effects, with `next_offset` walking the list — but `EQ Eight`
+was still `NOT_FOUND`, this time with `0 folders searched`. Live reports a device's preset folder
+as `is_folder: False` while still giving it children, and the named lookup required `is_folder`;
+the fake had modelled those folders as True, which is why 323 tests said otherwise. `0.3.3` matches
+by name, refuses a name present in two categories with `AMBIGUOUS_REF`, and the fake now reports
+`is_folder: False` so the suite can catch the same mistake.
 
 **A second real-Live find, fixed in `0.3.3` (Verified).** The first applied write came back
 `PRECONDITION_FAILED: applied trace did not match the dry-run trace`, and the executor rolled it

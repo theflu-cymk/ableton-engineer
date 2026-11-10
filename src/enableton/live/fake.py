@@ -256,7 +256,7 @@ class FakeBrowser:
     audio_effects: FakeBrowserItem = field(default_factory=lambda: FakeBrowserItem(
         "Audio Effects", True, False, "query:AudioEffects",
         [
-            FakeBrowserItem("EQ Eight", True, False, "query:AudioEffects#EQ Eight", [
+            FakeBrowserItem("EQ Eight", False, False, "query:AudioEffects#EQ Eight", [
                 FakeBrowserItem("Vocal EQ.adv", False, True, "file:Vocal EQ.adv"),
             ]),
         ],
