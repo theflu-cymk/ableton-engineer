@@ -235,7 +235,8 @@ Exactly one of the two is required; the undo token is unchanged.
 
 ### Track cleanup shipped (`0.4.0`)
 
-**Implemented, real-Live gate pending.** `tracks_delete` and `tracks_clean_empty` (catalogue 61 →
+**Implemented and real-Live Verified on `0.4.4` (evidence at the end of this section).**
+`tracks_delete` and `tracks_clean_empty` (catalogue 61 →
 63, both in `prep`) delete a resolved track or every empty one. Neither is reversible on this build,
 so both declare `reversible: false`: a dry run reports what would go, an apply without `confirm:
 true` raises `PRECONDITION_FAILED` and writes nothing, a Set that would be left with no tracks is
@@ -270,6 +271,22 @@ made Live rename the existing `16-…` and `21-…` tracks to `17-…` and `22-�
 so a name-by-name comparison of the track list is not a valid post-write check. `0.4.3` verifies a
 delete by the track count alone, because the follower-name check false-failed a correct delete on a
 renumbered track; the gate compares kind, clip counts and device counts instead of names.
+
+**Verified on `0.4.4`** (build `0e541593c21c`, `doctor` clean with no `stale`, on `SCRATCH fortnight`):
+
+- `tracks_clean_empty` over the whole Set listed only `8-Audio` — no group track, no return, no
+  false positive — with `requires_confirm: true`.
+- A duplicate of `8-Audio` landed at index 8 as `9-Audio`; renamed to a gate name, it was listed by
+  name and then deleted through `tracks_clean_empty` with `count: 1`, returning the Set to 34 rows
+  and the same structural projection (kind, session fill, arrangement clips, device count).
+- A duplicate of a clip-bearing track landed at index 2 as `3-Vocals …`; the `tracks_delete` dry run
+  reported 2 arrangement clips and 0 session clips, an apply without `confirm` returned
+  `PRECONDITION_FAILED` and wrote nothing, a named `tracks_clean_empty` returned
+  `PRECONDITION_FAILED` ("is not empty"), and the confirmed delete removed it and restored the
+  34-row structure exactly.
+- A group track (`REVocals`) was refused by `tracks_delete` with `PRECONDITION_FAILED` and stayed.
+- Every applied step went through `run_tool`, so the dry-run/apply trace check passed each time;
+  the Set was not saved, and Live's default audio-track renumbering was observed again.
 
 **Next:** the M4 catalogue accounting still needs its wrong rows corrected (`tracks_delete`,
 `tracks_clean_empty`, `ableton_undo` are implementable; `sections_move` is feasible via delete and
