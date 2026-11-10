@@ -54,6 +54,7 @@ class ManifestTests(unittest.TestCase):
              "devices.browse_presets", "devices.delete", "devices.move",
              "devices.read_parameters", "devices.set_macro", "devices.set_parameter",
              "library.browse", "library.folders",
+             "master.set_gain",
              "mix.routing_report",
              "notes.humanize", "notes.quantize",
              "notes.read", "notes.replace", "notes.scale_lock", "notes.strum", "notes.transform",

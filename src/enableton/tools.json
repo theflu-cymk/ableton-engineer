@@ -1689,6 +1689,28 @@
       "needs": [],
       "min_live": null,
       "cmd": "devices.read_parameters"
+    },
+    {
+      "name": "master_set_gain",
+      "domain": "master",
+      "summary": "Set the master fader, with the exact prior value as an undo token.",
+      "description": "Writes song.master_track.mixer_device.volume, the fader the snapshot does not carry and mix_levels_report therefore reports as unmeasured. The value is normalised 0..1 like a track fader and must sit inside the fader's own range. A dry run reports the current value, the target and both display strings without writing; the undo token restores the exact prior number. A Live build with no master track reports unsupported with the reason rather than pretending the write happened.",
+      "examples": ["pull the master down 1 dB", "set the master fader to 0.8", "restore the master fader"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "value": {"type": "number", "description": "The new fader value, normally 0 to 1."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {"type": "array", "items": {"type": "object"}}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "master.set_gain"
     }
   ]
 }

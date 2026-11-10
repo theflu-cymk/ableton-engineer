@@ -166,6 +166,7 @@
         "mix_headroom",
         "mix_routing_report",
         "master_chain_read",
+        "master_set_gain",
         "devices_read_chain",
         "devices_set_parameter",
         "tracks_list",

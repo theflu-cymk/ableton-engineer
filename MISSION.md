@@ -79,7 +79,7 @@ holds the old build in RAM until it restarts.
 build `15586a5c8528` with no `stale`, then each new write is exercised on `SCRATCH fortnight` with
 a dry run, an apply, a fresh read-back and an exact restore.
 
-### Device chain writes (2026-11-10, `0.3.4`)
+### Device chain writes (2026-11-10, `0.3.5`)
 
 **Implemented; the real-Live gate has not run.** Five tools, catalogue 52 → 57:
 
@@ -107,7 +107,7 @@ because `is_active` is read-only on this build.
 
 Modes, counting the five injected core tools the way `enableton modes` does: `sound` 9 → 14,
 `mix` 17 → 18; `auto` stays at the 34-tool cap. `uv run pytest -q` →
-**330 passed, 7 subtests**, including a new test that the executor refuses a multi-step plan
+**339 passed, 7 subtests**, including a new test that the executor refuses a multi-step plan
 containing `devices_delete`.
 
 **A real-Live find, fixed in `0.3.2` (Verified).** On loaded `0.3.1`,
@@ -144,11 +144,20 @@ display string, min, max, quantised flag and enabled flag — the read that make
 `inspect` 17 → 18, which is 15 and 23 with the five core tools. The next real-Live gate reads the
 parameters of `Utility` first, then writes one of them.
 
-**Next gate (Unverified until run):** with `doctor` reporting `0.3.3` and no `stale`,
-`devices_set_parameter` gets a dry run, an apply, a fresh read-back and an exact restore on
-`SCRATCH fortnight`; then `devices_set_macro` on a rack, `devices_move` in both directions, and
-`devices_browse_presets` against the real browser tree. `devices_delete` runs last, on a device
-whose loss would not matter.
+**Master fader (same build, `0.3.5`).** `master_set_gain` writes
+`song.master_track.mixer_device.volume`, the fader the snapshot does not carry and
+`mix_levels_report` therefore reports as unmeasured. The payload is identical in dry-run and apply
+modes, a read-back that disagrees with the request is a Live error, and the undo token carries the
+exact prior number. Catalogue 58 → 59; `mix` 18 → 19 with the five core tools. Nine new tests cover
+the dry run, apply, read-back, exact restore, range refusal, a Set with no master track, and the
+executor applying it for real.
+
+**Next gate (Unverified until run):** with `doctor` reporting `0.3.5` and no `stale`,
+`devices_read_parameters` names `Utility`'s parameters first, then `devices_set_parameter` gets a
+dry run, an apply, a fresh read-back and an exact restore on `SCRATCH fortnight`; then
+`devices_set_macro` on a rack, `devices_move` in both directions, `master_set_gain` with the same
+four steps, and `devices_browse_presets` against the real browser tree. `devices_delete` runs last,
+on a device whose loss would not matter.
 
 ### Tracks sends and name/colour (2026-11-10, `0.2.12`)
 

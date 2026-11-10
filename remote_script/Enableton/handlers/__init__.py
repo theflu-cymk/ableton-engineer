@@ -5,6 +5,7 @@ from . import (  # noqa: F401
     clips,
     devices,
     library,
+    master,
     mix,
     notes,
     sections,
