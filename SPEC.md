@@ -103,6 +103,13 @@ unavailable because the snapshot carries only the master device chain. Against t
 still does not exist, and the remaining Sets' warp columns are still claims to check. Treat the
 locator and device columns the same way.
 
+**Freeze-render trap, verified 2026-11-10 on `fortnight`.** A frozen MIDI track carries its rendered
+audio under `FreezeSequencer` as `<AudioClip>` elements. These are not user-visible clips: the file
+holds 50 of them across two frozen tracks, each with two markers, plus one `<MidiClip>` under a
+Groove. Counting them gives 301 clips / 108 audio / 587 markers; excluding freeze audio and Groove
+clips gives 250 / 58 / 487, exactly matching the one-snapshot Live read. Any `.als` comparison must
+skip `FreezeSequencer` clips and Groove clips or it will over-count audio and markers.
+
 **The User Library is not at `Documents\Ableton` on this machine.** Live's library is
 redirected to `C:\Users\brian\OneDrive\Attachments\Documentos\Ableton\User Library`, while the
 factory scripts stay under `C:\ProgramData\Ableton\Live 12 Suite\Resources`. A script installed at

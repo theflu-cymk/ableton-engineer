@@ -32,7 +32,7 @@ test should assert that, or every count in the spec is wrong by 3×.
 
 ## 2. State of the build (measured, not claimed)
 
-`uv run pytest -q` → **98 passed**. Committed through `e5a12db`.
+`uv run pytest -q` → **131 passed**. Report work committed through `1ea0512`.
 
 **The real-Live gate has been passed once (2026-11-09).** `uv run enableton status` returned a real
 summary from Live 12.2.5 — 4 tracks, 2 returns, 8 scenes, 120 BPM, 2 devices, `is_playing false` —
@@ -142,6 +142,25 @@ fader is reported unavailable because the snapshot carries only the master devic
 **Verified on `paper tiger heart update og*`:** 54 tracks, 54 faders measured, span 0.0 to -16.0 dB,
 no faders above unity, 14 muted, 1 soloed, no silent tracks. Suite **131 passed**. No Remote Script
 change, no restart.
+
+### Current-file acceptance read — `fortnight` (2026-11-10, `0.1.8`)
+
+The current Set is `fortnight*` (unsaved). Four reports — `inspect_structure`, `inspect_unused`,
+`mix_headroom`, `clips_warp_check` — shared one `SnapshotCache`; `cache.trace` held exactly **one**
+`snapshot.get` (375 ms, 250 clips, 32 tracks). The ≤ 1 read target therefore held across all four
+questions, not just one tool.
+
+**Verified data:** 32 tracks plus 2 returns, 137 arrangement and 113 Session clips, 250 clips total;
+58 audio clips with 487 warp markers, modes `beats` 56 / `complex` 1 / `complex_pro` 1, warping off
+43 and on 15, no flags; 34 faders spanning +4.0 to -16.8 dB, 20 muted, 0 soloed; 114 devices.
+
+**File reconciliation:** `Fortnight\fortnight Project\fortnight.als` parses as 301 clips, 108 audio
+and 587 markers, but 50 audio clips are `FreezeSequencer` renders on two frozen MIDI tracks (100
+markers), and one `MidiClip` sits under a Groove. Excluding those gives **250 clips / 58 audio / 487
+markers**, exactly matching Live, with modes 56 / 1 / 1. This is a file-scan trap, not a snapshot
+defect: future `.als` comparisons must exclude `FreezeSequencer` audio clips and Groove MIDI clips.
+
+This is another real Set, not the required 77-track remaster; M1 remains open on that fixture.
 
 | Area | On disk |
 |---|---|
