@@ -218,6 +218,9 @@ def structure(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Di
         )
 
     locators = data.get("locators") or []
+    # The master chain is outside ``tracks``, so it needs adding explicitly or the Set's device
+    # population reads 102 where the file holds 108.
+    master_devices = int((data.get("master_track") or {}).get("device_count") or 0)
     return {
         "set": {
             "name": song.get("name"),
@@ -233,7 +236,8 @@ def structure(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Di
         "signals": {
             "arrangement_clips": sum(len(_arrangement(t)) for t in tracks),
             "session_clips": sum(_session_count(t) for t in tracks),
-            "devices_total": sum(_device_total(t) for t in tracks),
+            "devices_total": sum(_device_total(t) for t in tracks) + master_devices,
+            "devices_master": master_devices,
             "named_sections": len([loc for loc in locators if loc.get("name")]),
             "locators_available": bool((data.get("captured") or {}).get("locators_available")),
             "duplicate_track_names": _duplicate_names(tracks),

@@ -97,6 +97,22 @@ def _count_devices(rows):
     return total
 
 
+def _master_devices(song):
+    """The master chain's devices, read through the same walk as any track.
+
+    ``song.master_track`` sits outside ``tracks`` and ``return_tracks``, so a snapshot that walks
+    only those two silently drops everything on the master: Crust Wumble's file holds 108 device
+    elements, 6 of them in ``MainTrack``. A missing attribute returns a reason, never a silent 0.
+    """
+    try:
+        master = song.master_track
+    except Exception as exc:  # noqa: BLE001 - the reason is the point
+        return [], False, "master_track: %s: %s" % (type(exc).__name__, exc)
+    if master is None:
+        return [], False, "master_track: None"
+    return _devices(master), True, None
+
+
 def _clip(clip):
     start = float(_attr(clip, "start_time", 0.0) or 0.0)
     end = float(_attr(clip, "end_time", start) or start)
@@ -213,6 +229,8 @@ def snapshot(args, song):
     session_clips = sum(row["session"]["filled"] for row in rows)
     devices = sum(len(row["devices"]) for row in rows)
     devices_total = sum(row["device_count"] for row in rows)
+    master_devices, master_available, master_reason = _master_devices(song)
+    master_total = _count_devices(master_devices)
 
     return {
         "song": {
@@ -232,6 +250,11 @@ def snapshot(args, song):
             "scene_count": len(scenes),
         },
         "tracks": rows,
+        "master_track": {
+            "available": master_available,
+            "devices": master_devices,
+            "device_count": master_total,
+        },
         "scenes": scenes,
         "locators": locators,
         "counts": {
@@ -242,12 +265,15 @@ def snapshot(args, song):
             "arrangement_clips": arrangement,
             "session_clips": session_clips,
             "devices": devices,
-            "devices_total": devices_total,
+            "devices_master": master_total,
+            "devices_total": devices_total + master_total,
             "empty_session_slots": sum(row["session"]["empty"] for row in rows),
         },
         "captured": {
             "locators_available": locator_attr is not None,
             "locators_attribute": locator_attr,
             "locators_reason": locator_reason,
+            "master_available": master_available,
+            "master_reason": master_reason,
         },
     }

@@ -213,6 +213,16 @@ class RealShapeTests(unittest.TestCase):
         self.assertEqual(row["devices_total"], 2)
         self.assertEqual(report["signals"]["devices_total"], 2)
 
+    def test_master_chain_counts_towards_the_set_total(self):
+        data = _snapshot([_track(0, devices=1)])
+        data["master_track"] = {"available": True, "device_count": 6, "devices": []}
+        report = structure(data, {})
+        self.assertEqual(report["signals"]["devices_master"], 6)
+        self.assertEqual(
+            report["signals"]["devices_total"], 7,
+            "Crust Wumble read 102 until the 6 master devices were added",
+        )
+
 
 class ToolRouterTests(unittest.TestCase):
     """A tool's output must match its description, whatever the command returns."""

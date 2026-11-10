@@ -56,10 +56,25 @@ one of them present, which is the point:
 Measured, not assumed: **every command performed exactly 1 live read** (five commands, `doctor`'s
 `ran` counter moving by +1 each time), so M1's ≤ 1 target holds for the tools that exist.
 
-Still open, both needing a Remote Script change and the full restart cycle: nested devices are
-invisible (18 top-level read, 22 group devices in the file), and `captured.locators_available`
-reports `False` on a Set whose locator list is genuinely empty — a false negative carrying no
-reason, which the unavailable-with-a-reason invariant forbids.
+### What the second real read found (2026-11-10, `Crust Wumble`, script `0.1.5`)
+
+**Verified.** The restart loaded `0.1.5`; `doctor` reported `build b1576889f228` with no `stale`
+line, so the digest gate from `AGENTS.md` closed on real evidence.
+
+- **The locator false negative was the attribute name.** `captured` came back
+  `locators_attribute: cue_points`, `locators_reason: null`, count 0 — `Song.locators` does not
+  answer on 12.2.5 and `cue_points` does. A direct parse of the file shows
+  `<Locators><Locators /></Locators>` and **zero** `<Locator>` elements, so 0 is the truth and the
+  fixture table's "1, unnamed" was a parser counting the empty wrapper.
+- **Devices: 102 read, 108 in the file.** The gap is the master chain. All 108 device elements sit
+  under `<Tracks>` (102) plus `<MainTrack>` (6: one `AudioEffectGroupDevice` and the five devices
+  inside it). `snapshot.get` walked `tracks` and `return_tracks` only, so the master was invisible.
+  `0.1.6` reads `song.master_track` through the same recursive walk and adds
+  `counts.devices_master`; `counts.devices_total` now includes it.
+
+**Unverified until the next restart:** the master read itself. `song.master_track` is assumed to
+answer on this build — if it does not, `captured.master_available` is `False` and
+`captured.master_reason` carries the exception, so the failure cannot masquerade as an empty master.
 
 | Area | On disk |
 |---|---|

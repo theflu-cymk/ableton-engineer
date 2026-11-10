@@ -98,6 +98,31 @@ class DeviceTreeTests(unittest.TestCase):
         self.assertEqual(data["counts"]["devices"], data["counts"]["devices_total"])
 
 
+class MasterChainTests(unittest.TestCase):
+    def test_master_devices_are_part_of_the_set(self):
+        rack = make_device("AudioEffectGroupDevice", "Master rack", chains=[[make_device("Limiter", "Lim")]])
+        data = handler.snapshot({}, make_song(master_track=Obj(devices=[rack, make_device("Eq8", "EQ")])))
+        self.assertEqual(data["master_track"]["device_count"], 3)
+        self.assertEqual(data["counts"]["devices_master"], 3)
+        self.assertEqual(data["counts"]["devices_total"], 3, "this Set has no track devices")
+        self.assertTrue(data["captured"]["master_available"])
+
+    def test_a_missing_master_is_reported_with_a_reason(self):
+        class _NoMaster:
+            def __init__(self, fields):
+                self.__dict__.update(fields)
+
+            @property
+            def master_track(self):
+                raise RuntimeError("not exposed")
+
+        song = _NoMaster(make_song().__dict__)
+        data = handler.snapshot({}, song)
+        self.assertEqual(data["counts"]["devices_master"], 0)
+        self.assertFalse(data["captured"]["master_available"])
+        self.assertIn("master_track: RuntimeError: not exposed", data["captured"]["master_reason"])
+
+
 class _NoLocators:
     """A Song whose locator attributes raise, as an unsupported build would."""
 
