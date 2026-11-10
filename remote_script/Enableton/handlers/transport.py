@@ -49,10 +49,13 @@ def locate(args, song):
     bar = _number(args["bar"], "bar")
     if bar < 1:
         raise ScriptError("BAD_ARGS", "bar must be >= 1")
-    song.current_song_time = _bar_to_beats(song, bar)
+    target = _bar_to_beats(song, bar)
+    song.current_song_time = target
+    # Live applies this setter on the next display tick, so an immediate readback can still
+    # report the previous position. Return the requested target; a follow-up snapshot confirms it.
     return {
         "bar": bar,
-        "position_beats": round(float(song.current_song_time), 4),
+        "position_beats": round(target, 4),
         "is_playing": bool(getattr(song, "is_playing", False)),
     }
 

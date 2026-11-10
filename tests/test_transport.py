@@ -1,7 +1,7 @@
 import unittest
 
 import support  # noqa: F401
-from enableton.live.fake import FakeAdapter
+from enableton.live.fake import FakeAdapter, FakeSong
 from enableton.tools import run_tool
 
 from Enableton.errors import ScriptError
@@ -28,6 +28,21 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(result["position_beats"], 16.0)
         self.assertFalse(result["is_playing"])
         self.assertEqual(self.adapter.song.current_song_time, 16.0)
+
+    def test_locate_returns_the_target_when_live_readback_lags(self):
+        class DeferredSong(FakeSong):
+            @property
+            def current_song_time(self):
+                return 0.5
+
+            @current_song_time.setter
+            def current_song_time(self, value):
+                self.pending_position = value
+
+        song = DeferredSong()
+        result = run_tool("transport_locate", {"bar": 3}, FakeAdapter(song))
+        self.assertEqual(result["position_beats"], 8.0)
+        self.assertEqual(song.pending_position, 8.0)
 
     def test_set_loop_updates_bounds_and_can_disable_the_loop(self):
         result = run_tool(
