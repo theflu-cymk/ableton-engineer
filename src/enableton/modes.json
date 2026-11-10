@@ -30,7 +30,10 @@
         "inspect_finding",
         "inspect_plan",
         "inspect_autofix",
-        "transport_play"
+        "transport_play",
+        "transport_stop",
+        "transport_locate",
+        "transport_set_loop"
       ],
       "default_scope": "set",
       "escalate": true,

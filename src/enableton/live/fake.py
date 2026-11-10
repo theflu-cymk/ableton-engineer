@@ -132,6 +132,9 @@ class FakeSong:
     def start_playing(self) -> None:
         self.is_playing = True
 
+    def stop_playing(self) -> None:
+        self.is_playing = False
+
 
 def build_song() -> FakeSong:
     """A small arrangement-first Set: 2 sections, one empty track, one empty scene.

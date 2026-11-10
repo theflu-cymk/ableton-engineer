@@ -535,6 +535,68 @@
       "needs": [],
       "min_live": null,
       "cmd": "transport.play"
+    },
+    {
+      "name": "transport_stop",
+      "domain": "transport",
+      "summary": "Stop the transport.",
+      "description": "Stops playback without moving the playhead. It is a direct transport action, not a plan, and is reversible by calling transport_play again. No arguments are accepted.",
+      "examples": ["stop playback", "pause there"],
+      "input": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "timeout_ms": 1500,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "transport.stop"
+    },
+    {
+      "name": "transport_locate",
+      "domain": "transport",
+      "summary": "Move the playhead to a bar without starting playback.",
+      "description": "Locates to a whole or fractional bar using the Set's time signature. It only moves the playhead; use transport_play to start auditioning. The position is in beats and is returned so the caller can inspect it.",
+      "examples": ["go to bar 64", "put the playhead at the drop"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "bar": {"type": "number", "minimum": 1, "description": "Bar number; 1 is the start."}
+        },
+        "required": ["bar"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 1500,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "transport.locate"
+    },
+    {
+      "name": "transport_set_loop",
+      "domain": "transport",
+      "summary": "Set or clear the transport loop range.",
+      "description": "Turns the loop on or off. When start_bar and end_bar are present they are set together and end_bar must be after start_bar. With no bounds, the existing range is kept and only the enabled flag changes. The result reports the resulting loop state.",
+      "examples": ["loop bars 33 to 49", "turn the loop off"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "enabled": {"type": "boolean"},
+          "start_bar": {"type": "number", "minimum": 1},
+          "end_bar": {"type": "number", "minimum": 2}
+        },
+        "required": ["enabled"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 1500,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "transport.set_loop"
     }
   ]
 }
