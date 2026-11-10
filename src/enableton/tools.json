@@ -1083,6 +1083,90 @@
       "needs": [],
       "min_live": null,
       "cmd": "clips.rename"
+    },
+    {
+      "name": "clips_set_warp_mode",
+      "domain": "clips",
+      "summary": "Set an audio clip's warp mode, with dry-run and exact restore.",
+      "description": "Changes one audio clip's warp mode by enum value or name (beats, tones, texture, re-pitch, complex, rex, complex_pro). The clip is resolved by track and clip name, optionally constrained by location and session slot; duplicate matches are refused. MIDI clips are unavailable with a reason. Warp on/off is not changed. Dry-run by default; applying returns an undo token that restores the exact previous mode.",
+      "examples": ["set the vocal clip to complex pro", "put this loop back on beats"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "clip": {"type": "string"},
+          "location": {"type": "string", "enum": ["arrangement", "session"]},
+          "slot": {"type": "integer", "minimum": 0, "description": "Zero-based session slot."},
+          "mode": {
+            "oneOf": [
+              {"type": "integer", "minimum": 0, "maximum": 6},
+              {"type": "string", "enum": ["beats", "tones", "texture", "re-pitch", "complex", "rex", "complex_pro"]}
+            ]
+          },
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "location": {"type": "string", "enum": ["arrangement", "session"]},
+                "slot": {"type": ["integer", "null"], "minimum": 0},
+                "start": {"type": ["number", "null"]},
+                "clip": {"type": "string"},
+                "mode": {"type": "integer", "minimum": 0, "maximum": 6}
+              },
+              "required": ["track_index", "location", "mode"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.set_warp_mode"
+    },
+    {
+      "name": "devices_bypass",
+      "domain": "devices",
+      "summary": "Bypass or re-enable a top-level device, with dry-run and exact restore.",
+      "description": "Changes one top-level device's active state on a named track. Resolve the track by name or Set index and the device by zero-based index or exact name; duplicate names are refused. Devices inside racks are not addressed by this tool. Dry-run by default; applying returns an undo token that restores the exact previous active state.",
+      "examples": ["bypass the de-clicker on the vocals", "turn the compressor back on"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "track_index": {"type": "integer", "minimum": 0, "description": "Set index; use instead of track when names are duplicated."},
+          "device": {"type": "string"},
+          "device_index": {"type": "integer", "minimum": 0, "description": "Zero-based top-level device index."},
+          "bypass": {"type": "boolean"},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "device_index": {"type": "integer", "minimum": 0},
+                "active": {"type": "boolean"}
+              },
+              "required": ["track_index", "device_index", "active"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "devices.bypass"
     }
   ]
 }

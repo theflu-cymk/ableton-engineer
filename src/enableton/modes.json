@@ -20,6 +20,7 @@
         "notes_read",
         "notes_overlaps",
         "devices_read_chain",
+        "devices_bypass",
         "master_chain_read",
         "sections_map",
         "clips_duplicate_range",
@@ -30,6 +31,7 @@
         "tracks_name_and_color",
         "tracks_gain_stage",
         "clips_rename",
+        "clips_set_warp_mode",
         "inspect_run",
         "inspect_report",
         "inspect_finding",
@@ -83,6 +85,7 @@
         "notes_scale_lock",
         "clips_rename",
         "clips_duplicate_range",
+        "clips_set_warp_mode",
         "inspect_finding"
       ],
       "default_scope": "selected_clip",

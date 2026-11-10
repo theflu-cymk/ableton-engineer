@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from ..dispatch import check_args, command
 from ..errors import ScriptError
+from .structure import WARP_MODES
 
 
 def _attr(obj, name, default=None):
@@ -323,4 +324,155 @@ def rename(args, song):
             "to": name,
         }],
         "undo": undo,
+    }
+
+
+_WARP_MODE_BY_NAME = {
+    name.replace("-", "_"): value for value, name in WARP_MODES.items()
+}
+
+
+def _warp_mode_value(value):
+    if isinstance(value, bool):
+        raise ScriptError("BAD_ARGS", "mode must be a warp-mode name or integer")
+    if isinstance(value, int):
+        if value not in WARP_MODES:
+            raise ScriptError("BAD_ARGS", "unknown warp mode %s" % (value,))
+        return value
+    if isinstance(value, str):
+        key = value.strip().lower().replace("-", "_").replace(" ", "_")
+        if key not in _WARP_MODE_BY_NAME:
+            raise ScriptError(
+                "BAD_ARGS",
+                "mode must be one of %s" % ", ".join(sorted(WARP_MODES.values())),
+            )
+        return _WARP_MODE_BY_NAME[key]
+    raise ScriptError("BAD_ARGS", "mode must be a warp-mode name or integer")
+
+
+def _warp_mode_state(clip):
+    mode = _attr(clip, "warp_mode", None)
+    if mode is None:
+        raise ScriptError(
+            "UNSUPPORTED", "clip %r does not expose a readable warp mode"
+            % (str(_attr(clip, "name", "")),),
+        )
+    try:
+        mode = int(mode)
+    except (TypeError, ValueError):
+        raise ScriptError(
+            "UNSUPPORTED", "clip %r has an unreadable warp mode"
+            % (str(_attr(clip, "name", "")),),
+        )
+    if mode not in WARP_MODES:
+        raise ScriptError(
+            "UNSUPPORTED", "clip %r has unknown warp mode %s"
+            % (str(_attr(clip, "name", "")), mode),
+        )
+    return mode
+
+
+@command("clips.set_warp_mode")
+def set_warp_mode(args, song):
+    check_args(args, allowed=(
+        "track", "clip", "location", "slot", "mode", "dry_run", "restore",
+    ))
+    dry_run = bool(args.get("dry_run", True))
+    restore = args.get("restore")
+    if restore is not None:
+        if any(key in args for key in ("track", "clip", "location", "slot", "mode")):
+            raise ScriptError("BAD_ARGS", "restore cannot be combined with a clip selection")
+        if not isinstance(restore, list) or not restore:
+            raise ScriptError("BAD_ARGS", "restore must be a non-empty list")
+        changes, missing = [], []
+        for entry in reversed(restore):
+            if not isinstance(entry, dict):
+                raise ScriptError("BAD_ARGS", "restore entries must be objects")
+            try:
+                track_index = int(entry["track_index"])
+                location = str(entry["location"])
+            except (KeyError, TypeError, ValueError):
+                raise ScriptError(
+                    "BAD_ARGS", "restore entries need track_index and location"
+                )
+            mode = _warp_mode_value(entry.get("mode"))
+            if track_index < 0 or track_index >= len(song.tracks):
+                raise ScriptError("NOT_FOUND", "no track at index %s" % (track_index,))
+            if location not in ("arrangement", "session"):
+                raise ScriptError("BAD_ARGS", "restore location must be arrangement or session")
+            track = song.tracks[track_index]
+            clip = _restore_clip(track, location, entry.get("slot"), entry.get("start"))
+            if clip is None:
+                missing.append({
+                    "track_index": track_index,
+                    "location": location,
+                    "slot": entry.get("slot"),
+                    "start": entry.get("start"),
+                })
+                continue
+            current = _warp_mode_state(clip)
+            if not dry_run:
+                clip.warp_mode = mode
+            changes.append({
+                "track": str(_attr(track, "name", "")),
+                "track_index": track_index,
+                "location": location,
+                "slot": entry.get("slot") if location == "session" else None,
+                "start": entry.get("start") if location == "arrangement" else None,
+                "clip": str(_attr(clip, "name", "")),
+                "from": current,
+                "to": mode,
+            })
+        return {
+            "dry_run": dry_run,
+            "restored": len(changes),
+            "changes": changes,
+            "missing": missing,
+        }
+
+    track_name = args.get("track")
+    clip_name = args.get("clip")
+    if not isinstance(track_name, str) or not track_name:
+        raise ScriptError("BAD_ARGS", "track must be a non-empty string")
+    if not isinstance(clip_name, str) or not clip_name:
+        raise ScriptError("BAD_ARGS", "clip must be a non-empty string")
+    if "mode" not in args:
+        raise ScriptError("BAD_ARGS", "mode is required")
+    mode = _warp_mode_value(args.get("mode"))
+    index, track, row = _resolve_clip(
+        song, track_name, clip_name, args.get("location"), args.get("slot")
+    )
+    clip = row[2]
+    if bool(_attr(clip, "is_midi_clip", False)):
+        raise ScriptError("UNSUPPORTED", "MIDI clips have no warp mode")
+    current = _warp_mode_state(clip)
+    warping = bool(_attr(clip, "warping", False))
+    if not dry_run:
+        try:
+            clip.warp_mode = mode
+        except Exception as exc:  # noqa: BLE001 - the Live reason belongs in the error
+            raise ScriptError(
+                "LIVE_ERROR", "could not set warp mode on %r: %s" % (clip_name, exc)
+            )
+    return {
+        "dry_run": dry_run,
+        "track": str(_attr(track, "name", "")),
+        "track_index": index,
+        "location": row[0],
+        "slot": row[1],
+        "start": row[3],
+        "clip": clip_name,
+        "warping": warping,
+        "from": current,
+        "to": mode,
+        "from_name": WARP_MODES.get(current),
+        "to_name": WARP_MODES.get(mode),
+        "undo": [{
+            "track_index": index,
+            "location": row[0],
+            "slot": row[1],
+            "start": row[3],
+            "clip": clip_name,
+            "mode": current,
+        }],
     }
