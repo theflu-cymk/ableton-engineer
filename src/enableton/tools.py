@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any, Callable, Dict, Optional
 
 from .manifest import load_manifest
+from .plans.executor import PlanError, PlanExecutor, Step
 from .protocol.codes import LiveError
 from .reports import (
     ReportError, levels, mix_headroom, notes_overlaps, structure, summary_from_snapshot, unused,
@@ -37,6 +38,7 @@ def run_tool(
     adapter: Any = None,
     catalogue: Optional[Dict[str, Any]] = None,
     cache: Optional[SnapshotCache] = None,
+    backup_root: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Run one tool by name, local or remote, with the manifest's own timeout."""
     catalogue = catalogue or load_manifest()
@@ -60,6 +62,42 @@ def run_tool(
             return handler(cache.get(), args)
         except ReportError as exc:
             raise LiveError("BAD_ARGS", str(exc))
+
+    # Bulk writes with a dry-run switch go through the M2 transaction path: preflight, a scratch
+    # copy before the first applied call, and rollback from the tool's own undo tokens.
+    if tool.writes and not args.get("dry_run", True) and "dry_run" in (
+        tool.input.get("properties") or {}
+    ):
+        try:
+            snapshot = cache.get()
+            set_path = (snapshot.get("song") or {}).get("file_path")
+            outcome = PlanExecutor(
+                adapter, set_path=set_path, backup_root=backup_root
+            ).apply([Step(name, args)])
+        except PlanError as exc:
+            raise LiveError(exc.code, exc.message, exc.detail)
+
+        cache.invalidate()
+        if outcome.get("already_applied"):
+            return dict(outcome["results"][-1])
+        if not outcome.get("applied"):
+            error = outcome.get("error") or {}
+            restore = outcome.get("restore") or {}
+            detail = {
+                "error": error,
+                "restore": restore,
+                "scratch_copy": outcome.get("scratch_copy"),
+            }
+            message = (
+                "write failed and was rolled back"
+                if restore.get("ok")
+                else "write failed; rollback needs attention"
+            )
+            raise LiveError("LIVE_ERROR", message, detail)
+
+        result = dict(outcome["results"][-1])
+        result["scratch_copy"] = outcome.get("scratch_copy")
+        return result
 
     result = adapter.call(tool.cmd, args, timeout_ms=tool.timeout_ms)
     if tool.writes:

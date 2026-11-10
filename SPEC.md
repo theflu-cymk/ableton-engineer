@@ -1068,6 +1068,10 @@ clips and returned 16 same-pitch collisions in 14 clips with a complete, non-tru
 `clips_duplicate_range`. *Accept:* dry-run trace matches applied trace; forced mid-plan failure
 restores state exactly (object-by-object diff); double-apply is a no-op.
 
+*Status (2026-11-10):* the executor, scratch-copy guard, dry-run trace and exact gain-stage
+rollback are implemented in `0.2.1`. `clips_duplicate_range` and the real scratch-Set write test
+remain pending; the current `fortnight` Set must not be used for writes.
+
 **M3 — Diagnostics.** Findings, phases, `inspect_run/plan/autofix`, `ableton_escalate`,
 `ableton_plan_apply`. *Accept:* count on the modes screen equals findings per mode before and after;
 autofix halts when count rises; `needs_listening` never auto-applies.

@@ -57,22 +57,55 @@ def list_tracks(args, song):
 
 @command("tracks.gain_stage")
 def gain_stage(args, song):
-    check_args(args, allowed=("tracks", "headroom_db", "dry_run"))
+    check_args(args, allowed=("tracks", "headroom_db", "dry_run", "restore"))
     headroom_db = float(args.get("headroom_db", -6.0))
     dry_run = bool(args.get("dry_run", True))
     wanted = list(args.get("tracks") or [])
+
+    # The executor replays a tool-owned undo token through this same command. A restore is
+    # deliberately separate from a gain-stage calculation: it puts back the exact values the
+    # previous call reported, not a new guess derived from a possibly changed peak.
+    restore = args.get("restore")
+    if restore is not None:
+        if wanted:
+            raise ScriptError("BAD_ARGS", "restore cannot be combined with tracks")
+        if not isinstance(restore, list):
+            raise ScriptError("BAD_ARGS", "restore must be a list")
+        restored = []
+        for entry in reversed(restore):
+            if not isinstance(entry, dict):
+                raise ScriptError("BAD_ARGS", "restore entries must be objects")
+            try:
+                index = int(entry["track_index"])
+                volume = float(entry["volume"])
+            except (KeyError, TypeError, ValueError):
+                raise ScriptError("BAD_ARGS", "restore entries need track_index and volume")
+            if index < 0 or index >= len(song.tracks):
+                raise ScriptError("NOT_FOUND", "no track at index %s" % (index,))
+            track = song.tracks[index]
+            current = _param(track, "volume", "volume")
+            if not dry_run:
+                _set_param(track, "volume", "volume", volume)
+            restored.append({
+                "track": track.name,
+                "track_index": index,
+                "from": round(current, 4),
+                "to": round(volume, 4),
+            })
+        return {"dry_run": dry_run, "restored": len(restored), "changes": restored, "skipped": []}
 
     if wanted:
         known = [track.name for track in song.tracks]
         missing = [name for name in wanted if name not in known]
         if missing:
             raise ScriptError("NOT_FOUND", "no track named %s" % ", ".join(missing))
-        targets = [track for track in song.tracks if track.name in wanted]
+        targets = [(index, track) for index, track in enumerate(song.tracks)
+                   if track.name in wanted]
     else:
-        targets = list(song.tracks)
+        targets = list(enumerate(song.tracks))
 
-    changes, skipped = [], []
-    for track in targets:
+    changes, skipped, undo = [], [], []
+    for index, track in targets:
         peak = getattr(track, "peak_db", None)
         if peak is None:
             skipped.append(track.name)
@@ -83,11 +116,13 @@ def gain_stage(args, song):
         new_volume = max(0.0, min(1.0, current * factor))
         changes.append({
             "track": track.name,
+            "track_index": index,
             "from": round(current, 4),
             "to": round(new_volume, 4),
             "offset_db": round(offset_db, 2),
         })
+        undo.append({"track_index": index, "volume": current})
         if not dry_run:
             _set_param(track, "volume", "volume", new_volume)
 
-    return {"dry_run": dry_run, "changes": changes, "skipped": skipped}
+    return {"dry_run": dry_run, "changes": changes, "skipped": skipped, "undo": undo}

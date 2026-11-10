@@ -100,6 +100,7 @@ class FakeTrack:
 @dataclass
 class FakeSong:
     name: str = "M0 Fake Set"
+    file_path: str = ""
     tempo: float = 140.0
     signature_numerator: int = 4
     signature_denominator: int = 4

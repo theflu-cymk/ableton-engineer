@@ -70,8 +70,9 @@ Rules only — the reasoning behind them lives in `SPEC.md` §3 and the module d
   (`MAX_QUEUED = 8`).
 - Tests never use port 9878. They bind port 0 and assert the bound port is not Live's, so the suite
   can run while Live is open.
-- Nothing in `src/` or `remote_script/` references the Sets path, and the write path (M2) does not
-  exist yet. Don't assume save/restore works because `SPEC.md` describes it.
+- Nothing in `src/` or `remote_script/` references the Sets path. The M2 safety executor exists
+  (`0.2.1`), but `clips_duplicate_range` and real scratch-Set write verification are still pending.
+  Don't assume full save/restore works because `SPEC.md` describes it.
 - `enableton serve` is a stub until M5: it prints a message and exits 0.
 - `doctor` and `status` need Live running with `Enableton` selected in a Control Surface slot
   (Preferences > Link, Tempo & MIDI). `hello` answers on the socket thread, so `connected yes` alone

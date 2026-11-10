@@ -5,6 +5,9 @@ the Set has no locators, peaks are declared unmeasured, and "unused" names only 
 observable.
 """
 
+import os
+import shutil
+import tempfile
 import unittest
 
 import support  # noqa: F401
@@ -474,14 +477,28 @@ class ToolRouterTests(unittest.TestCase):
         from enableton.state.snapshot import SnapshotCache
         from enableton.tools import run_tool
 
+        scratch_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, scratch_dir, True)
+        set_path = os.path.join(scratch_dir, "fortnight.als")
+        with open(set_path, "wb") as handle:
+            handle.write(b"fake als")
+        self.adapter.song.file_path = set_path
+
         cache = SnapshotCache(self.adapter)
         cache.get()
         epoch = cache.epoch
 
-        run_tool("tracks_gain_stage", {"dry_run": False}, self.adapter, cache=cache)
+        result = run_tool(
+            "tracks_gain_stage",
+            {"dry_run": False},
+            self.adapter,
+            cache=cache,
+            backup_root=os.path.join(scratch_dir, "backups"),
+        )
 
         self.assertEqual(cache.epoch, epoch + 1)
         self.assertLess(self.adapter.song.tracks[0].volume, 0.82)
+        self.assertTrue(os.path.isfile(result["scratch_copy"]))
 
     def test_mix_headroom_runs_from_the_snapshot(self):
         from enableton.tools import run_tool

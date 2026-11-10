@@ -186,7 +186,20 @@
         "properties": {
           "tracks": {"type": "array", "items": {"type": "string"}, "description": "Track names; omit for all."},
           "headroom_db": {"type": "number", "minimum": -24, "maximum": -1, "default": -6},
-          "dry_run": {"type": "boolean", "default": true}
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "description": "Internal rollback token returned by an applied gain stage.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "volume": {"type": "number", "minimum": 0, "maximum": 1}
+              },
+              "required": ["track_index", "volume"],
+              "additionalProperties": false
+            }
+          }
         },
         "additionalProperties": false
       },

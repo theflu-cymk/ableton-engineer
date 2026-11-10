@@ -443,6 +443,7 @@ def snapshot(args, song):
     warp_markers, warp_unreadable = _warp_totals(rows)
     (notes_read, note_overlaps, note_truncated, notes_unreadable,
      notes_sources, notes_reason) = _note_totals(rows)
+    file_path = _attr(song, "file_path", None)
 
     return {
         "song": {
@@ -460,6 +461,7 @@ def snapshot(args, song):
                 "enabled": bool(_attr(song, "loop", False)),
             },
             "scene_count": len(scenes),
+            "file_path": str(file_path) if file_path else None,
         },
         "tracks": rows,
         "master_track": {
