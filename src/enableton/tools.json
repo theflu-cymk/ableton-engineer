@@ -1010,7 +1010,7 @@
       "name": "tracks_name_and_color",
       "domain": "tracks",
       "summary": "Rename or recolour one track, with dry-run and exact restore.",
-      "description": "Changes a track's name, its colour, or both, resolving the track by name or by Set index (use the index when names are duplicated). Colour is a packed 24-bit RGB integer (0xRRGGBB), as Live reports it; Live's palette UI may display a nearby swatch. Dry-run by default; applying returns an undo token that restores the exact previous name and colour.",
+      "description": "Changes a track's name, its colour, or both, resolving the track by name or by Set index (use the index when names are duplicated). Colour is a packed 24-bit RGB integer (0xRRGGBB), as Live reports it; Live snaps a requested RGB to its nearest track colour, so read the track back to see the stored value. Dry-run by default; applying returns an undo token that restores the exact previous name and colour.",
       "examples": ["rename this track to lead", "make the drum track orange"],
       "input": {
         "type": "object",
