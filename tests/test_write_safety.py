@@ -99,6 +99,23 @@ class PlanSafetyTests(unittest.TestCase):
         self.assertFalse(second["applied"])
         self.assertEqual(self.adapter.song.tracks[0].volume, after_first)
 
+    def test_run_tool_retrying_the_same_duplicate_is_a_no_op(self):
+        from enableton.tools import run_tool
+
+        args = {"track": "Drums", "count": 1, "dry_run": False}
+        before = len(self.adapter.song.tracks)
+        first = run_tool(
+            "tracks_duplicate", args, self.adapter, backup_root=str(self.backups)
+        )
+        after_first = len(self.adapter.song.tracks)
+        second = run_tool(
+            "tracks_duplicate", dict(args), self.adapter, backup_root=str(self.backups)
+        )
+
+        self.assertEqual(after_first, before + 1)
+        self.assertEqual(len(self.adapter.song.tracks), after_first)
+        self.assertEqual(second["created"], first["created"])
+
     def test_restore_rejects_an_out_of_range_track(self):
         from Enableton.errors import ScriptError
 

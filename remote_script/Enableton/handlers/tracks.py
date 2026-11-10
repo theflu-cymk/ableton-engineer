@@ -24,6 +24,35 @@ def _set_param(track, name, fallback, value):
         setattr(track, fallback, value)
 
 
+def _named_tracks(song, names):
+    """Resolve names only when each one identifies exactly one track.
+
+    The bulk mixer writes used ``track.name in names``, so a duplicated name changed every
+    matching track. Duplicate names are a real finding in these Sets, and writing two tracks
+    when the caller named one is worse than refusing.
+    """
+    tracks = list(song.tracks)
+    matches = {}
+    for index, track in enumerate(tracks):
+        matches.setdefault(str(getattr(track, "name", "")), []).append((index, track))
+    missing = [name for name in names if name not in matches]
+    if missing:
+        raise ScriptError("NOT_FOUND", "no track named %s" % ", ".join(missing))
+    ambiguous = [name for name in names if len(matches[name]) > 1]
+    if ambiguous:
+        name = ambiguous[0]
+        raise ScriptError(
+            "AMBIGUOUS_REF",
+            "%d tracks are named %r; rename one before editing them"
+            % (len(matches[name]), name),
+        )
+    wanted = set(names)
+    return [
+        (index, track) for index, track in enumerate(tracks)
+        if str(getattr(track, "name", "")) in wanted
+    ]
+
+
 @command("track.list")
 def list_tracks(args, song):
     check_args(args, allowed=("offset", "limit"))
@@ -101,15 +130,9 @@ def set_volume(args, song):
         raise ScriptError("BAD_ARGS", "volume must be a number from 0 to 1")
 
     wanted = list(args.get("tracks") or [])
-    if wanted:
-        known = [track.name for track in song.tracks]
-        missing = [name for name in wanted if name not in known]
-        if missing:
-            raise ScriptError("NOT_FOUND", "no track named %s" % ", ".join(missing))
-        targets = [(index, track) for index, track in enumerate(song.tracks)
-                   if track.name in wanted]
-    else:
-        targets = list(enumerate(song.tracks))
+    targets = (
+        _named_tracks(song, wanted) if wanted else list(enumerate(song.tracks))
+    )
 
     changes, undo = [], []
     for index, track in targets:
@@ -165,15 +188,9 @@ def gain_stage(args, song):
             })
         return {"dry_run": dry_run, "restored": len(restored), "changes": restored, "skipped": []}
 
-    if wanted:
-        known = [track.name for track in song.tracks]
-        missing = [name for name in wanted if name not in known]
-        if missing:
-            raise ScriptError("NOT_FOUND", "no track named %s" % ", ".join(missing))
-        targets = [(index, track) for index, track in enumerate(song.tracks)
-                   if track.name in wanted]
-    else:
-        targets = list(enumerate(song.tracks))
+    targets = (
+        _named_tracks(song, wanted) if wanted else list(enumerate(song.tracks))
+    )
 
     changes, skipped, undo = [], [], []
     for index, track in targets:
@@ -242,15 +259,9 @@ def set_pan(args, song):
         raise ScriptError("BAD_ARGS", "pan must be a number from -1 to 1")
 
     wanted = list(args.get("tracks") or [])
-    if wanted:
-        known = [track.name for track in song.tracks]
-        missing = [name for name in wanted if name not in known]
-        if missing:
-            raise ScriptError("NOT_FOUND", "no track named %s" % ", ".join(missing))
-        targets = [(index, track) for index, track in enumerate(song.tracks)
-                   if track.name in wanted]
-    else:
-        targets = list(enumerate(song.tracks))
+    targets = (
+        _named_tracks(song, wanted) if wanted else list(enumerate(song.tracks))
+    )
 
     changes, undo = [], []
     for index, track in targets:

@@ -75,6 +75,7 @@ class PlanExecutor:
         scratch: Optional[ScratchCopy] = None,
         catalogue: Optional[Dict[str, Tool]] = None,
         transaction_store: Optional[Any] = None,
+        applied_slot: Optional[Dict[str, Any]] = None,
     ):
         self._adapter = adapter
         self._catalogue = catalogue or load_manifest()
@@ -82,6 +83,10 @@ class PlanExecutor:
         self._transactions = transaction_store
         self._set_path = set_path
         self._applied = {}  # type: Dict[str, Dict[str, Any]]
+        # A shared one-entry slot lets a new executor (one per run_tool call) recognise an
+        # immediate retry of the same write. It is replaced by any successful different write,
+        # so it cannot suppress a later intentional repeat.
+        self._slot = applied_slot
 
     def _resolve(self, steps: Sequence[Step]) -> List[Tuple[Step, Tool]]:
         resolved = []
@@ -159,6 +164,16 @@ class PlanExecutor:
         """Preflight, copy the Set, apply, verify the trace, and roll back on failure."""
         resolved = self._resolve(steps)
         key = _key(steps)
+        if self._slot is not None and self._slot.get("key") == key:
+            previous = self._slot.get("outcome") or {}
+            return {
+                "dry_run": False,
+                "applied": False,
+                "already_applied": True,
+                "trace": previous.get("trace", []),
+                "scratch_copy": previous.get("scratch_copy"),
+                "results": previous.get("results", []),
+            }
         if key in self._applied:
             previous = self._applied[key]
             return {
@@ -220,6 +235,9 @@ class PlanExecutor:
             "results": results,
         }
         self._applied[key] = outcome
+        if self._slot is not None:
+            self._slot.clear()
+            self._slot.update({"key": key, "outcome": outcome})
         if self._transactions is not None and self._set_path:
             entries = [
                 {"tool": step.tool, "cmd": tool.cmd, "undo": list(tokens)}

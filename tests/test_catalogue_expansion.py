@@ -12,6 +12,7 @@ from enableton.live.fake import (
     FakeAdapter,
     FakeLocator,
     FakeScene,
+    FakeTrack,
     build_song,
 )
 from enableton.manifest import load_manifest
@@ -204,6 +205,23 @@ class TrackExpansionTests(unittest.TestCase):
         preview = self.adapter.call("tracks.duplicate", {"track": "Drums", "count": 2})
         self.assertEqual([item["track_index"] for item in preview["created"]], [1, 2])
         self.assertEqual(len(self.adapter.song.tracks), 3)
+
+    def test_bulk_mixer_writes_refuse_duplicate_names(self):
+        song = self.adapter.song
+        song.tracks.append(FakeTrack("Drums", volume=0.31, pan=-0.2, peak_db=-3.0))
+        before = [(track.volume, track.pan) for track in song.tracks]
+        calls = (
+            ("tracks.set_volume", {"tracks": ["Drums"], "volume": 0.1}),
+            ("tracks.set_pan", {"tracks": ["Drums"], "pan": 0.9}),
+            ("tracks.gain_stage", {"tracks": ["Drums"], "headroom_db": -6}),
+        )
+        for cmd, args in calls:
+            for dry_run in (True, False):
+                with self.assertRaises(ScriptError) as ctx:
+                    self.adapter.call(cmd, dict(args, dry_run=dry_run))
+                self.assertEqual(ctx.exception.code, "AMBIGUOUS_REF", cmd)
+                self.assertIn("Drums", str(ctx.exception))
+        self.assertEqual([(track.volume, track.pan) for track in song.tracks], before)
 
     def test_duplicate_apply_and_restore(self):
         song = self.adapter.song

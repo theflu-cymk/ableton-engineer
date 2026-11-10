@@ -7,6 +7,8 @@ a single function stops the MCP layer, the CLI and the tests drifting on what a 
 
 from __future__ import annotations
 
+import threading
+import weakref
 from typing import Any, Callable, Dict, Optional
 
 from . import diagnostics, escalation
@@ -40,6 +42,30 @@ LOCAL = {
 #: Tools whose script command returns more than the tool promises. A tool's output must match its
 #: description, so projection happens here rather than in every caller.
 PROJECT = {"ableton_status": summary_from_snapshot}
+
+#: One applied outcome per (adapter, Set), used to recognise an immediate retry. A different
+#: successful write replaces the slot, and a successful undo clears it, so an intentional repeat
+#: after either still writes.
+_APPLIED_SLOTS = weakref.WeakKeyDictionary()
+_APPLIED_LOCK = threading.Lock()
+
+
+def _applied_slot(adapter: Any, set_path: Optional[str]) -> Optional[Dict[str, Any]]:
+    if adapter is None:
+        return None
+    with _APPLIED_LOCK:
+        by_set = _APPLIED_SLOTS.get(adapter)
+        if by_set is None:
+            by_set = {}
+            _APPLIED_SLOTS[adapter] = by_set
+        return by_set.setdefault(set_path or "", {})
+
+
+def _clear_applied_slots(adapter: Any) -> None:
+    if adapter is None:
+        return
+    with _APPLIED_LOCK:
+        _APPLIED_SLOTS.pop(adapter, None)
 
 
 def run_tool(
@@ -102,10 +128,12 @@ def run_tool(
             if name == "ableton_plan_discard":
                 return escalation.discard_plan(args, PlanStore(root=plan_root))
             if name == "ableton_undo":
-                return undo_transaction(
+                result = undo_transaction(
                     adapter, cache, args, catalogue,
                     TransactionStore(root=transaction_root),
                 )
+                _clear_applied_slots(adapter)
+                return result
             handler = LOCAL.get(name)
             if handler is None:
                 raise LiveError(
@@ -129,6 +157,7 @@ def run_tool(
             outcome = PlanExecutor(
                 adapter, set_path=set_path, backup_root=backup_root,
                 transaction_store=TransactionStore(root=transaction_root),
+                applied_slot=_applied_slot(adapter, set_path),
             ).apply([Step(name, args)])
         except PlanError as exc:
             raise LiveError(exc.code, exc.message, exc.detail)
