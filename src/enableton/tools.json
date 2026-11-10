@@ -1497,7 +1497,7 @@
       "name": "tracks_set_routing",
       "domain": "tracks",
       "summary": "Set a track's input or output routing, with dry-run and exact restore.",
-      "description": "Changes one track's input type, input channel, output type or output channel by Live's own display name, resolving each against the options the track reports. A name that does not match is refused with the available names. Live builds the channel list from the selected type, so when changing both, set the type first in a separate call. Dry-run by default; applying returns the previous names as an undo token.",
+      "description": "Changes one track's input type, input channel, output type or output channel by Live's own display name, resolving each against the options the track reports. A display name that matches several options, or a channel with no display name, must be addressed by Live's identifier; the error lists the qualified choices. Live builds the channel list from the selected type, so when changing both, set the type first in a separate call. Dry-run by default; applying returns the previous names and identifiers as an undo token, and restore resolves by identifier first.",
       "examples": ["route this track to the master", "send the bass to the drum bus", "change the input to Ext. In"],
       "input": {
         "type": "object",
@@ -1516,9 +1516,13 @@
               "properties": {
                 "track_index": {"type": "integer", "minimum": 0},
                 "input_type": {"type": ["string", "null"]},
+                "input_type_identifier": {"type": ["string", "null"]},
                 "input_channel": {"type": ["string", "null"]},
+                "input_channel_identifier": {"type": ["string", "null"]},
                 "output_type": {"type": ["string", "null"]},
-                "output_channel": {"type": ["string", "null"]}
+                "output_type_identifier": {"type": ["string", "null"]},
+                "output_channel": {"type": ["string", "null"]},
+                "output_channel_identifier": {"type": ["string", "null"]}
               },
               "required": ["track_index"],
               "additionalProperties": false
@@ -1588,7 +1592,7 @@
       "name": "mix_routing_report",
       "domain": "mix",
       "summary": "Every track's input and output routing, with unreadable rows flagged.",
-      "description": "Reads input and output type and channel live, in Live's own display names, plus how many options each track offers. Routing is read here rather than in the snapshot so a plain read does not pay for it. A track whose routing cannot be read carries the reason in its row and is listed in flagged; an empty output is flagged too, never reported as a clean route.",
+      "description": "Reads input and output type and channel live, in Live's own display names with Live's identifiers beside them, plus how many options each track offers. A channel with no display name reports its identifier instead of an object repr. Routing is read here rather than in the snapshot so a plain read does not pay for it. A track whose routing cannot be read carries the reason in its row and is listed in flagged; an empty output is flagged too, never reported as a clean route.",
       "examples": ["show me my routing", "is anything routed nowhere", "what feeds the drum bus"],
       "input": {
         "type": "object",

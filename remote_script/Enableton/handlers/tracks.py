@@ -846,15 +846,40 @@ def clean_empty(args, song):
     }
 
 
-def _routing_name(obj):
+def _routing_identifier(obj):
+    if obj is None:
+        return None
+    value = getattr(obj, "identifier", None)
+    if isinstance(value, str) and value:
+        return value
+    if value is not None and not isinstance(value, (dict, list)):
+        return str(value)
+    return None
+
+
+def _routing_label(obj):
     if obj is None:
         return None
     for name in ("display_name", "name"):
         value = getattr(obj, name, None)
         if isinstance(value, str) and value:
             return value
-    text = str(obj)
-    return text or None
+    return _routing_identifier(obj)
+
+
+def _routing_ref(obj):
+    return {
+        "name": _routing_label(obj),
+        "identifier": _routing_identifier(obj),
+    }
+
+
+def _routing_choice(obj):
+    label = _routing_label(obj)
+    identifier = _routing_identifier(obj)
+    if label and identifier and label != identifier:
+        return "%s [%s]" % (label, identifier)
+    return label or identifier or "?"
 
 
 def _routing_options(track, attribute, label):
@@ -871,20 +896,35 @@ def _routing_options(track, attribute, label):
 
 
 def _pick_routing(options, wanted, label):
-    matches = [option for option in options if _routing_name(option) == wanted]
+    wanted = str(wanted)
+    by_identifier = [
+        option for option in options if _routing_identifier(option) == wanted
+    ]
+    if len(by_identifier) == 1:
+        return by_identifier[0]
+    if len(by_identifier) > 1:
+        raise ScriptError(
+            "AMBIGUOUS_REF",
+            "%d %s options share the identifier %r" % (len(by_identifier), label, wanted),
+        )
+
+    matches = [option for option in options if _routing_label(option) == wanted]
     if not matches:
         matches = [
             option for option in options
-            if str(_routing_name(option) or "").casefold() == str(wanted).casefold()
+            if str(_routing_label(option) or "").casefold() == wanted.casefold()
+            or str(_routing_identifier(option) or "").casefold() == wanted.casefold()
         ]
     if not matches:
         raise ScriptError(
             "NOT_FOUND", "no %s named %r; available: %s"
-            % (label, wanted, ", ".join(sorted(str(_routing_name(o)) for o in options))),
+            % (label, wanted, ", ".join(sorted(_routing_choice(o) for o in options))),
         )
     if len(matches) > 1:
         raise ScriptError(
-            "AMBIGUOUS_REF", "%d %s options are named %r" % (len(matches), label, wanted)
+            "AMBIGUOUS_REF",
+            "%d %s options are named %r; use an identifier: %s"
+            % (len(matches), label, wanted, ", ".join(sorted(_routing_choice(o) for o in matches))),
         )
     return matches[0]
 
@@ -919,8 +959,12 @@ def set_routing(args, song):
         raise ScriptError("BAD_ARGS", "give at least one routing change")
     index, track = _one_track(song, track_name)
 
-    before = {field: _routing_name(getattr(track, attribute, None))
-              for field, attribute, _options, _label in _ROUTING_FIELDS}
+    before = {}
+    for field, attribute, _options, _label in _ROUTING_FIELDS:
+        ref = _routing_ref(getattr(track, attribute, None))
+        before[field] = ref["name"]
+        if ref["identifier"] is not None:
+            before[field + "_identifier"] = ref["identifier"]
     changes = []
     for field, attribute, options_attribute, label in _ROUTING_FIELDS:
         wanted = args.get(field)
@@ -931,10 +975,14 @@ def set_routing(args, song):
         choice = _pick_routing(
             _routing_options(track, options_attribute, label), wanted, label
         )
+        current = _routing_ref(getattr(track, attribute, None))
+        target = _routing_ref(choice)
         changes.append({
             "field": field,
-            "from": _routing_name(getattr(track, attribute, None)),
-            "to": _routing_name(choice),
+            "from": current["name"],
+            "from_identifier": current["identifier"],
+            "to": target["name"],
+            "to_identifier": target["identifier"],
         })
         if not dry_run:
             try:
@@ -970,7 +1018,8 @@ def _restore_routing(args, song, dry_run):
         track = song.tracks[index]
         restored = {}
         for field, attribute, options_attribute, label in _ROUTING_FIELDS:
-            wanted = entry.get(field)
+            identifier = entry.get(field + "_identifier")
+            wanted = identifier if identifier is not None else entry.get(field)
             if wanted is None:
                 continue
             try:
@@ -987,7 +1036,9 @@ def _restore_routing(args, song, dry_run):
                     raise ScriptError(
                         "UNSUPPORTED", "this Live build cannot set %s: %s" % (label, exc)
                     )
-            restored[field] = str(wanted)
+            restored[field] = _routing_label(choice)
+            if identifier is not None:
+                restored[field + "_identifier"] = identifier
         if restored:
             changes.append({
                 "track": str(getattr(track, "name", "")),

@@ -484,6 +484,15 @@ restore token for the channel fields. This invalidates the `mix_routing_report` 
 `tracks_set_routing` rows until the handler carries identifiers (the LOM's `identifier` field)
 and resolves restore by them.
 
+**`0.4.9` routing identifiers (Unverified until restart).** The handler now reads `identifier`
+beside `display_name`, uses the identifier when a channel has no display name instead of an object
+repr, carries both label and identifier in the report and undo token, and resolves restore by
+identifier first. `mix_routing_report` also derives each track's kind when Live does not expose
+`track_type`. The fake suite is **399 passed, 7 subtests**; that proves handler consistency, not
+that Live accepts the change. `0.4.9` is installed as repo build `68c44768f8d8`; the loaded
+`0.4.8` build `dc6e1b4e6405` is `stale`, so no real routing read or write has run on this build.
+No Set was written.
+
 **Gain staging cannot write on this build.** A dry `tracks_gain_stage` over the whole Set returned
 `changes: 0` and `skipped: 32`; every real `Track.peak_db` read was `None`. The audit's
 "`tracks_gain_stage` (0.2.1)" evidence was only the restore path (`0.85 -> 0.5` through a restore

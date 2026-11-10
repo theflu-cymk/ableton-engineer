@@ -18,6 +18,17 @@ def _attr(obj, name, default=None):
         return default
 
 
+def _identifier(value):
+    if value is None:
+        return None
+    identifier = _attr(value, "identifier", None)
+    if isinstance(identifier, str) and identifier:
+        return identifier
+    if identifier is not None and not isinstance(identifier, (dict, list)):
+        return str(identifier)
+    return None
+
+
 def _label(value):
     if value is None:
         return None
@@ -25,8 +36,23 @@ def _label(value):
         text = _attr(value, name, None)
         if isinstance(text, str) and text:
             return text
-    text = str(value)
-    return text or None
+    return _identifier(value)
+
+
+def _track_kind(song, track):
+    value = _attr(track, "track_type", None)
+    if isinstance(value, str) and value:
+        return value.lower()
+    if track is _attr(song, "master_track", None):
+        return "master"
+    returns = list(_attr(song, "return_tracks", []) or [])
+    if any(track is item for item in returns):
+        return "return"
+    if _attr(track, "is_foldable", False):
+        return "group"
+    if _attr(track, "has_midi_input", False) or _attr(track, "is_midi", False):
+        return "midi"
+    return "audio"
 
 
 def _routing(track):
@@ -38,7 +64,13 @@ def _routing(track):
         ("output_channel", "output_routing_channel"),
     ):
         try:
-            row[key] = _label(getattr(track, source))
+            value = getattr(track, source)
+            row[key] = _label(value)
+            identifier = _identifier(value)
+            if identifier is not None:
+                row[key + "_identifier"] = identifier
+            if row[key] is None:
+                problems.append("%s: no display name or identifier" % source)
         except Exception as exc:  # noqa: BLE001 - the reason is the answer
             row[key] = None
             problems.append("%s: %s" % (source, exc))
@@ -74,7 +106,7 @@ def routing_report(args, song):
         entry = {
             "index": index,
             "name": str(_attr(track, "name", "") or ""),
-            "type": str(_attr(track, "track_type", "") or "").lower(),
+            "type": _track_kind(song, track),
         }
         entry.update(_routing(track))
         items.append(entry)

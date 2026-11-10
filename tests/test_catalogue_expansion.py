@@ -11,6 +11,7 @@ import support  # noqa: F401
 from enableton.live.fake import (
     FakeAdapter,
     FakeLocator,
+    FakeRouting,
     FakeScene,
     FakeTrack,
     build_song,
@@ -269,6 +270,52 @@ class TrackExpansionTests(unittest.TestCase):
             self.adapter.song.tracks[1].output_routing_type.display_name, "Master"
         )
 
+    def test_routing_restores_an_empty_display_name_by_identifier(self):
+        track = self.adapter.song.tracks[0]
+        track.output_routing_channel = FakeRouting("", "Output1")
+        track.available_output_routing_channels = [
+            FakeRouting("", "Output1"),
+            FakeRouting("", "Output2"),
+        ]
+        applied = self.adapter.call("tracks.set_routing", {
+            "track": "Drums", "output_channel": "Output2", "dry_run": False,
+        })
+        self.assertEqual(track.output_routing_channel.identifier, "Output2")
+        self.assertEqual(applied["undo"][0]["output_channel"], "Output1")
+        self.assertEqual(applied["undo"][0]["output_channel_identifier"], "Output1")
+
+        self.adapter.call(
+            "tracks.set_routing", {"restore": applied["undo"], "dry_run": False}
+        )
+        self.assertEqual(track.output_routing_channel.identifier, "Output1")
+
+    def test_duplicate_routing_names_require_an_identifier(self):
+        track = self.adapter.song.tracks[0]
+        track.available_output_routing_types = [
+            FakeRouting("Main", "MainA"),
+            FakeRouting("Main", "MainB"),
+            FakeRouting("Master", "Master"),
+        ]
+        with self.assertRaises(ScriptError) as ctx:
+            self.adapter.call(
+                "tracks.set_routing", {"track": "Drums", "output_type": "Main"}
+            )
+        self.assertEqual(ctx.exception.code, "AMBIGUOUS_REF")
+        self.assertIn("MainA", str(ctx.exception))
+
+        applied = self.adapter.call("tracks.set_routing", {
+            "track": "Drums", "output_type": "MainB", "dry_run": False,
+        })
+        self.assertEqual(track.output_routing_type.identifier, "MainB")
+        self.assertEqual(applied["changes"][0]["to"], "Main")
+        self.assertEqual(applied["changes"][0]["to_identifier"], "MainB")
+        self.assertEqual(applied["undo"][0]["output_type_identifier"], "Master")
+
+        self.adapter.call(
+            "tracks.set_routing", {"restore": applied["undo"], "dry_run": False}
+        )
+        self.assertEqual(track.output_routing_type.identifier, "Master")
+
     def test_unknown_routing_name_lists_the_options(self):
         with self.assertRaises(ScriptError) as ctx:
             self.adapter.call(
@@ -365,11 +412,20 @@ class RoutingReportTests(unittest.TestCase):
         self.assertEqual(result["total"], len(build_song().tracks))
         row = result["items"][0]
         self.assertEqual(row["name"], "Drums")
+        self.assertEqual(row["type"], "midi")
         self.assertEqual(row["input_type"], "All Ins")
         self.assertEqual(row["input_channel"], "All Channels")
         self.assertEqual(row["output_type"], "Master")
         self.assertEqual(row["output_types"], 2)
         self.assertEqual(result["flagged"], [])
+
+    def test_report_falls_back_to_the_identifier_not_an_object_repr(self):
+        adapter = FakeAdapter()
+        adapter.song.tracks[0].output_routing_channel = FakeRouting("", "Output1")
+        row = adapter.call("mix.routing_report", {})["items"][0]
+        self.assertEqual(row["output_channel"], "Output1")
+        self.assertEqual(row["output_channel_identifier"], "Output1")
+        self.assertNotIn("object at", row["output_channel"])
 
     def test_paging_is_stable(self):
         first = FakeAdapter().call("mix.routing_report", {"limit": 2})
