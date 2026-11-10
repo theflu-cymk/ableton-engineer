@@ -33,7 +33,7 @@ test should assert that, or every count in the spec is wrong by 3×.
 
 ## 2. State of the build (measured, not claimed)
 
-`uv run pytest -q` → **205 passed, 7 subtests**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 acceptance gates are **real-Live verified on `0.2.3`**: duplicate dry-run matched apply, double-apply was a no-op, exact restore included the clip name, and a forced real mid-plan failure restored the arrangement object-for-object. M2 is complete. M3 is **complete and real-Live verified on `0.2.4`**: the three-fader autofix dropped findings from 25 to 22, a controlled count-rise probe halted and rolled back, `ableton_escalate` produced a stored plan that `ableton_plan_apply` executed from a separate CLI process, and `modes --findings` showed the per-mode counts before and after. All 14 needs-listening findings stayed out of every plan and apply. M4 is in progress: `ableton_guide` now returns the generated command sheet through the MCP tool surface, `enableton inspect`, `enableton plan` and `enableton run` are implemented, and `devices_read_chain`, `master_chain_read` and `sections_map` answer from one snapshot. The catalogue is now 27 tools in 2 modes. On real `0.2.5`, play/stop and loop set/clear worked, and loop state was restored; locate moved correctly but returned the stale position until the next display tick. `0.2.6` fixes that return and is installed, but Live still has `0.2.5` loaded.
+`uv run pytest -q` → **205 passed, 7 subtests**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 acceptance gates are **real-Live verified on `0.2.3`**: duplicate dry-run matched apply, double-apply was a no-op, exact restore included the clip name, and a forced real mid-plan failure restored the arrangement object-for-object. M2 is complete. M3 is **complete and real-Live verified on `0.2.4`**: the three-fader autofix dropped findings from 25 to 22, a controlled count-rise probe halted and rolled back, `ableton_escalate` produced a stored plan that `ableton_plan_apply` executed from a separate CLI process, and `modes --findings` showed the per-mode counts before and after. All 14 needs-listening findings stayed out of every plan and apply. M4 is in progress: `ableton_guide` now returns the generated command sheet through the MCP tool surface, `enableton inspect`, `enableton plan` and `enableton run` are implemented, and `devices_read_chain`, `master_chain_read` and `sections_map` answer from one snapshot. The catalogue is now 27 tools in 2 modes. **Real `0.2.6` is verified**: `doctor` reported script `0.2.6`, build `d9d5fefaad68`, no `stale`; play/stop, locate (bar 10 → 36 beats, confirmed by the following snapshot), loop set/clear, and loop/playhead restoration all passed.
 
 **The real-Live gate has been passed once (2026-11-09).** `uv run enableton status` returned a real
 summary from Live 12.2.5 — 4 tracks, 2 returns, 8 scenes, 120 BPM, 2 devices, `is_playing false` —
@@ -393,9 +393,8 @@ the surface. The catalogue is still 27 tools across 2 modes, so M4 is not comple
 
 The transport domain is complete in code: `transport_stop`, `transport_locate` and
 `transport_set_loop` join the existing `transport_play`, with closed arguments and eight focused
-tests. On real `0.2.5`, play/stop and loop set/clear worked; locate moved the playhead correctly but
-returned the previous position immediately, which a follow-up snapshot corrected. `0.2.6` returns
-the requested target instead and has a regression test for Live's one-tick readback lag. `setup
---force` installed `0.2.6`; `doctor` still reports the running `0.2.5` build (`d2c2b1ba72ee`)
-against the repo build (`d9d5fefaad68`), so the final real gate is **pending a Live restart**. The
-loop and playhead were restored after the `0.2.5` probe.
+tests. **Verified on real `0.2.6`:** `doctor` reported script `0.2.6`, build `d9d5fefaad68`, no
+`stale`; play/stop, locate, loop set/clear and restoration passed all 12 state checks.
+`transport_locate` returned the target 36 beats for bar 10 and the following snapshot confirmed it.
+The original loop (start 8.0, length 16.0, disabled) and playhead (0.0) were restored. The earlier
+`0.2.5` probe found Live's one-tick readback lag; `0.2.6` fixes it and has a regression test for it.
