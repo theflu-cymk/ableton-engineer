@@ -176,23 +176,43 @@ apply wrote nothing.
   `run_tool` raises with it, so the caller sees `PRECONDITION_FAILED` and the confirm instruction.
   Covered by a fake test; the real-Live confirmation needs the next restart.
 
-**Mix snapshots, built in `0.3.6` (Unverified).** `mix_snapshot_save` captures every track and
-return's volume, pan, sends, mute and solo, plus the master fader, into a small JSON file under
-`%APPDATA%\Enableton\mix`; `mix_snapshot_restore` applies a snapshot, or its own undo token, field
-by field. The restore preflights every target and refuses with nothing written when the Set's track
-names no longer match the snapshot's indexes; a write Live refuses reverts the fields the call
-already changed. Both tools load in `mix`, which is now 16 declared tools. The suite covers save,
-dry run, apply, exact undo, a renamed track, a removed track, a forced mid-restore failure revert,
-and payload equality between dry run and apply (**354 passed, 7 subtests**). The real-Live gate has
-not run: the read and write fallbacks follow the shapes `tracks.set_volume` and `master.set_gain`
-already use against Live, but that is reasoning, not evidence.
+**Gate run on real `0.3.6` (Verified).** `doctor` reported script `0.3.6`, build `f844ded966e5`, no
+`stale`. The Set was `SCRATCH fortnight`,
+`F:\ableton songs\Fortnight\fortnight Project\SCRATCH fortnight.als`.
+- `devices_set_macro` on `808 Core Kit` (track 11, `DRUMS | Remix 808 kit`, device 0): macro 1
+  resolved to the renamed parameter `Low Gain` at parameter index 1, value `63.35280227661133`.
+  Applied `0.25`, a fresh dry run read back `0.25`, and the undo token restored
+  `63.35280227661133` exactly. A real rack macro reports its own units, not 0..1.
+- `devices_delete` previewed `Flanger Rebound` on track 29
+  (`BASS | Riddim wobble + phase + flange [muted]`) with `reversible: false` and
+  `requires_confirm: true`; the unconfirmed apply was refused with `PRECONDITION_FAILED` and the
+  confirm instruction, and wrote nothing. A confirmed delete removed the duplicate at index 5,
+  taking the chain from 6 devices to 5 with a scratch copy first.
+- `master_set_gain` moved the master `0.85` → `0.55`, a fresh dry run read back `0.55`, and the
+  undo token restored `0.85`.
+- `mix_snapshot_save` wrote a snapshot of 32 tracks, 2 returns, 68 sends and 137 fields with no
+  unreadable field.
 
-**Next gate (Unverified until run):** restart onto `0.3.6` (`doctor` build must match, no `stale`),
-then on `SCRATCH fortnight`: `devices_move` on `Remove Mud` both ways, `devices_set_macro` macro 1
-on `808 Core Kit` with a fresh read-back and exact restore, the unconfirmed-delete refusal showing
-`PRECONDITION_FAILED`, one confirmed delete of a duplicate `Flanger Rebound`, `master_set_gain`
-with dry run → apply → read-back → restore, and a `mix_snapshot_save` → perturb two faders and a
-send → dry run → restore → undo round trip.
+**Two defects the gate found, fixed in `0.3.7` (Unverified until the next restart).**
+- `devices_move` worked backward (3 → 2) but not forward: `2 -> 3` was a no-op and `2 -> 4` landed
+  at 3. `Song.move_device` indexes the chain *before* the device is removed, so a forward move
+  needs the position raised by one. `_move` now compensates, verifies where the device landed on
+  whichever mover it used, and raises rather than reporting a move that did not happen; the
+  handler's own check caught the bad landing and rolled the failed attempt back. The fake mirrors
+  the pre-removal indexing (**357 passed, 7 subtests**).
+- `mix_snapshot_restore` compared rounded numbers: the snapshot stored four-decimal faders, so
+  Live's `0.794921875` came back as `0.7949` and a dry run reported eight changes where four were
+  real. Snapshots, change rows and undo tokens now carry the exact value. The four fields the
+  probe perturbed were put back and re-read as `0.85`, pan `0.0`, send `0.0`.
+
+**Open contract defect (Unverified).** `devices_set_macro`'s manifest still says the value is
+"normally 0 to 1", but a real rack macro uses its own units (`63.35` here). The tool works; its
+documentation is wrong and there is no 0..1 convenience argument yet.
+
+**Next gate (Unverified until run):** restart onto `0.3.7` (`doctor` build `e7ec4fdd86ec`, no
+`stale`), then on `SCRATCH fortnight`: `devices_move` forward and backward with the undo token each
+way, and a `mix_snapshot_save` → perturb two faders, a pan and a send → dry run exactly four
+changes → apply → zero changes → undo → four changes again.
 
 ### Tracks sends and name/colour (2026-11-10, `0.2.12`)
 
