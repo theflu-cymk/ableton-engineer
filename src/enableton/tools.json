@@ -92,6 +92,27 @@
       "cmd": null
     },
     {
+      "name": "clips_warp_check",
+      "domain": "clips",
+      "summary": "Warp state for every audio clip, with unreadable or empty data flagged.",
+      "description": "Checks every audio clip, in the Arrangement and in Session, against the snapshot's warp state: whether Warp is on, the warp mode, the marker count, and whether the marker vector could be read. Returns per-clip rows with flags for unreadable markers, zero markers and unknown modes, plus counts by flag and mode. Warping off is counted rather than flagged, and it does not judge whether a mode suits the material or whether markers sit on the grid; the snapshot carries counts, not positions.",
+      "examples": ["check my warp markers", "are any clips not warping", "which clips have bad warp data"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "offset": {"type": "integer", "minimum": 0, "default": 0},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 2000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
       "name": "tracks_list",
       "domain": "tracks",
       "summary": "List tracks with name, role, volume and pan.",

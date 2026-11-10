@@ -120,6 +120,18 @@ bytes**. The file holds the same 932 markers under its 299 `AudioClip` elements 
 distribution matches exactly (`{164: 1, 81: 1, 3: 93, 2: 204}`). This is a **substitute**, not the
 M1 acceptance fixture: the 77-track remaster has still not been loaded.
 
+### `clips_warp_check` (2026-11-10)
+
+The first missing M1 report is built: a snapshot-only report with paging, per-clip flags for
+unreadable markers, zero markers and unknown modes, and summaries of warp state and modes. Warping
+off is counted, not flagged — it is a legitimate state, and the snapshot cannot know whether a clip
+was meant to follow tempo.
+
+**Verified against `paper tiger heart update og*`:** 299 audio clips, 932 markers, 127 warping on and
+172 off, every mode `beats`, `flagged: 0`, `markers_unreadable: 0`. Suite **127 passed**. No Remote
+Script change, so no version bump or restart was needed — the report reads the snapshot that
+`0.1.8` already produces.
+
 | Area | On disk |
 |---|---|
 | server | `src/enableton/`: `cli.py`, `manifest.py`, `modes.json`, `modes.py`, `reports.py`, `setup.py`, `tools.json`, `tools.py`, plus `live/`, `protocol/`, `state/` packages |

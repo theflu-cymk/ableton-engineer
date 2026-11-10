@@ -11,13 +11,14 @@ from typing import Any, Callable, Dict, Optional
 
 from .manifest import load_manifest
 from .protocol.codes import LiveError
-from .reports import ReportError, levels, structure, summary_from_snapshot, unused
+from .reports import ReportError, levels, structure, summary_from_snapshot, unused, warp_check
 from .state.snapshot import SnapshotCache
 
 LOCAL = {
     "inspect_structure": structure,
     "inspect_unused": unused,
     "mix_levels_report": levels,
+    "clips_warp_check": warp_check,
 }  # type: Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, Any]]]
 
 #: Tools whose script command returns more than the tool promises. A tool's output must match its

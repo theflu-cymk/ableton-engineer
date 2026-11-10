@@ -345,3 +345,86 @@ def levels(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Dict[
             "note": "Peak levels need mix_meter_poll; this report never estimates them.",
         },
     }
+
+
+WARP_FLAGS = ("markers_unreadable", "no_markers", "mode_unknown")
+
+
+def _warp_row(track: Dict[str, Any], clip: Dict[str, Any], location: str) -> Dict[str, Any]:
+    markers = clip.get("warp_markers")
+    mode_name = clip.get("warp_mode_name")
+    flags = []
+    if markers is None:
+        flags.append("markers_unreadable")
+    elif markers == 0:
+        flags.append("no_markers")
+    if mode_name is None:
+        flags.append("mode_unknown")
+
+    row = {
+        "track": track.get("name"),
+        "track_index": track.get("index"),
+        "location": location,
+        "clip": clip.get("name"),
+        "warping": bool(clip.get("warping")),
+        "warp_mode": clip.get("warp_mode"),
+        "warp_mode_name": mode_name,
+        "warp_markers": markers,
+        "flags": flags,
+    }
+    if location == "session":
+        row["slot"] = clip.get("slot")
+    if markers is None:
+        row["warp_markers_reason"] = clip.get("warp_markers_reason")
+    return row
+
+
+def warp_check(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Warp state for every audio clip, with only defects the snapshot can prove.
+
+    Warping off is a legitimate choice, so it is counted rather than flagged. The flags are
+    deliberately narrow: a marker vector that could not be read, a vector with no markers at
+    all, and a mode whose name the build does not know. Marker positions and grid alignment are
+    not in the snapshot, so this report makes no claim about either.
+    """
+    args = dict(args or {})
+    _only(args, ("offset", "limit"))
+    offset, limit = _paging(args)
+
+    rows = []  # type: List[Dict[str, Any]]
+    for track in data.get("tracks") or []:
+        for clip in _arrangement(track):
+            if not clip.get("midi"):
+                rows.append(_warp_row(track, clip, "arrangement"))
+        for clip in (track.get("session") or {}).get("clips") or []:
+            if not clip.get("midi"):
+                rows.append(_warp_row(track, clip, "session"))
+
+    by_flag = {flag: 0 for flag in WARP_FLAGS}
+    for row in rows:
+        for flag in row["flags"]:
+            by_flag[flag] += 1
+
+    modes = {}  # type: Dict[str, int]
+    for row in rows:
+        name = row["warp_mode_name"] or "unknown"
+        modes[name] = modes.get(name, 0) + 1
+
+    page = _page(rows, offset, limit)
+    return {
+        "items": page["items"],
+        "total": page["total"],
+        "next_offset": page["next_offset"],
+        "summary": {
+            "audio_clips": len(rows),
+            "warping_on": sum(1 for row in rows if row["warping"]),
+            "warping_off": sum(1 for row in rows if not row["warping"]),
+            "flagged": sum(1 for row in rows if row["flags"]),
+            "by_flag": by_flag,
+            "modes": dict(sorted(modes.items())),
+            "warp_markers": sum(
+                row["warp_markers"] for row in rows if row["warp_markers"] is not None
+            ),
+            "unreadable": sum(1 for row in rows if row["warp_markers"] is None),
+        },
+    }

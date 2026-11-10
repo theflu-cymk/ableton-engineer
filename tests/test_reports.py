@@ -9,7 +9,9 @@ import unittest
 
 import support  # noqa: F401
 from enableton.live.fake import FakeAdapter, build_song
-from enableton.reports import ReportError, levels, structure, summary_from_snapshot, unused
+from enableton.reports import (
+    ReportError, levels, structure, summary_from_snapshot, unused, warp_check,
+)
 
 
 class ReportTests(unittest.TestCase):
@@ -123,6 +125,22 @@ def _clip(start, end):
     return {"name": "clip", "start": start, "end": end, "length": end - start, "midi": False}
 
 
+def _warp_clip(name="clip", warping=True, warp_mode=0, warp_mode_name="beats", markers=2, **extra):
+    clip = {
+        "name": name,
+        "start": 0.0,
+        "end": 4.0,
+        "length": 4.0,
+        "midi": False,
+        "warping": warping,
+        "warp_mode": warp_mode,
+        "warp_mode_name": warp_mode_name,
+        "warp_markers": markers,
+    }
+    clip.update(extra)
+    return clip
+
+
 def _track(index, name=None, kind="audio", clips=(), session=0, devices=0,
            volume=0.85, volume_str="0.0 dB"):
     return {
@@ -224,6 +242,75 @@ class RealShapeTests(unittest.TestCase):
         )
 
 
+class WarpCheckTests(unittest.TestCase):
+    def test_counts_warp_state_and_modes(self):
+        data = _snapshot([
+            _track(0, name="drums", clips=[
+                _warp_clip("a", warp_mode=4, warp_mode_name="complex", markers=3),
+            ]),
+            _track(1, name="bass", clips=[_warp_clip("b", warping=False, markers=2)]),
+        ])
+        report = warp_check(data, {})
+
+        self.assertEqual(report["total"], 2)
+        self.assertEqual(report["summary"]["audio_clips"], 2)
+        self.assertEqual(report["summary"]["warping_on"], 1)
+        self.assertEqual(report["summary"]["warping_off"], 1)
+        self.assertEqual(report["summary"]["flagged"], 0)
+        self.assertEqual(
+            report["summary"]["by_flag"],
+            {"markers_unreadable": 0, "no_markers": 0, "mode_unknown": 0},
+        )
+        self.assertEqual(report["summary"]["modes"], {"beats": 1, "complex": 1})
+        self.assertEqual(report["summary"]["warp_markers"], 5)
+
+    def test_flags_only_provable_defects(self):
+        data = _snapshot([
+            _track(0, clips=[
+                _warp_clip("unreadable", markers=None,
+                           warp_markers_reason="warp_markers: RuntimeError: nope"),
+                _warp_clip("empty", markers=0),
+                _warp_clip("mystery", warp_mode=6, warp_mode_name=None),
+            ]),
+        ])
+        report = warp_check(data, {})
+        rows = {row["clip"]: row for row in report["items"]}
+
+        self.assertEqual(rows["unreadable"]["flags"], ["markers_unreadable"])
+        self.assertEqual(rows["empty"]["flags"], ["no_markers"])
+        self.assertEqual(rows["mystery"]["flags"], ["mode_unknown"])
+        self.assertIn("RuntimeError", rows["unreadable"]["warp_markers_reason"])
+        self.assertEqual(report["summary"]["flagged"], 3)
+        self.assertEqual(
+            report["summary"]["by_flag"],
+            {"markers_unreadable": 1, "no_markers": 1, "mode_unknown": 1},
+        )
+        self.assertEqual(report["summary"]["unreadable"], 1)
+        self.assertEqual(report["summary"]["modes"], {"beats": 2, "unknown": 1})
+
+    def test_includes_session_clips_with_their_slot(self):
+        track = _track(0, name="sessions")
+        track["session"] = {"filled": 1, "empty": 0, "clips": [_warp_clip("loop", slot=3)]}
+        report = warp_check(_snapshot([track]), {})
+        row = report["items"][0]
+
+        self.assertEqual((row["location"], row["slot"], row["clip"]), ("session", 3, "loop"))
+
+    def test_pages(self):
+        data = _snapshot([_track(0, clips=[_warp_clip("a"), _warp_clip("b"), _warp_clip("c")])])
+        report = warp_check(data, {"offset": 1, "limit": 1})
+
+        self.assertEqual([row["clip"] for row in report["items"]], ["b"])
+        self.assertEqual(report["next_offset"], 2)
+        self.assertEqual(report["total"], 3)
+
+    def test_bad_arguments_are_rejected(self):
+        data = _snapshot([])
+        for args in ({"limit": 0}, {"offset": -1}, {"bogus": 1}):
+            with self.assertRaises(ReportError, msg=repr(args)):
+                warp_check(data, args)
+
+
 class ToolRouterTests(unittest.TestCase):
     """A tool's output must match its description, whatever the command returns."""
 
@@ -266,6 +353,14 @@ class ToolRouterTests(unittest.TestCase):
 
         self.assertEqual(cache.epoch, epoch + 1)
         self.assertLess(self.adapter.song.tracks[0].volume, 0.82)
+
+    def test_warp_check_runs_from_the_snapshot(self):
+        from enableton.tools import run_tool
+
+        result = run_tool("clips_warp_check", {}, self.adapter)
+
+        self.assertEqual(result["summary"]["audio_clips"], 2)
+        self.assertEqual(result["summary"]["flagged"], 2)
 
     def test_a_read_does_not_invalidate(self):
         from enableton.state.snapshot import SnapshotCache

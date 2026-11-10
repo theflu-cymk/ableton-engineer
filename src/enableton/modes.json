@@ -9,6 +9,7 @@
         "inspect_structure",
         "inspect_unused",
         "mix_levels_report",
+        "clips_warp_check",
         "tracks_list",
         "tracks_gain_stage",
         "transport_play"
@@ -24,6 +25,7 @@
         "inspect_structure",
         "inspect_unused",
         "mix_levels_report",
+        "clips_warp_check",
         "tracks_list"
       ],
       "default_scope": "set",
