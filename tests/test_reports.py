@@ -38,6 +38,13 @@ class ReportTests(unittest.TestCase):
         self.assertEqual([d["class"] for d in drums["devices"]], ["Eq8", "GlueCompressor"])
         self.assertFalse(drums["devices"][0]["plugin"])
 
+    def test_summary_passes_the_locator_count_through_and_flags_readability(self):
+        data = dict(self.data)
+        data["captured"] = {"locators_available": False}
+        summary = summary_from_snapshot(data)
+        self.assertEqual(summary["locators"], 0, "an empty read is still the reported count")
+        self.assertFalse(summary["locators_available"])
+
     def test_summary_is_compact(self):
         summary = summary_from_snapshot(self.data)
         self.assertEqual(summary["tracks"], 3)
@@ -110,6 +117,91 @@ class ReportTests(unittest.TestCase):
                 structure(self.data, args)
         with self.assertRaises(ReportError):
             unused(self.data, {"anything": 1})
+
+
+def _clip(start, end):
+    return {"name": "clip", "start": start, "end": end, "length": end - start, "midi": False}
+
+
+def _track(index, name=None, kind="audio", clips=(), session=0, devices=0,
+           volume=0.85, volume_str="0.0 dB"):
+    return {
+        "index": index,
+        "name": name or "track%d" % index,
+        "kind": kind,
+        "group": None,
+        "volume": volume,
+        "volume_str": volume_str,
+        "pan": 0.0,
+        "mute": False,
+        "solo": False,
+        "arm": False,
+        "devices": [{"index": i, "name": "d", "class": "Eq8", "plugin": False,
+                     "active": True} for i in range(devices)],
+        "session": {"filled": session, "empty": 0, "clips": []},
+        "arrangement": list(clips),
+    }
+
+
+def _snapshot(tracks):
+    return {
+        "song": {"name": "set", "tempo": 120.0, "signature": [4, 4],
+                 "is_playing": False, "current_song_time": 0.0},
+        "tracks": list(tracks),
+        "scenes": [],
+        "locators": [],
+        "counts": {
+            "tracks": len(tracks), "returns": 0, "scenes": 0, "locators": 0,
+            "arrangement_clips": sum(len(t["arrangement"]) for t in tracks),
+            "session_clips": sum(t["session"]["filled"] for t in tracks),
+            "devices": sum(len(t["devices"]) for t in tracks),
+            "empty_session_slots": 0,
+        },
+        "captured": {"locators_available": True},
+    }
+
+
+class RealShapeTests(unittest.TestCase):
+    """Regressions found by reading Crust Wumble (17 tracks, 315 arrangement clips) for real.
+
+    Every one of these passed a green suite first. The fake Set was too tidy to contain a clip
+    ending mid-bar, a clip long enough for its bar incidences to outnumber clips, a fader at
+    Live's 0.85 unity, or return tracks that hold no clips by design.
+    """
+
+    def test_bars_reach_the_bar_the_last_clip_ends_in(self):
+        report = structure(_snapshot([_track(0, clips=[_clip(0.0, 383.99)])]), {})
+        section = report["sections"]["items"][0]
+        self.assertEqual(report["bars"], 96)
+        self.assertEqual(section["end_bar"], 96, "bars must agree with the section printed")
+
+    def test_section_clips_count_clips_not_bar_incidences(self):
+        report = structure(_snapshot([_track(0, clips=[_clip(0.0, 16.0), _clip(16.0, 20.0)])]), {})
+        section = report["sections"]["items"][0]
+        self.assertEqual(section["clips"], 2)
+        self.assertEqual(section["clip_spans"], 5, "4 bars plus 1 bar of incidence")
+        self.assertEqual(section["clips"], report["signals"]["arrangement_clips"])
+
+    def test_unity_flag_reads_the_display_string(self):
+        data = _snapshot([
+            _track(0, name="unity", volume=0.85, volume_str="0.0 dB"),
+            _track(1, name="trimmed", volume=0.72, volume_str="-5.2 dB"),
+        ])
+        self.assertEqual(levels(data, {})["flags"]["at_unity"], ["unity"])
+
+    def test_unity_flag_falls_back_to_the_fader_curve(self):
+        data = _snapshot([_track(0, name="unity", volume=0.85, volume_str=None)])
+        self.assertEqual(levels(data, {})["flags"]["at_unity"], ["unity"])
+
+    def test_return_tracks_are_buses_not_waste(self):
+        data = _snapshot([
+            _track(0, name="14-Audio"),
+            _track(1, name="A-Reverb", kind="return"),
+            _track(2, name="B-Delay", kind="return"),
+        ])
+        report = unused(data, {})
+        self.assertEqual(report["tracks_without_clips"], ["14-Audio"])
+        self.assertEqual(report["total"], 1)
 
 
 class ToolRouterTests(unittest.TestCase):

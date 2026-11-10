@@ -69,6 +69,14 @@ parsed directly as gzipped XML. Four inspected in detail:
 | paper tiger heart update og | 54 | 150 | 8 | 1, unnamed | 932 | 94 (43) |
 | paper tiger heart remaster | 77 | 150 | 8 | 1, unnamed | 1825 | 157 (40) |
 
+**Verified 2026-11-09 against the running Live** (`uv run enableton status` + `inspect_structure` on
+`Crust Wumble`): 17 tracks plus 2 return tracks — the 19 above counts the returns — 120 BPM, 8
+scenes, **0 locators** and **18 devices**. The file's `<Locators>` block is empty, so the "1, unnamed
+locator" above was never a property of this Set. The device count differs because the snapshot reads
+top-level devices only while the file carries 22 group-device elements, so 108 is the recursive
+figure this build does not produce yet. Warp markers (930) are **unmeasured**: `clips_warp_check`
+does not exist. Treat the locator and device columns as claims to check, not facts.
+
 **The User Library is not at `Documents\Ableton` on this machine.** Live's library is
 redirected to `C:\Users\brian\OneDrive\Attachments\Documentos\Ableton\User Library`, while the
 factory scripts stay under `C:\ProgramData\Ableton\Live 12 Suite\Resources`. A script installed at

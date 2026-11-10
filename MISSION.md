@@ -41,6 +41,26 @@ advancing between two `doctor` calls (432 → 437). That is one command's worth 
 untitled Set: enough to prove the transport, the main-thread queue and `resolve_song`, not enough to
 call M1 done.
 
+### What the first real read found (2026-11-09, `Crust Wumble`)
+
+Four defects that only real material exposed, each fixed with a test. The suite was green with every
+one of them present, which is the point:
+
+| Defect | Symptom on the real Set | Fix |
+|---|---|---|
+| bars floored instead of rounded up | `bars: 95` beside a section ending at bar 96 | `math.ceil` in `_total_bars` |
+| section `clips` counted bar incidences | 520 "clips" in a Set holding 315 | distinct `clips` + `clip_spans` |
+| "unity" tested `volume >= 0.999` | flag listed nothing; Live's 0 dB is 0.85 | read `str_for_value`, fall back to 0.85 |
+| return tracks counted as waste | A-Reverb and B-Delay reported unused | `kind == "return"` excluded |
+
+Measured, not assumed: **every command performed exactly 1 live read** (five commands, `doctor`'s
+`ran` counter moving by +1 each time), so M1's ≤ 1 target holds for the tools that exist.
+
+Still open, both needing a Remote Script change and the full restart cycle: nested devices are
+invisible (18 top-level read, 22 group devices in the file), and `captured.locators_available`
+reports `False` on a Set whose locator list is genuinely empty — a false negative carrying no
+reason, which the unavailable-with-a-reason invariant forbids.
+
 | Area | On disk |
 |---|---|
 | server | `src/enableton/`: `cli.py`, `manifest.py`, `modes.json`, `modes.py`, `reports.py`, `setup.py`, `tools.json`, `tools.py`, plus `live/`, `protocol/`, `state/` packages |

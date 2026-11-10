@@ -11,10 +11,16 @@ list exists.
 
 from __future__ import annotations
 
+import math
+import re
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 DEFAULT_PAGE = 50
 MAX_PAGE = 200
+
+# Live's fader position for 0.0 dB. Verified against Crust Wumble, where every track reports
+# volume 0.85 next to the display string "0.0 dB". A >= 1.0 test for "unity" can never fire.
+UNITY_VOLUME = 0.85
 
 
 class ReportError(ValueError):
@@ -51,6 +57,7 @@ def summary_from_snapshot(data: Dict[str, Any]) -> Dict[str, Any]:
     """The compact answer for ``ableton_status``, so the tool never dumps a whole Set."""
     song = data.get("song") or {}
     counts = data.get("counts") or {}
+    captured = data.get("captured") or {}
     return {
         "name": song.get("name"),
         "tempo": song.get("tempo"),
@@ -59,6 +66,10 @@ def summary_from_snapshot(data: Dict[str, Any]) -> Dict[str, Any]:
         "returns": counts.get("returns"),
         "scenes": counts.get("scenes"),
         "locators": counts.get("locators"),
+        # Additive, not a rewrite: the count stands, but a reader can see whether the build
+        # could read locators at all. Crust Wumble has none (its .als holds an empty <Locators>),
+        # yet the script reports False — a false negative we have not yet explained.
+        "locators_available": bool(captured.get("locators_available")),
         "arrangement_clips": counts.get("arrangement_clips"),
         "session_clips": counts.get("session_clips"),
         "devices": counts.get("devices"),
@@ -91,8 +102,13 @@ def _sections(tracks: Sequence[Dict[str, Any]], per_bar: float) -> List[Dict[str
 
     This is the honest read of an arrangement-first Set: there are no locators to trust, so a
     section is a run of bars that actually holds clips, and a gap is a real gap.
+
+    ``clips`` counts distinct clips overlapping the section; ``clip_spans`` counts bar
+    incidences, so a four-bar clip contributes 4. These were one field until Crust Wumble
+    printed 520 clips against a Set holding 315.
     """
     occupancy = {}  # type: Dict[int, Dict[str, Any]]
+    spans = []  # type: List[Tuple[int, int]]
     for track in tracks:
         for clip in _arrangement(track):
             start = float(clip.get("start") or 0.0)
@@ -101,9 +117,10 @@ def _sections(tracks: Sequence[Dict[str, Any]], per_bar: float) -> List[Dict[str
                 continue
             first = int(start // per_bar) + 1
             last = int((end - 1e-6) // per_bar) + 1
+            spans.append((first, last))
             for bar in range(first, last + 1):
-                slot = occupancy.setdefault(bar, {"clips": 0, "tracks": set()})
-                slot["clips"] += 1
+                slot = occupancy.setdefault(bar, {"spans": 0, "tracks": set()})
+                slot["spans"] += 1
                 slot["tracks"].add(track.get("index"))
 
     if not occupancy:
@@ -126,7 +143,10 @@ def _sections(tracks: Sequence[Dict[str, Any]], per_bar: float) -> List[Dict[str
                 "start_bar": run[0],
                 "end_bar": run[-1],
                 "bars": len(run),
-                "clips": sum(occupancy[bar]["clips"] for bar in run),
+                "clips": sum(
+                    1 for first, last in spans if first <= run[-1] and last >= run[0]
+                ),
+                "clip_spans": sum(occupancy[bar]["spans"] for bar in run),
                 "tracks": len(set().union(*(occupancy[bar]["tracks"] for bar in run))),
             }
         )
@@ -134,11 +154,18 @@ def _sections(tracks: Sequence[Dict[str, Any]], per_bar: float) -> List[Dict[str
 
 
 def _total_bars(tracks: Sequence[Dict[str, Any]], per_bar: float) -> int:
+    """Bars the arrangement reaches, rounded up.
+
+    A clip ending at beat 383.99 is still inside bar 96, so this is a ceiling. Flooring it made
+    Crust Wumble report ``bars: 95`` in the same object as a section ending at bar 96.
+    """
     end = 0.0
     for track in tracks:
         for clip in _arrangement(track):
             end = max(end, float(clip.get("end") or 0.0))
-    return int((end + 1e-6) // per_bar) if end else 0
+    if end <= 0:
+        return 0
+    return int(math.ceil(end / per_bar))
 
 
 def _duplicate_names(tracks: Sequence[Dict[str, Any]]) -> Dict[str, List[Any]]:
@@ -203,11 +230,15 @@ def unused(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Dict[
 
     Deliberately not "clips that were never launched": that is not observable through the LOM,
     and a report that guesses it would be worse than no report.
+
+    Return tracks are buses: they hold no clips and no session slots by design, so they are not
+    waste. Crust Wumble's A-Reverb and B-Delay were reported as unused tracks on the first real
+    read of a Set with 17 audio and MIDI tracks.
     """
     args = dict(args or {})
     _only(args, ())
 
-    tracks = data.get("tracks") or []
+    tracks = [t for t in (data.get("tracks") or []) if t.get("kind") != "return"]
     scenes = data.get("scenes") or []
 
     without_clips = [
@@ -233,6 +264,19 @@ def unused(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Dict[
         "named_sections": len([loc for loc in (data.get("locators") or []) if loc.get("name")]),
         "total": len(without_clips) + len(empty_scenes) + len(duplicates),
     }
+
+
+def _at_unity(row: Dict[str, Any]) -> bool:
+    """Whether a fader sits at 0.0 dB.
+
+    Prefer the display string Live computes (``str_for_value``), because the raw 0..1 position
+    depends on the fader curve; fall back to the curve position only when a backend omits it.
+    """
+    text = row.get("volume_str")
+    if isinstance(text, str) and text.strip():
+        return re.match(r"^[+-]?0\.0+ dB$", text.strip()) is not None
+    value = row.get("volume")
+    return value is not None and abs(float(value) - UNITY_VOLUME) <= 0.005
 
 
 def levels(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -271,7 +315,7 @@ def levels(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Dict[
         "flags": {
             "muted": named(lambda row: row["mute"]),
             "soloed": named(lambda row: row["solo"]),
-            "at_unity": named(lambda row: row["volume"] is not None and row["volume"] >= 0.999),
+            "at_unity": named(_at_unity),
             "silent": named(lambda row: row["volume"] is not None and row["volume"] <= 0.001),
             "duplicate_names": _duplicate_names(tracks),
         },
