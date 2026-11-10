@@ -100,6 +100,30 @@ class UndoToolTests(unittest.TestCase):
             [("intro", 0.0), ("drop", 16.0)],
         )
 
+    def test_create_and_delete_survive_the_executor_trace_check(self):
+        created = run_tool(
+            "sections_create_locators",
+            {"sections": [{"name": "gate", "bar": 2}], "dry_run": False},
+            self.adapter,
+            backup_root=self.backups,
+            transaction_root=self.transactions,
+        )
+        self.assertEqual(created["created"][0]["time"], 4.0)
+        self.assertEqual(
+            [(locator.name, locator.time) for locator in self.adapter.song.locators],
+            [("gate", 4.0)],
+        )
+
+        deleted = run_tool(
+            "sections_delete",
+            {"names": ["gate"], "dry_run": False},
+            self.adapter,
+            backup_root=self.backups,
+            transaction_root=self.transactions,
+        )
+        self.assertEqual(deleted["deleted"], 1)
+        self.assertEqual(self.adapter.song.locators, [])
+
     def test_nothing_to_undo_is_a_precondition(self):
         with self.assertRaises(LiveError) as ctx:
             run_tool(
