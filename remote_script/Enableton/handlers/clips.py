@@ -181,3 +181,146 @@ def duplicate_range(args, song):
         "skipped": skipped,
         "undo": undo,
     }
+
+
+def _one_track(song, name):
+    matches = [
+        (index, track) for index, track in enumerate(song.tracks)
+        if str(_attr(track, "name", "")) == name
+    ]
+    if not matches:
+        raise ScriptError("NOT_FOUND", "no track named %r" % (name,))
+    if len(matches) > 1:
+        raise ScriptError(
+            "AMBIGUOUS_REF",
+            "%d tracks are named %r; rename one before editing its clips" % (len(matches), name),
+        )
+    return matches[0]
+
+
+def _clip_refs(track):
+    rows = []
+    for clip in list(_attr(track, "arrangement_clips", []) or []):
+        rows.append(("arrangement", None, clip, float(_attr(clip, "start_time", 0.0) or 0.0)))
+    for slot, holder in enumerate(list(_attr(track, "clip_slots", []) or [])):
+        clip = _attr(holder, "clip", None)
+        if clip is not None:
+            rows.append(("session", slot, clip, None))
+    return rows
+
+
+def _resolve_clip(song, track_name, clip_name, location=None, slot=None):
+    index, track = _one_track(song, track_name)
+    matches = [
+        row for row in _clip_refs(track)
+        if str(_attr(row[2], "name", "")) == clip_name
+    ]
+    if location is not None:
+        if location not in ("arrangement", "session"):
+            raise ScriptError("BAD_ARGS", "location must be 'arrangement' or 'session'")
+        matches = [row for row in matches if row[0] == location]
+    if slot is not None:
+        if not isinstance(slot, int) or isinstance(slot, bool) or slot < 0:
+            raise ScriptError("BAD_ARGS", "slot must be a non-negative integer")
+        if location == "arrangement":
+            raise ScriptError("BAD_ARGS", "slot only applies to session clips")
+        matches = [row for row in matches if row[0] == "session" and row[1] == slot]
+    if not matches:
+        raise ScriptError("NOT_FOUND", "no clip named %r on %r" % (clip_name, track_name))
+    if len(matches) > 1:
+        raise ScriptError(
+            "AMBIGUOUS_REF",
+            "multiple clips named %r on %r; use location or slot" % (clip_name, track_name),
+        )
+    return index, track, matches[0]
+
+
+def _restore_clip(track, location, slot, start):
+    for row in _clip_refs(track):
+        if row[0] != location:
+            continue
+        if location == "session" and row[1] == slot:
+            return row[2]
+        if location == "arrangement" and start is not None:
+            if abs(float(row[3]) - float(start)) <= 0.001:
+                return row[2]
+    return None
+
+
+@command("clips.rename")
+def rename(args, song):
+    check_args(args, allowed=("track", "clip", "name", "location", "slot", "dry_run", "restore"))
+    dry_run = bool(args.get("dry_run", True))
+    restore = args.get("restore")
+    if restore is not None:
+        if any(key in args for key in ("track", "clip", "name", "location", "slot")):
+            raise ScriptError("BAD_ARGS", "restore cannot be combined with a rename")
+        if not isinstance(restore, list):
+            raise ScriptError("BAD_ARGS", "restore must be a list")
+        changes, missing = [], []
+        for entry in reversed(restore):
+            if not isinstance(entry, dict):
+                raise ScriptError("BAD_ARGS", "restore entries must be objects")
+            try:
+                index = int(entry["track_index"])
+                location = str(entry["location"])
+                name = str(entry["name"])
+            except (KeyError, TypeError, ValueError):
+                raise ScriptError("BAD_ARGS", "restore entries need track_index, location and name")
+            if index < 0 or index >= len(song.tracks):
+                raise ScriptError("NOT_FOUND", "no track at index %s" % (index,))
+            if location not in ("arrangement", "session"):
+                raise ScriptError("BAD_ARGS", "restore location must be arrangement or session")
+            start = entry.get("start")
+            clip = _restore_clip(song.tracks[index], location, entry.get("slot"), start)
+            if clip is None:
+                missing.append({"track_index": index, "location": location, "slot": entry.get("slot"), "start": start})
+                continue
+            old = str(_attr(clip, "name", ""))
+            if not dry_run:
+                clip.name = name
+            changes.append({
+                "track": song.tracks[index].name,
+                "track_index": index,
+                "location": location,
+                "slot": entry.get("slot") if location == "session" else None,
+                "start": start if location == "arrangement" else None,
+                "from": old,
+                "to": name,
+            })
+        return {"dry_run": dry_run, "restored": len(changes), "changes": changes, "missing": missing}
+
+    track_name = args.get("track")
+    clip_name = args.get("clip")
+    name = args.get("name")
+    if not isinstance(track_name, str) or not track_name:
+        raise ScriptError("BAD_ARGS", "track must be a non-empty string")
+    if not isinstance(clip_name, str) or not clip_name:
+        raise ScriptError("BAD_ARGS", "clip must be a non-empty string")
+    if not isinstance(name, str):
+        raise ScriptError("BAD_ARGS", "name must be a string")
+    location = args.get("location")
+    index, track, row = _resolve_clip(song, track_name, clip_name, location, args.get("slot"))
+    old = str(_attr(row[2], "name", ""))
+    if not dry_run:
+        row[2].name = name
+    undo = [{
+        "track_index": index,
+        "location": row[0],
+        "slot": row[1],
+        "start": row[3],
+        "name": old,
+    }]
+    return {
+        "dry_run": dry_run,
+        "changes": [{
+            "track": track.name,
+            "track_index": index,
+            "location": row[0],
+            "slot": row[1],
+            "start": row[3],
+            "from": old,
+            "to": name,
+        }],
+        "undo": undo,
+    }

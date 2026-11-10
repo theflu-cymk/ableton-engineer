@@ -618,6 +618,82 @@
       "needs": [],
       "min_live": null,
       "cmd": null
+    },
+    {
+      "name": "tracks_set_pan",
+      "domain": "tracks",
+      "summary": "Set track pan positions, with dry-run and exact restore.",
+      "description": "Sets pan from -1 (left) to 1 (right) for the named tracks, or all tracks when omitted. Dry-run by default; applying returns one undo token per track, and restore puts back exactly those values. Pan is read through the mixer parameter when Live exposes it.",
+      "examples": ["pan the hats left", "center the bass"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "tracks": {"type": "array", "items": {"type": "string"}},
+          "pan": {"type": "number", "minimum": -1, "maximum": 1},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "pan": {"type": "number", "minimum": -1, "maximum": 1}
+              },
+              "required": ["track_index", "pan"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["pan"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "tracks.set_pan"
+    },
+    {
+      "name": "clips_rename",
+      "domain": "clips",
+      "summary": "Rename an arrangement or session clip.",
+      "description": "Resolves a clip by exact track and clip name, optionally constrained by location and session slot. Duplicate matches are refused rather than guessed. Dry-run by default; applying returns an undo token that restores the previous name.",
+      "examples": ["rename this clip to intro", "call the drop clip drop 2"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "clip": {"type": "string"},
+          "name": {"type": "string"},
+          "location": {"type": "string", "enum": ["arrangement", "session"]},
+          "slot": {"type": "integer", "minimum": 0, "description": "Zero-based session slot."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "location": {"type": "string", "enum": ["arrangement", "session"]},
+                "slot": {"type": ["integer", "null"], "minimum": 0},
+                "start": {"type": ["number", "null"]},
+                "name": {"type": "string"}
+              },
+              "required": ["track_index", "location", "name"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["track", "clip", "name"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.rename"
     }
   ]
 }

@@ -192,3 +192,71 @@ def gain_stage(args, song):
             _set_param(track, "volume", "volume", new_volume)
 
     return {"dry_run": dry_run, "changes": changes, "skipped": skipped, "undo": undo}
+
+
+@command("tracks.set_pan")
+def set_pan(args, song):
+    check_args(args, allowed=("tracks", "pan", "dry_run", "restore"))
+    dry_run = bool(args.get("dry_run", True))
+    restore = args.get("restore")
+    if restore is not None:
+        if args.get("tracks"):
+            raise ScriptError("BAD_ARGS", "restore cannot be combined with tracks")
+        if not isinstance(restore, list):
+            raise ScriptError("BAD_ARGS", "restore must be a list")
+        changes = []
+        for entry in reversed(restore):
+            if not isinstance(entry, dict):
+                raise ScriptError("BAD_ARGS", "restore entries must be objects")
+            try:
+                index = int(entry["track_index"])
+                pan = float(entry["pan"])
+            except (KeyError, TypeError, ValueError):
+                raise ScriptError("BAD_ARGS", "restore entries need track_index and pan")
+            if index < 0 or index >= len(song.tracks):
+                raise ScriptError("NOT_FOUND", "no track at index %s" % (index,))
+            if pan < -1.0 or pan > 1.0:
+                raise ScriptError("BAD_ARGS", "pan must be a number from -1 to 1")
+            track = song.tracks[index]
+            current = _param(track, "panning", "pan")
+            if not dry_run:
+                _set_param(track, "panning", "pan", pan)
+            changes.append({
+                "track": track.name,
+                "track_index": index,
+                "from": round(current, 4),
+                "to": round(pan, 4),
+            })
+        return {"dry_run": dry_run, "restored": len(changes), "changes": changes}
+
+    try:
+        pan = float(args["pan"])
+    except (KeyError, TypeError, ValueError):
+        raise ScriptError("BAD_ARGS", "pan must be a number from -1 to 1")
+    if pan < -1.0 or pan > 1.0:
+        raise ScriptError("BAD_ARGS", "pan must be a number from -1 to 1")
+
+    wanted = list(args.get("tracks") or [])
+    if wanted:
+        known = [track.name for track in song.tracks]
+        missing = [name for name in wanted if name not in known]
+        if missing:
+            raise ScriptError("NOT_FOUND", "no track named %s" % ", ".join(missing))
+        targets = [(index, track) for index, track in enumerate(song.tracks)
+                   if track.name in wanted]
+    else:
+        targets = list(enumerate(song.tracks))
+
+    changes, undo = [], []
+    for index, track in targets:
+        current = _param(track, "panning", "pan")
+        changes.append({
+            "track": track.name,
+            "track_index": index,
+            "from": round(current, 4),
+            "to": round(pan, 4),
+        })
+        undo.append({"track_index": index, "pan": current})
+        if not dry_run:
+            _set_param(track, "panning", "pan", pan)
+    return {"dry_run": dry_run, "changes": changes, "undo": undo}
