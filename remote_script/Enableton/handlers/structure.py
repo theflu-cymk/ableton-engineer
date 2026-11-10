@@ -57,13 +57,16 @@ MAX_DEVICE_DEPTH = 3
 
 #: ``Clip.warp_mode`` is a documented enum. The raw integer stays in the payload as the
 #: authoritative value; the name is only there so a report does not have to repeat this table.
+#: Live 12.2.5 exposed 6 for the one Complex Pro clip in Crust Wumble; the LOM documents 5 as REX
+#: and 6 as Complex Pro, so an earlier table that put Complex Pro at 5 was wrong.
 WARP_MODES = {
     0: "beats",
     1: "tones",
     2: "texture",
     3: "re-pitch",
     4: "complex",
-    5: "complex_pro",
+    5: "rex",
+    6: "complex_pro",
 }
 
 

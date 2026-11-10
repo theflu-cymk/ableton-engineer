@@ -85,15 +85,23 @@ six file devices: `KIS_FREE Techno Mastering Chain` (`AudioEffectGroupDevice`) c
 `counts.devices_master` was 6, `master_available` true, `master_reason` null. The 102 → 108 gap is
 closed on real Live, not just in a fixture.
 
-### Warp state added (2026-11-10, `0.1.7`)
+### Warp state verified (2026-11-10, `0.1.7`)
 
-`clips_warp_check` had nothing to check: the snapshot carried a bare `warping` boolean and no
-marker data. `0.1.7` gives every audio clip — arrangement and Session — `warping`, `warp_mode`
-(the raw enum plus its name) and `warp_markers` (the vector's length, or `None` with
-`warp_markers_reason`), and adds `counts.warp_markers` / `counts.warp_markers_unreadable`. The
-suite covers the readable, unreadable and MIDI cases (**120 passed**), and `setup --force` installed
-it, but Live still runs `0.1.6` (`stale`: repo `c24656d7b906`). **Unverified on real material**
-until the next restart — including whether the 930-marker figure for Crust Wumble is reproduced.
+`0.1.7` gives every audio clip — arrangement and Session — `warping`, `warp_mode` (raw enum plus
+name) and `warp_markers` (count, or `None` with `warp_markers_reason`), plus `counts.warp_markers`
+and `counts.warp_markers_unreadable`.
+
+**Verified with `Crust Wumble` open:** 894 markers across 334 audio clips,
+`warp_markers_unreadable: 0`. The `.als` holds 930 `<WarpMarker>` elements, but only 894 sit inside
+its 334 `<AudioClip>` elements; the other 36 are instrument markers in a Simpler `MultiSampleMap`
+(`SampleWarpProperties` under `Player`). The per-clip distribution matched exactly (two 108s, one 4,
+twelve 3s, 319 2s), so 894 is the correct clip total and the table's 930 conflated clips with an
+instrument.
+
+The same read exposed an enum bug: one clip returned `warp_mode: 6` with no name. The LOM documents
+**5 = REX, 6 = Complex Pro**; the shipped table had 5 = Complex Pro and no REX. `0.1.8` corrects it
+and a test walks all seven values; it is installed but Live still runs `0.1.7` until the next
+restart.
 
 | Area | On disk |
 |---|---|

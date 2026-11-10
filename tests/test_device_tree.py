@@ -169,6 +169,19 @@ class WarpFieldTests(unittest.TestCase):
         self.assertNotIn("warping", row)
         self.assertEqual(data["counts"]["warp_markers"], 0)
 
+    def test_every_documented_warp_mode_has_a_name(self):
+        expected = {
+            0: "beats", 1: "tones", 2: "texture", 3: "re-pitch",
+            4: "complex", 5: "rex", 6: "complex_pro",
+        }
+        for mode, name in expected.items():
+            with self.subTest(mode=mode):
+                clip = make_clip(warp_mode=mode, warp_markers=[Obj(), Obj()])
+                data = handler.snapshot({}, make_song([make_track(arrangement_clips=[clip])]))
+                row = data["tracks"][0]["arrangement"][0]
+                self.assertEqual(row["warp_mode"], mode)
+                self.assertEqual(row["warp_mode_name"], name)
+
     def test_an_unreadable_marker_vector_is_not_zero(self):
         class _UnreadableClip(Obj):
             @property

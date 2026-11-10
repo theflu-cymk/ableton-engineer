@@ -64,7 +64,7 @@ parsed directly as gzipped XML. Four inspected in detail:
 
 | Set | tracks | BPM | scenes | locators | warp markers | devices (plugins) |
 |---|---|---|---|---|---|---|
-| Crust Wumble | 19 | 120 | 8 | 1, unnamed | 930 | 108 (13) |
+| Crust Wumble | 19 | 120 | 8 | 0 | 894 clip (+36 Sampler) | 108 (13) |
 | EDMProd — Heavy Dubstep | 34 | 150 | 8 | 1, unnamed | 445 | 102 (22) |
 | paper tiger heart update og | 54 | 150 | 8 | 1, unnamed | 932 | 94 (43) |
 | paper tiger heart remaster | 77 | 150 | 8 | 1, unnamed | 1825 | 157 (40) |
@@ -86,9 +86,12 @@ scenes, **0 locators** and **18 top-level devices**.
   along; `Song.locators` simply does not answer on 12.2.5 (`cue_points` does), which is what made
   `locators_available` false on 0.1.4.
 
-Warp markers (930) are **unmeasured on Live**: `clips_warp_check` does not exist, and the snapshot
-that would feed it reads a clip's marker count only from `0.1.7` onward — installed but **Unverified**
-until Live restarts onto it. Treat the locator and device columns as claims to check, not facts.
+**Warp markers verified on Live 2026-11-10 (`0.1.7`):** `counts.warp_markers: 894` across 334 audio
+clips with `warp_markers_unreadable: 0`, matching the file's 894 markers under `AudioClip` in the
+exact per-clip distribution (two 108s, one 4, twelve 3s, 319 2s). The 930 above counted 36
+instrument markers inside a Simpler `MultiSampleMap` (`SampleWarpProperties` under `Player`) as
+well; those are not clip markers. `clips_warp_check` does not exist yet, and the other Sets' warp
+columns remain claims to check. Treat the locator and device columns the same way.
 
 **The User Library is not at `Documents\Ableton` on this machine.** Live's library is
 redirected to `C:\Users\brian\OneDrive\Attachments\Documentos\Ableton\User Library`, while the
