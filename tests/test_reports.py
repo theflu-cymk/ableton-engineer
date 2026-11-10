@@ -203,6 +203,16 @@ class RealShapeTests(unittest.TestCase):
         self.assertEqual(report["tracks_without_clips"], ["14-Audio"])
         self.assertEqual(report["total"], 1)
 
+    def test_structure_surfaces_devices_inside_racks(self):
+        rack = _track(0, devices=1)
+        rack["devices"][0]["chains"] = [[{"name": "EQ", "class": "Eq8", "plugin": False,
+                                           "active": True, "depth": 1}]]
+        report = structure(_snapshot([rack]), {})
+        row = report["tracks"]["items"][0]
+        self.assertEqual(row["devices"], 1, "top-level stays top-level")
+        self.assertEqual(row["devices_total"], 2)
+        self.assertEqual(report["signals"]["devices_total"], 2)
+
 
 class ToolRouterTests(unittest.TestCase):
     """A tool's output must match its description, whatever the command returns."""

@@ -73,6 +73,7 @@ def summary_from_snapshot(data: Dict[str, Any]) -> Dict[str, Any]:
         "arrangement_clips": counts.get("arrangement_clips"),
         "session_clips": counts.get("session_clips"),
         "devices": counts.get("devices"),
+        "devices_total": counts.get("devices_total"),
         "is_playing": song.get("is_playing"),
         "current_song_time": song.get("current_song_time"),
     }
@@ -175,6 +176,19 @@ def _duplicate_names(tracks: Sequence[Dict[str, Any]]) -> Dict[str, List[Any]]:
     return {name: indexes for name, indexes in seen.items() if len(indexes) > 1}
 
 
+def _device_total(track: Dict[str, Any]) -> int:
+    """Devices at every depth the snapshot captured, including those inside rack chains."""
+    def walk(rows: Sequence[Dict[str, Any]]) -> int:
+        total = 0
+        for row in rows:
+            total += 1
+            for chain in row.get("chains") or []:
+                total += walk(chain)
+        return total
+
+    return walk(track.get("devices") or [])
+
+
 def structure(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Shape of the Set: sections, tracks, and the signals worth knowing before editing."""
     args = dict(args or {})
@@ -198,6 +212,7 @@ def structure(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Di
                 "clips": len(_arrangement(track)),
                 "session_clips": _session_count(track),
                 "devices": len(track.get("devices") or []),
+                "devices_total": _device_total(track),
                 "empty": not _arrangement(track) and not _session_count(track),
             }
         )
@@ -218,6 +233,7 @@ def structure(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Di
         "signals": {
             "arrangement_clips": sum(len(_arrangement(t)) for t in tracks),
             "session_clips": sum(_session_count(t) for t in tracks),
+            "devices_total": sum(_device_total(t) for t in tracks),
             "named_sections": len([loc for loc in locators if loc.get("name")]),
             "locators_available": bool((data.get("captured") or {}).get("locators_available")),
             "duplicate_track_names": _duplicate_names(tracks),
