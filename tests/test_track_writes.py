@@ -314,6 +314,17 @@ class CleanEmptyTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, "PRECONDITION_FAILED")
 
 
+class PreflightCodeTests(unittest.TestCase):
+    def test_a_preflight_refusal_keeps_the_tool_error_code(self):
+        from enableton.manifest import load_manifest
+        from enableton.plans.executor import PlanError, PlanExecutor, Step
+
+        executor = PlanExecutor(FakeAdapter(build_song()), catalogue=load_manifest())
+        with self.assertRaises(PlanError) as ctx:
+            executor.run([Step("tracks_clean_empty", {"tracks": ["Drums"]})])
+        self.assertEqual(ctx.exception.code, "PRECONDITION_FAILED")
+
+
 class ToolSurfaceApplyTests(unittest.TestCase):
     """run_tool routes an apply through PlanExecutor, which rejects a payload that changes shape."""
 

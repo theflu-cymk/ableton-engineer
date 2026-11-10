@@ -125,7 +125,11 @@ class PlanExecutor:
             except PlanError:
                 raise
             except Exception as exc:  # noqa: BLE001 - the failing step is the answer
-                raise PlanError("LIVE_ERROR", "%s failed: %s" % (step.tool, exc),
+                # Keep the tool's own code: a refused preflight is PRECONDITION_FAILED, not a
+                # generic server failure, and callers dispatch on that code.
+                code = getattr(exc, "code", None) or "LIVE_ERROR"
+                message = getattr(exc, "message", None) or str(exc)
+                raise PlanError(code, "%s failed: %s" % (step.tool, message),
                                 {"tool": step.tool}) from exc
             trace.append({"tool": step.tool, "args": _clean(step.args), "result": _clean(result)})
         return {"dry_run": True, "applied": False, "trace": trace, "scratch_copy": None}

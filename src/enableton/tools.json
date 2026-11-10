@@ -1401,7 +1401,7 @@
       "name": "tracks_duplicate",
       "domain": "tracks",
       "summary": "Duplicate a track, with dry-run and exact restore.",
-      "description": "Duplicates one track in place, count times, and reads the new tracks back from the Set instead of assuming where Live put them. The copy carries Live's own content: clips, devices and mixer state. Dry-run by default; applying returns one undo token per created track, and restore deletes exactly those, verifying each name first.",
+      "description": "Duplicates one track in place, count times, and returns the dry run's plan as the applied result so the transaction's preflight trace still matches; Live's own names for the copies stay in the undo tokens because Live renumbers them. The copy carries Live's own content: clips, devices and mixer state. Dry-run by default; restore deletes exactly the created tracks, verifying each name first.",
       "examples": ["duplicate the drum bus", "make three copies of this track"],
       "input": {
         "type": "object",
