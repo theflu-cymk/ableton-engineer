@@ -237,6 +237,22 @@ class TrackExpansionTests(unittest.TestCase):
         )
         self.assertEqual([track.name for track in song.tracks], before)
 
+    def test_duplicate_restore_accepts_a_name_live_has_not_assigned_yet(self):
+        song = self.adapter.song
+        song.tracks[0].name = ""
+        before = len(song.tracks)
+        applied = self.adapter.call(
+            "tracks.duplicate", {"track_index": 0, "dry_run": False}
+        )
+        new_index = applied["undo"][0]["track_index"]
+        self.assertNotIn("name", applied["undo"][0])
+        # Live assigned 9-Audio only after the duplicate call returned.
+        song.tracks[new_index].name = "9-Audio"
+        self.adapter.call(
+            "tracks.duplicate", {"restore": applied["undo"], "dry_run": False}
+        )
+        self.assertEqual(len(song.tracks), before)
+
     def test_set_routing_changes_and_restores(self):
         applied = self.adapter.call("tracks.set_routing", {
             "track": "Bass layer", "output_type": "Sends Only", "dry_run": False,

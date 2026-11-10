@@ -609,11 +609,18 @@ def duplicate(args, song):
                 new_index = position
                 break
         name = str(getattr(new_track, "name", "") or "")
-        undo.append({"track_index": new_index, "name": name})
+        # Live can return the new proxy before it assigns the default name (8-Audio becomes
+        # 9-Audio). An empty name in the token made restore refuse the track it had just created,
+        # so omit it: the index is authoritative for an immediate restore, and a real name is
+        # still checked when Live has assigned one.
+        entry = {"track_index": new_index}
+        if name:
+            entry["name"] = name
+        undo.append(entry)
 
     # The applied payload must match the dry run exactly. PlanExecutor compares the two traces
-    # after stripping only dry_run and undo, so the actual names stay in undo and the plan is the
-    # result; a copied name cannot be predicted because Live renumbers it (8-Audio became 9-Audio).
+    # after stripping only dry_run and undo, so names Live has assigned stay in undo and the plan
+    # is the result; a copied name cannot be predicted because Live renumbers it.
     return {"dry_run": False, "created": created, "undo": undo}
 
 

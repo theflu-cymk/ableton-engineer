@@ -359,7 +359,8 @@ with a real result:
 - clips: `clips_duplicate_range` (0.2.3), `clips_rename` (0.2.7), `clips_set_warp_mode` (0.2.14),
   `clips_fix_loop_points` (0.2.16), `clips_warp_check`.
 - tracks: `tracks_list`, `tracks_set_sends` and `tracks_name_and_color` (0.2.12),
-  `tracks_set_volume` (M3 autofix), `tracks_gain_stage` (0.2.1), `tracks_set_pan` (0.2.7, again
+  `tracks_set_volume` (M3 autofix), `tracks_gain_stage` restore path only (0.2.1; no measured write,
+  see the Bundle B gate below), `tracks_set_pan` (0.2.7, again
   on 0.4.6), `tracks_delete` and `tracks_clean_empty` (0.4.4).
 - devices: `devices_read_chain`, `devices_read_parameters`, `devices_browse_presets`,
   `devices_set_parameter` (0.3.4), `devices_set_macro` (0.3.6, again on 0.3.9), `devices_move`
@@ -388,7 +389,7 @@ match (defect below), so they must be re-gated after the ambiguity fix rather th
 | `clips_copy` | edit, arrange | 0.3.0 handler | Session→Session and Arrangement→Arrangement copies; Session↔Arrangement refusal; exact undo |
 | `clips_transpose` | edit, arrange | 0.3.0 handler | a real MIDI transpose and exact note restore |
 | `clips_clear` | edit | 0.3.0 handler | a real MIDI clear and exact restore; audio refusal |
-| `tracks_duplicate` | prep | one real apply in the 0.4.4 gate | double apply through `run_tool` is a no-op; exact cleanup |
+| `tracks_duplicate` | prep | apply and retry on 0.4.7; empty-name cleanup fix in 0.4.8 | double apply through `run_tool` is a no-op; exact cleanup after the restart |
 | `tracks_set_routing` | prep, mix | 0.3.0 handler | real input/output names, type before channel, exact restore |
 | `mix_routing_report` | inspect, mix | 0.3.0 handler | a real routing table |
 | `library_folders` | sound | 0.3.0 handler | real browser roots and paging |
@@ -437,6 +438,61 @@ its claims (61 tools, `sections_move` unimplemented, `tracks_delete` deferred) a
 evidence above. Merging it would regress the ledger; close or supersede it rather than merge.
 `m5-serve` is independent (8 files, +814 lines) and should merge only when M5 starts, which §3
 forbids before M4 is green.
+
+### Bundle B gate on `0.4.7` (2026-11-10)
+
+**Verified loaded build.** `doctor` reported script `0.4.7`, build `0606e8763f6e`, no `stale`,
+Live 12.2.5, `super_errors 0`. The Set was `SCRATCH fortnight`,
+`F:\ableton songs\Fortnight\fortnight Project\SCRATCH fortnight.als`: 32 tracks, 2 returns, 11
+scenes, 1 locator, 137 arrangement / 113 Session clips, 114 devices, playhead 372.0. Baseline
+duplicate names were `BASS | Operator sub` at 17/25 and `BASS | Factory chops [muted]` at 27/31.
+The Set file mtime stayed `2026-11-10 04:19:41`, size 1,555,091 bytes; the Set was not saved.
+
+**Verified on real Live.**
+
+- **Ambiguity guard.** All six dry calls (`tracks_set_volume`, `tracks_set_pan` and
+  `tracks_gain_stage` against both duplicate names) returned `AMBIGUOUS_REF` before any change;
+  every duplicate row kept its index, volume and pan.
+- **`tracks_set_volume`.** `8-Audio` moved `0.8500000238418579 -> 0.70`, a fresh read returned
+  `0.7`, and `ableton_undo` restored `0.8500000238418579` exactly. A scratch copy was made first.
+- **`tracks_set_pan`.** `8-Audio` moved `0.0 -> 0.2`, a fresh read returned `0.2`, and
+  `ableton_undo` restored `0.0` exactly.
+- **Duplicate idempotency.** The first applied `tracks_duplicate` created one copy at index 8
+  (Live named it `9-Audio`), taking the Set to 33 tracks. An identical second `run_tool` call in
+  the same process left the count at 33, returned the same `created` plan, and carried no second
+  `scratch_copy`. The retry did not duplicate again.
+
+**Duplicate cleanup failed, then was recovered.** The applied undo token was
+`{"track_index": 8, "name": ""}` because Live had not assigned `9-Audio` when the handler read
+`new_track.name`; restore refused with "the track at that index has a different name". A restore
+with `{"track_index": 8}` alone deleted `9-Audio`, returned the Set to 32 tracks, and put
+`8-Audio`/`REDRUMS` back at 7/8. `0.4.8` omits an empty name from the token and has a test that
+renames the copy after the apply. This is a real defect the fake could not show. `0.4.8` is
+installed as build `dc6e1b4e6405` with **396 passed, 7 subtests**; `doctor` remains `stale` until
+Live restarts, so the cleanup re-gate is still pending.
+
+**Routing is not gateable on this build.** `mix_routing_report` returned real output-type names,
+but all 32 rows had `input_channel` and `output_channel` as `<Track.RoutingChannel object at
+0x...>` and an empty `type`. A dry `tracks_set_routing` on `snare rush` predicted
+`REDRUMS -> Sends Only`, but its undo token also carried the two channel object reprs; the output
+channel list has one entry with no display name, and the output-type list contains two
+indistinguishable `Main` entries. No routing write was applied: the tool cannot build an exact
+restore token for the channel fields. This invalidates the `mix_routing_report` and
+`tracks_set_routing` rows until the handler carries identifiers (the LOM's `identifier` field)
+and resolves restore by them.
+
+**Gain staging cannot write on this build.** A dry `tracks_gain_stage` over the whole Set returned
+`changes: 0` and `skipped: 32`; every real `Track.peak_db` read was `None`. The audit's
+"`tracks_gain_stage` (0.2.1)" evidence was only the restore path (`0.85 -> 0.5` through a restore
+token), not a measured-peak normalization. Real 12.2.5 exposes meters (`output_meter_level`,
+0..1) rather than `peak_db`; a measured write needs that fallback and playback before it can be
+claimed.
+
+**Verdict.** Bundle B is **not green**. Volume, pan, ambiguity and duplicate idempotency are
+Verified on real Live; `tracks_duplicate` cleanup is fixed in `0.4.8` and still needs the restart
+gate; `tracks_set_routing`, `mix_routing_report` and `tracks_gain_stage` remain blockers. No user
+Set was written. `doctor` after the writes: script `0.4.7`, build `0606e8763f6e`, `errors 18`,
+`super_errors 0`.
 
 ### Tracks sends and name/colour (2026-11-10, `0.2.12`)
 
