@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 
 from . import diagnostics
 from .manifest import load_manifest
-from .modes import ModeError, load_modes
+from .modes import ModeError, guide as build_guide, load_modes
 from .protocol.client import DEFAULT_PORT, LiveClient
 from .protocol.codes import LiveError
 from .reports import summary_from_snapshot
@@ -75,6 +75,17 @@ def main(argv: Optional[list] = None) -> int:
     call = sub.add_parser("call", help="run one tool by name")
     call.add_argument("tool")
     call.add_argument("--args", default="{}", help="JSON object of arguments")
+
+    inspect_parser = sub.add_parser("inspect", help="run a diagnostic tier")
+    inspect_parser.add_argument("--tier", choices=("fast", "standard", "deep"), default="standard")
+    inspect_parser.add_argument("--limit", type=int, default=50)
+
+    plan_parser = sub.add_parser("plan", help="compile and store a plan without applying it")
+    plan_parser.add_argument("--intent", default="fix all safe findings")
+    plan_parser.add_argument("--phase", action="append", choices=diagnostics.PHASES)
+
+    run_parser = sub.add_parser("run", help="apply a stored plan id")
+    run_parser.add_argument("plan_id")
 
     modes_parser = sub.add_parser("modes", help="list modes, tool counts and finding counts")
     modes_parser.add_argument(
@@ -172,13 +183,53 @@ def main(argv: Optional[list] = None) -> int:
         return EXIT_OK
 
     if args.command == "guide":
-        catalogue = load_manifest()
-        modes = load_modes(catalogue)
-        mode = modes.get(args.mode)
-        rows = [{"tool": t, "summary": catalogue[t].summary,
-                 "examples": catalogue[t].examples} for t in mode.tools]
-        _print({"mode": mode.name, "tools": rows})
+        _print(build_guide(load_manifest(), args.mode))
         return EXIT_OK
+
+    if args.command == "inspect":
+        client = LiveClient(host=args.host, port=args.port)
+        try:
+            client.connect(timeout=1.5)
+            result = run_tool("inspect_run", {"tier": args.tier, "limit": args.limit}, client)
+            _print(result)
+            return EXIT_FINDINGS if result["counts"]["total"] else EXIT_OK
+        except (LiveError, OSError) as exc:
+            message = exc.message if isinstance(exc, LiveError) else str(exc)
+            print(message, file=sys.stderr)
+            return EXIT_CONNECTION
+        finally:
+            client.close()
+
+    if args.command == "plan":
+        context = {"phases": args.phase} if args.phase else {}
+        client = LiveClient(host=args.host, port=args.port)
+        try:
+            client.connect(timeout=1.5)
+            result = run_tool(
+                "ableton_escalate", {"intent": args.intent, "context": context}, client
+            )
+            _print(result)
+            return EXIT_OK if result.get("plan_id") else EXIT_FINDINGS
+        except (LiveError, OSError) as exc:
+            message = exc.message if isinstance(exc, LiveError) else str(exc)
+            print(message, file=sys.stderr)
+            return EXIT_CONNECTION
+        finally:
+            client.close()
+
+    if args.command == "run":
+        client = LiveClient(host=args.host, port=args.port)
+        try:
+            client.connect(timeout=1.5)
+            result = run_tool("ableton_plan_apply", {"plan_id": args.plan_id}, client)
+            _print(result)
+            return EXIT_OK if result.get("applied") else EXIT_FINDINGS
+        except (LiveError, OSError) as exc:
+            message = exc.message if isinstance(exc, LiveError) else str(exc)
+            print(message, file=sys.stderr)
+            return EXIT_CONNECTION
+        finally:
+            client.close()
 
     if args.command == "status":
         client = LiveClient(host=args.host, port=args.port)

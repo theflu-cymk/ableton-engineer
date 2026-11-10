@@ -1,10 +1,15 @@
 import io
 import json
+import os
+import shutil
+import tempfile
 import unittest
 from contextlib import redirect_stdout
+from pathlib import Path
+from unittest import mock
 
 import support
-from enableton.cli import EXIT_CONNECTION, EXIT_OK, doctor, main
+from enableton.cli import EXIT_CONNECTION, EXIT_FINDINGS, EXIT_OK, doctor, main
 
 
 class CliTests(unittest.TestCase):
@@ -73,6 +78,49 @@ class CliTests(unittest.TestCase):
         payload = json.loads(buffer.getvalue())
         self.assertFalse(payload["live"]["connected"])
         self.assertEqual([row["mode"] for row in payload["modes"]], ["auto", "inspect"])
+
+    def test_inspect_prints_findings_and_returns_the_findings_exit_code(self):
+        server = support.fake_server()
+        self.addCleanup(server.stop)
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            code = main(["--port", str(server.port), "inspect"])
+        self.assertEqual(code, EXIT_FINDINGS)
+        payload = json.loads(buffer.getvalue())
+        self.assertEqual(payload["tier"], "standard")
+        self.assertEqual(payload["counts"]["total"], 2)
+
+    def test_plan_and_run_round_trip(self):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, str(root), True)
+        source = root / "scratch.als"
+        source.write_bytes(b"scratch")
+
+        server = support.fake_server()
+        self.addCleanup(server.stop)
+        server.song.file_path = str(source)
+        server.song.tracks[0].volume = 1.0
+
+        appdata = str(root / "appdata")
+        with mock.patch.dict(os.environ, {"APPDATA": appdata}):
+            plan_buffer = io.StringIO()
+            with redirect_stdout(plan_buffer):
+                code = main(["--port", str(server.port), "plan", "--intent", "gain"])
+            self.assertEqual(code, EXIT_OK)
+            plan = json.loads(plan_buffer.getvalue())
+            self.assertTrue(plan["plan_id"].startswith("p_"))
+            self.assertEqual([step["tool"] for step in plan["steps"]], ["tracks_set_volume"])
+
+            run_buffer = io.StringIO()
+            with redirect_stdout(run_buffer):
+                code = main(["--port", str(server.port), "run", plan["plan_id"]])
+            self.assertEqual(code, EXIT_OK)
+            applied = json.loads(run_buffer.getvalue())
+            self.assertTrue(applied["applied"])
+            self.assertEqual(applied["counts_before"]["total"], 3)
+            self.assertEqual(applied["counts_after"]["total"], 2)
+            self.assertAlmostEqual(server.song.tracks[0].volume, 0.85)
 
 
 if __name__ == "__main__":

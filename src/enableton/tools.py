@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, Optional
 
 from . import diagnostics, escalation
 from .manifest import load_manifest
+from .modes import ModeError, guide as build_guide
 from .plans import PlanStore, PlanStoreError
 from .plans.executor import PlanError, PlanExecutor, Step
 from .protocol.codes import LiveError
@@ -55,6 +56,15 @@ def run_tool(
     args = dict(args or {})
     if not isinstance(args, dict):
         raise LiveError("BAD_ARGS", "arguments must be an object")
+
+    if name == "ableton_guide":
+        unknown = sorted(set(args) - {"mode"})
+        if unknown:
+            raise LiveError("BAD_ARGS", "unknown argument(s): %s" % ", ".join(unknown))
+        try:
+            return build_guide(catalogue, args.get("mode"))
+        except ModeError as exc:
+            raise LiveError("BAD_ARGS", str(exc))
 
     cache = cache or SnapshotCache(adapter)
 

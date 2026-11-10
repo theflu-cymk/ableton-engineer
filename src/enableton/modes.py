@@ -125,4 +125,21 @@ def load_modes(
     return ModeSet(modes=modes, default=default, max_tools=cap)
 
 
-__all__ = ["Mode", "ModeError", "ModeSet", "load_modes", "ManifestError"]
+def guide(catalogue: Dict[str, Tool], mode_name: Optional[str] = None) -> Dict[str, object]:
+    """Build the command sheet for one mode, shared by the tool and the CLI."""
+    modes = load_modes(catalogue)
+    mode = modes.get(mode_name)
+    return {
+        "mode": mode.name,
+        "tools": [
+            {
+                "tool": name,
+                "summary": catalogue[name].summary,
+                "examples": catalogue[name].examples,
+            }
+            for name in mode.tools
+        ],
+    }
+
+
+__all__ = ["Mode", "ModeError", "ModeSet", "guide", "load_modes", "ManifestError"]

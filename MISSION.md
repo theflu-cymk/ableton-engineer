@@ -33,7 +33,7 @@ test should assert that, or every count in the spec is wrong by 3×.
 
 ## 2. State of the build (measured, not claimed)
 
-`uv run pytest -q` → **187 passed, 7 subtests**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 acceptance gates are **real-Live verified on `0.2.3`**: duplicate dry-run matched apply, double-apply was a no-op, exact restore included the clip name, and a forced real mid-plan failure restored the arrangement object-for-object. M2 is complete. M3 is **complete and real-Live verified on `0.2.4`**: the three-fader autofix dropped findings from 25 to 22, a controlled count-rise probe halted and rolled back, `ableton_escalate` produced a stored plan that `ableton_plan_apply` executed from a separate CLI process, and `modes --findings` showed the per-mode counts before and after. All 14 needs-listening findings stayed out of every plan and apply.
+`uv run pytest -q` → **193 passed, 7 subtests**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 acceptance gates are **real-Live verified on `0.2.3`**: duplicate dry-run matched apply, double-apply was a no-op, exact restore included the clip name, and a forced real mid-plan failure restored the arrangement object-for-object. M2 is complete. M3 is **complete and real-Live verified on `0.2.4`**: the three-fader autofix dropped findings from 25 to 22, a controlled count-rise probe halted and rolled back, `ableton_escalate` produced a stored plan that `ableton_plan_apply` executed from a separate CLI process, and `modes --findings` showed the per-mode counts before and after. All 14 needs-listening findings stayed out of every plan and apply. M4 is in progress: `ableton_guide` now returns the generated command sheet through the MCP tool surface, and `enableton inspect`, `enableton plan` and `enableton run` are implemented; the catalogue remains 21 tools in 2 modes.
 
 **The real-Live gate has been passed once (2026-11-09).** `uv run enableton status` returned a real
 summary from Live 12.2.5 — 4 tracks, 2 returns, 8 scenes, 120 BPM, 2 devices, `is_playing false` —
@@ -210,7 +210,7 @@ the first applied call, and reverses tool-owned undo tokens when a step fails. `
 now returns the track index and exact undo values, and accepts the executor's `restore` token.
 `run_tool` routes an applied gain stage through the executor instead of calling the handler directly.
 
-**Tested at that milestone:** **160 passed**, 7 subtests; the current suite is **187 passed**.
+**Tested at that milestone:** **160 passed**, 7 subtests; the current suite is **193 passed**.
 New safety tests cover dry-run trace equality, scratch-copy
 bytes and pre-write timing, refusal when the Set has no path, exact rollback after a synthetic
 second-step failure, and double-apply on one executor. `clips_duplicate_range` has handler tests for
@@ -305,7 +305,7 @@ process loaded that plan from `%APPDATA%\Enableton\plans`, applied it transactio
 
 M0's acceptance test is green. M1's read path is closed on real evidence: all six reports are
 implemented, `Crust Wumble` and `fortnight` have been read, and the one-read acceptance test is
-green. M2 and M3 are complete on real evidence. **Mission 4 (full catalogue + modes) is next.**
+green. M2 and M3 are complete on real evidence. **Mission 4 (full catalogue + modes) is in progress.**
 
 ---
 
@@ -324,8 +324,8 @@ One milestone per mission; a mission ends when its acceptance test passes as a *
 | 7 | M6 | audio tiers | capture produces a WAV, analysis reads it, routing verification catches a failed arm |
 | 8 | M7 | library, build, recipes | the user's own sentence — "create a dubstep drum beat using loops from my riddim one shots folder" — builds a playable 2-bar pattern whose every sample came from that folder; `recipe_learn` recovers tempo and half-time feel with per-lane confidence and refuses below 0.6 |
 
-Missions 2 and 3 are complete. Mission 4 is next; everything after is catalogue breadth on a proven
-frame. **Do not start Mission 5 before Mission 4 is green.**
+Missions 2 and 3 are complete. Mission 4 is in progress; everything after is catalogue breadth on a
+proven frame. **Do not start Mission 5 before Mission 4 is green.**
 
 ---
 
@@ -380,8 +380,10 @@ frame. **Do not start Mission 5 before Mission 4 is green.**
 M3 is closed on real evidence: `inspect_run` found 25 issues, the three-fader autofix dropped that
 to 22, a controlled real count rise halted and rolled back, and needs-listening findings never
 entered a step. Escalation now produces a stored, expiring plan that a separate CLI process can
-apply transactionally, and `modes --findings` reports the per-mode counts. M4 now audits the full
-catalogue: the drift test must stay green, every mode must stay at or below 34 tools, every tool
-must appear in at least one mode, and every mode's escalation path must reach every tool. This is
-catalogue and mode coverage, not new Live semantics; keep the M3 evidence intact while expanding
-the surface.
+apply transactionally, and `modes --findings` reports the per-mode counts. M4 is in progress: the
+normal MCP `ableton_guide` tool now returns the same generated command sheet as `enableton guide`,
+and `enableton inspect`, `enableton plan` and `enableton run` are implemented. M4 still audits the
+full catalogue: the drift test must stay green, every mode must stay at or below 34 tools, every
+tool must appear in at least one mode, and every mode's escalation path must reach every tool. This
+is catalogue and mode coverage, not new Live semantics; keep the M3 evidence intact while expanding
+the surface. The catalogue is still 21 tools across 2 modes, so M4 is not complete.
