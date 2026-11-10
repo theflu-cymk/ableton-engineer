@@ -69,6 +69,26 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, "LIVE_BUSY")
         self.assertLess(elapsed, 2.0, "the bridge must answer, not hang")
 
+    def test_bridge_answers_before_the_client_gives_up(self):
+        """The bridge's deadline must be shorter than the client's watchdog.
+
+        With ``timeout_s + 0.5`` the bridge replied LIVE_BUSY *after* the client had already
+        raised TIMEOUT and discarded the reply, which is why an undrained queue was
+        indistinguishable from a dead script.
+        """
+        song = build_song()
+        bridge = Bridge(lambda: song, port=0)
+        bridge.start()
+        self.addCleanup(bridge.stop)
+
+        client = LiveClient(port=bridge.port, default_timeout_ms=400)
+        client.connect()
+        self.addCleanup(client.close)
+
+        with self.assertRaises(LiveError) as ctx:
+            client.call("snapshot.get", {}, timeout_ms=300)
+        self.assertEqual(ctx.exception.code, "LIVE_BUSY")
+
     def test_hello_never_enters_the_queue(self):
         song = build_song()
         bridge = Bridge(lambda: song, port=0)
@@ -82,6 +102,37 @@ class BridgeTests(unittest.TestCase):
         # No pump running: hello must still answer, because it touches no LOM.
         info = client.handshake()
         self.assertEqual(info["protocol"], 1)
+
+
+    def test_hello_reports_queue_depth_and_counters(self):
+        song = build_song()
+        bridge = Bridge(lambda: song, port=0)
+        bridge.start()
+        self.addCleanup(bridge.stop)
+
+        client = LiveClient(port=bridge.port)
+        client.connect()
+        self.addCleanup(client.close)
+
+        info = client.handshake()
+        self.assertEqual(info["queued"], 0)
+        self.assertEqual(info["stats"]["drains"], 0)
+        # A frozen ``drains`` is ambiguous until these exist: Live never ticked the surface, or
+        # the framework's own super().update_display() raised before our drain ran.
+        self.assertEqual(info["stats"]["display"], 0)
+        self.assertEqual(info["stats"]["super_errors"], 0)
+
+    def test_drain_counters_distinguish_not_ticked_from_lost_reply(self):
+        """A timeout must be attributable: was the work never run, or was the reply lost?"""
+        bridge, _song = self._bridge_with_pump()
+        client = LiveClient(port=bridge.port, default_timeout_ms=2000)
+        client.connect()
+        self.addCleanup(client.close)
+
+        client.call("snapshot.get", {})
+        info = client.handshake()
+        self.assertEqual(info["stats"]["ran"], 1)
+        self.assertGreaterEqual(info["stats"]["drains"], 1)
 
 
 class CallableSong(object):

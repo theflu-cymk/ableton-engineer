@@ -24,7 +24,7 @@ from .framing import FrameReader, FramingError, encode_frame
 
 DEFAULT_PORT = 9878
 PROTOCOL_VERSION = 1
-SCRIPT_VERSION = "0.1.1"
+SCRIPT_VERSION = "0.1.2"
 MAX_QUEUED = 8
 
 
@@ -86,7 +86,10 @@ class Bridge(object):
         self._stop = threading.Event()
         self._sock = None
         self._thread = None
-        self.stats = {"requests": 0, "busy": 0, "errors": 0}
+        # ``drains`` separates "Live never ticked the surface" from "the queue ran the work but
+        # the reply was lost". Without it both look identical: a timeout.
+        self.stats = {"requests": 0, "busy": 0, "errors": 0, "drains": 0, "ran": 0,
+                      "display": 0, "super_errors": 0}
 
     # -- lifecycle ---------------------------------------------------------
     def start(self):
@@ -124,11 +127,13 @@ class Bridge(object):
     # -- main thread -------------------------------------------------------
     def drain(self, max_tasks=8):
         """Run queued work. Called from ``update_display`` on Live's main thread."""
+        self.stats["drains"] += 1
         for _ in range(max_tasks):
             try:
                 cmd, args, box, done = self._queue.get_nowait()
             except queue.Empty:
                 return
+            self.stats["ran"] += 1
             try:
                 box["result"] = dispatch.call(cmd, args, self._song_provider())
             except ScriptError as exc:
@@ -181,6 +186,10 @@ class Bridge(object):
                 "script": SCRIPT_VERSION,
                 "live": self.live_version,
                 "features": list(self._features),
+                # Depth and counters: a timeout is otherwise indistinguishable from a surface
+                # that Live never ticked, which is the one failure this design can't see.
+                "queued": self._queue.qsize(),
+                "stats": dict(self.stats),
             })
 
         if self._queue.qsize() >= MAX_QUEUED:
@@ -194,7 +203,10 @@ class Bridge(object):
         self.stats["requests"] += 1
 
         self._queue.put((cmd, request.get("args") or {}, box, done))
-        if not done.wait(timeout_s + 0.5):
+        # Answer *before* the client's watchdog fires. Waiting ``timeout_s + 0.5`` inverts that
+        # margin: the bridge's own LIVE_BUSY then arrives after the client has given up and
+        # discarded it, so every undrained command surfaces as an unexplained TIMEOUT.
+        if not done.wait(max(0.05, timeout_s * 0.9)):
             self.stats["busy"] += 1
             return self._error(request_id, "LIVE_BUSY",
                                "%s did not run; Live may be busy" % cmd)
@@ -244,7 +256,17 @@ def make_surface(c_instance):
             return resolve_song(self)
 
         def update_display(self):
-            super(EnabletonSurface, self).update_display()
+            # ``display`` proves Live ticked us at all; ``super_errors`` proves the framework's own
+            # plumbing ran. Two counters because a frozen ``drains`` has two different causes and
+            # only one of them is our code.
+            self._bridge.stats["display"] += 1
+            if self._bridge.stats["display"] == 1:
+                self.log_message("Enableton: first update_display tick")
+            try:
+                super(EnabletonSurface, self).update_display()
+            except Exception as exc:
+                self._bridge.stats["super_errors"] += 1
+                self._bridge.stats["last_super_error"] = "%s: %s" % (type(exc).__name__, exc)
             self._bridge.drain()
 
         def disconnect(self):

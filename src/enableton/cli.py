@@ -32,6 +32,10 @@ def doctor(host: str = "127.0.0.1", port: int = DEFAULT_PORT) -> Dict[str, Any]:
                 "script": info.get("script"),
                 "live": info.get("live"),
                 "features": info.get("features", []),
+                # A timeout has two causes and they look alike from here: Live never ticked the
+                # surface (drains frozen), or the work ran and the reply was lost (ran grows).
+                "queued": info.get("queued"),
+                "stats": info.get("stats") or {},
             }
         )
     except LiveError as exc:
@@ -107,6 +111,15 @@ def main(argv: Optional[list] = None) -> int:
                 print("  live      %s" % report.get("live"))
                 print("  script    %s" % report.get("script"))
                 print("  features  %s" % ", ".join(report.get("features") or []) or "-")
+                stats = report.get("stats") or {}
+                if report.get("queued") is not None or stats:
+                    print("  queued    %s" % report.get("queued"))
+                    print("  drains    %s   ran %s   errors %s"
+                          % (stats.get("drains"), stats.get("ran"), stats.get("errors")))
+                    print("  display   %s   super_errors %s"
+                          % (stats.get("display"), stats.get("super_errors")))
+                    if stats.get("last_super_error"):
+                        print("  super_err %s" % stats["last_super_error"])
             else:
                 print("  error     %s" % report.get("error"))
                 print("  fix       select 'Enableton' as a Control Surface in Live's")
