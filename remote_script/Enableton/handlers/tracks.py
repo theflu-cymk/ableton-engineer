@@ -642,6 +642,171 @@ def _restore_duplicates(args, song, dry_run):
     return {"dry_run": dry_run, "restored": len(changes), "changes": changes, "missing": missing}
 
 
+def _track_clip_counts(track):
+    arrangement = len(list(getattr(track, "arrangement_clips", []) or []))
+    session = 0
+    for slot in list(getattr(track, "clip_slots", []) or []):
+        if getattr(slot, "has_clip", False) or getattr(slot, "clip", None) is not None:
+            session += 1
+    return arrangement, session
+
+
+def _delete_track(song, index, expected_name):
+    """Delete the track at ``index`` after checking Live removed that one and only that one.
+
+    ``Song.delete_track`` takes the track object on this build. That is the path the M2 duplicate
+    restore has already exercised on real Live, even though the LOM map describes an index.
+    """
+    delete_track = getattr(song, "delete_track", None)
+    if not callable(delete_track):
+        raise ScriptError("UNSUPPORTED", "this Live build cannot delete a track")
+    tracks = list(song.tracks)
+    if index < 0 or index >= len(tracks):
+        raise ScriptError("NOT_FOUND", "no track at index %d" % (index,))
+    track = tracks[index]
+    name = str(getattr(track, "name", "") or "")
+    if name != expected_name:
+        raise ScriptError(
+            "PRECONDITION_FAILED",
+            "index %d now holds %r, not %r" % (index, name, expected_name),
+        )
+    follower = None
+    if index + 1 < len(tracks):
+        follower = str(getattr(tracks[index + 1], "name", "") or "")
+    before = len(tracks)
+    try:
+        delete_track(track)
+    except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
+        raise ScriptError("LIVE_ERROR", "Live refused to delete %r: %s" % (name, exc))
+    after = list(song.tracks)
+    if len(after) != before - 1:
+        raise ScriptError(
+            "LIVE_ERROR",
+            "Live reported success but the track count went from %d to %d" % (before, len(after)),
+        )
+    if follower is not None and (
+        index >= len(after)
+        or str(getattr(after[index], "name", "") or "") != follower
+    ):
+        raise ScriptError(
+            "LIVE_ERROR",
+            "Live deleted a track but %r did not move into index %d" % (follower, index),
+        )
+    return {"track": name, "track_index": index}
+
+
+@command("tracks.delete")
+def delete(args, song):
+    check_args(args, allowed=("track", "track_index", "confirm", "dry_run"))
+    dry_run = bool(args.get("dry_run", True))
+    has_track = "track" in args
+    has_index = "track_index" in args
+    if has_track == has_index:
+        raise ScriptError("BAD_ARGS", "give exactly one of track or track_index")
+    if has_track:
+        wanted = args.get("track")
+        if not isinstance(wanted, str) or not wanted:
+            raise ScriptError("BAD_ARGS", "track must be a non-empty string")
+        index, track = _one_track(song, wanted)
+    else:
+        raw = args.get("track_index")
+        if isinstance(raw, bool) or not isinstance(raw, int) or raw < 0:
+            raise ScriptError("BAD_ARGS", "track_index must be a non-negative integer")
+        if raw >= len(song.tracks):
+            raise ScriptError("NOT_FOUND", "no track at index %s" % (raw,))
+        index = raw
+        track = song.tracks[index]
+
+    if len(song.tracks) <= 1:
+        raise ScriptError(
+            "PRECONDITION_FAILED", "the Set has one track and Live needs at least one"
+        )
+
+    name = str(getattr(track, "name", "") or "")
+    arrangement, session = _track_clip_counts(track)
+    contents = {
+        "track": name,
+        "track_index": index,
+        "arrangement_clips": arrangement,
+        "session_clips": session,
+    }
+    if dry_run:
+        return {
+            "dry_run": True,
+            "contents": contents,
+            "confirmation_required": True,
+            "undo": [],
+        }
+    if args.get("confirm") is not True:
+        raise ScriptError(
+            "PRECONDITION_FAILED",
+            "%r was not deleted: this Live build cannot put a track back, "
+            "so an apply needs confirm: true" % (name,),
+        )
+    deleted = _delete_track(song, index, name)
+    return {"dry_run": False, "deleted": deleted, "undo": []}
+
+
+@command("tracks.clean_empty")
+def clean_empty(args, song):
+    check_args(args, allowed=("tracks", "confirm", "dry_run"))
+    dry_run = bool(args.get("dry_run", True))
+    wanted = args.get("tracks")
+    if wanted is not None:
+        if not isinstance(wanted, list) or not wanted:
+            raise ScriptError("BAD_ARGS", "tracks must be a non-empty list of names")
+        for name in wanted:
+            if not isinstance(name, str) or not name:
+                raise ScriptError("BAD_ARGS", "tracks must contain non-empty names")
+        if len(set(wanted)) != len(wanted):
+            raise ScriptError("BAD_ARGS", "tracks contains a duplicate name")
+        rows = [_one_track(song, name) for name in wanted]
+    else:
+        rows = list(enumerate(song.tracks))
+
+    empty, occupied = [], []
+    for index, track in rows:
+        name = str(getattr(track, "name", "") or "")
+        arrangement, session = _track_clip_counts(track)
+        row = {
+            "track": name,
+            "track_index": index,
+            "arrangement_clips": arrangement,
+            "session_clips": session,
+        }
+        (empty if arrangement == 0 and session == 0 else occupied).append(row)
+
+    if len(song.tracks) - len(empty) < 1:
+        raise ScriptError(
+            "PRECONDITION_FAILED",
+            "that would leave no tracks, and Live needs at least one",
+        )
+    if wanted is not None and occupied:
+        raise ScriptError(
+            "PRECONDITION_FAILED",
+            "%s holds clips, so the batch was refused"
+            % ", ".join(repr(row["track"]) for row in occupied),
+        )
+
+    empty.sort(key=lambda row: row["track_index"], reverse=True)
+    if dry_run:
+        return {
+            "dry_run": True,
+            "empty": empty,
+            "count": len(empty),
+            "confirmation_required": True,
+            "undo": [],
+        }
+    if args.get("confirm") is not True:
+        raise ScriptError(
+            "PRECONDITION_FAILED",
+            "%d empty track(s) were not deleted: this cannot be undone, "
+            "so an apply needs confirm: true" % (len(empty),),
+        )
+    deleted = [_delete_track(song, row["track_index"], row["track"]) for row in empty]
+    return {"dry_run": False, "deleted": deleted, "count": len(deleted), "undo": []}
+
+
 def _routing_name(obj):
     if obj is None:
         return None

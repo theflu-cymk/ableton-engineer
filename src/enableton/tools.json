@@ -1476,6 +1476,55 @@
       "cmd": "tracks.set_routing"
     },
     {
+      "name": "tracks_delete",
+      "domain": "tracks",
+      "summary": "Delete one track after an explicit confirm; irreversible on this Live build.",
+      "description": "Deletes the resolved track and checks the track count fell by exactly one and that the following track moved into the freed index. This build cannot put a track back: insert_device arrives in Live 12.3, so the delete has no undo token and is declared irreversible. An apply therefore refuses without confirm: true, a dry run reports what the track holds and states that confirmation is required, and a Set with a single track is refused because Live needs at least one.",
+      "examples": ["delete this empty track", "remove the duplicate track"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
+          "track_index": {"type": "integer", "minimum": 0},
+          "confirm": {"type": "boolean", "description": "Must be true to apply; this cannot be undone."},
+          "dry_run": {"type": "boolean", "default": true}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": false,
+      "needs": [],
+      "min_live": null,
+      "cmd": "tracks.delete"
+    },
+    {
+      "name": "tracks_clean_empty",
+      "domain": "tracks",
+      "summary": "Delete empty tracks after an explicit confirm; irreversible on this Live build.",
+      "description": "Finds tracks with no Arrangement clips and no Session clips, or checks the tracks you name, and deletes them in descending index order so each index stays valid. A named track that holds a clip refuses the whole batch rather than being skipped silently, a Set that would be left with no tracks is refused, and an apply without confirm: true writes nothing. Irreversible on this build, so a dry run only lists what would go.",
+      "examples": ["clean out the empty tracks", "delete these empty tracks"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "tracks": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Exact track names to check; omit to scan every track."
+          },
+          "confirm": {"type": "boolean", "description": "Must be true to apply; this cannot be undone."},
+          "dry_run": {"type": "boolean", "default": true}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 5000,
+      "writes": true,
+      "reversible": false,
+      "needs": [],
+      "min_live": null,
+      "cmd": "tracks.clean_empty"
+    },
+    {
       "name": "mix_routing_report",
       "domain": "mix",
       "summary": "Every track's input and output routing, with unreadable rows flagged.",

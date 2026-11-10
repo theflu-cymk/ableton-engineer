@@ -87,6 +87,8 @@
         "tracks_gain_stage",
         "tracks_duplicate",
         "tracks_set_routing",
+        "tracks_delete",
+        "tracks_clean_empty",
         "clips_warp_check",
         "clips_fix_loop_points",
         "clips_set_warp_mode",

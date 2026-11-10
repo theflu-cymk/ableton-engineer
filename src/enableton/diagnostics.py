@@ -287,9 +287,12 @@ def _has_available_fix(finding: Finding, catalogue: Dict[str, Tool]) -> bool:
     if finding.fix is None or finding.needs_listening:
         return False
     tool = catalogue.get(finding.fix.get("tool"))
-    return bool(tool is not None and tool.writes and "dry_run" in (
-        tool.input.get("properties") or {}
-    ))
+    return bool(
+        tool is not None
+        and tool.writes
+        and tool.reversible
+        and "dry_run" in (tool.input.get("properties") or {})
+    )
 
 
 def counts(findings: Sequence[Finding], catalogue: Optional[Dict[str, Tool]] = None) -> Dict[str, Any]:
@@ -483,6 +486,10 @@ def _build_plan(
             reason = "tool %r is not implemented in this build" % (tool_name,)
         elif not tool.writes:
             reason = "tool %r is read-only" % tool_name
+        elif not tool.reversible:
+            reason = (
+                "tool %r cannot be undone, so it is never planned automatically" % tool_name
+            )
         elif "dry_run" not in (tool.input.get("properties") or {}):
             reason = "tool %r has no dry-run mode" % tool_name
         if reason is not None:

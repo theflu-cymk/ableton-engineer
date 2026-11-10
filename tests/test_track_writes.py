@@ -1,7 +1,7 @@
 import unittest
 
 import support  # noqa: F401
-from enableton.live.fake import FakeAdapter, FakeClip, FakeSend, FakeTrack, build_song
+from enableton.live.fake import FakeAdapter, FakeClip, FakeSend, FakeSong, FakeTrack, build_song
 
 from Enableton.errors import ScriptError
 
@@ -210,6 +210,81 @@ class ClipRenameTests(unittest.TestCase):
                 "clips.rename", {"track": "Drums", "clip": "missing", "name": "x"}
             )
         self.assertEqual(ctx.exception.code, "NOT_FOUND")
+
+
+class TrackDeleteTests(unittest.TestCase):
+    def setUp(self):
+        self.song = build_song()
+        self.adapter = FakeAdapter(self.song)
+
+    def test_dry_run_reports_contents_and_deletes_nothing(self):
+        result = self.adapter.call("tracks.delete", {"track": "Vocal chop", "dry_run": True})
+        self.assertTrue(result["dry_run"])
+        self.assertTrue(result["confirmation_required"])
+        self.assertEqual(result["contents"]["track"], "Vocal chop")
+        self.assertEqual(result["contents"]["arrangement_clips"], 0)
+        self.assertEqual(len(self.song.tracks), 3)
+
+    def test_an_apply_without_confirm_is_refused_and_nothing_is_deleted(self):
+        with self.assertRaises(ScriptError) as ctx:
+            self.adapter.call("tracks.delete", {"track": "Vocal chop", "dry_run": False})
+        self.assertEqual(ctx.exception.code, "PRECONDITION_FAILED")
+        self.assertEqual(len(self.song.tracks), 3)
+
+    def test_a_confirmed_delete_removes_only_that_track(self):
+        result = self.adapter.call(
+            "tracks.delete", {"track": "Bass layer", "confirm": True, "dry_run": False}
+        )
+        self.assertEqual(result["deleted"]["track"], "Bass layer")
+        self.assertEqual([track.name for track in self.song.tracks], ["Drums", "Vocal chop"])
+
+    def test_a_single_track_set_is_refused(self):
+        adapter = FakeAdapter(FakeSong(tracks=[FakeTrack("Only")]))
+        with self.assertRaises(ScriptError) as ctx:
+            adapter.call("tracks.delete", {"track": "Only", "confirm": True, "dry_run": False})
+        self.assertEqual(ctx.exception.code, "PRECONDITION_FAILED")
+
+    def test_an_unknown_track_index_is_typed(self):
+        with self.assertRaises(ScriptError) as ctx:
+            self.adapter.call("tracks.delete", {"track_index": 9, "dry_run": True})
+        self.assertEqual(ctx.exception.code, "NOT_FOUND")
+
+
+class CleanEmptyTests(unittest.TestCase):
+    def setUp(self):
+        self.song = build_song()
+        self.adapter = FakeAdapter(self.song)
+
+    def test_dry_run_lists_the_empty_track_and_deletes_nothing(self):
+        result = self.adapter.call("tracks.clean_empty", {"dry_run": True})
+        self.assertEqual([row["track"] for row in result["empty"]], ["Vocal chop"])
+        self.assertEqual(result["count"], 1)
+        self.assertEqual(len(self.song.tracks), 3)
+
+    def test_an_apply_without_confirm_writes_nothing(self):
+        with self.assertRaises(ScriptError) as ctx:
+            self.adapter.call("tracks.clean_empty", {"dry_run": False})
+        self.assertEqual(ctx.exception.code, "PRECONDITION_FAILED")
+        self.assertEqual(len(self.song.tracks), 3)
+
+    def test_a_confirmed_apply_deletes_only_the_empty_track(self):
+        result = self.adapter.call("tracks.clean_empty", {"confirm": True, "dry_run": False})
+        self.assertEqual(result["count"], 1)
+        self.assertEqual([track.name for track in self.song.tracks], ["Drums", "Bass layer"])
+
+    def test_naming_a_track_that_holds_clips_refuses_the_batch(self):
+        with self.assertRaises(ScriptError) as ctx:
+            self.adapter.call(
+                "tracks.clean_empty", {"tracks": ["Drums"], "confirm": True, "dry_run": False}
+            )
+        self.assertEqual(ctx.exception.code, "PRECONDITION_FAILED")
+        self.assertEqual(len(self.song.tracks), 3)
+
+    def test_a_set_of_only_empty_tracks_is_refused(self):
+        adapter = FakeAdapter(FakeSong(tracks=[FakeTrack("a"), FakeTrack("b")]))
+        with self.assertRaises(ScriptError) as ctx:
+            adapter.call("tracks.clean_empty", {"confirm": True, "dry_run": False})
+        self.assertEqual(ctx.exception.code, "PRECONDITION_FAILED")
 
 
 if __name__ == "__main__":

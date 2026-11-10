@@ -168,12 +168,23 @@ class DiagnosticsPlanTests(unittest.TestCase):
         self.assertEqual(plan["steps"], [])
         self.assertEqual(plan["needs_listening"][0]["finding_id"], "f_ear")
 
-    def test_missing_fix_tool_is_unavailable_not_silently_dropped(self):
+    def test_an_irreversible_fix_tool_is_unavailable_not_silently_dropped(self):
         data = snapshot([track(0, "empty")])
         result = diagnostics.plan(data, {}, self.catalogue)
         self.assertEqual(result["steps"], [])
         self.assertEqual(result["unavailable"][0]["tool"], "tracks_clean_empty")
-        self.assertIn("not implemented", result["unavailable"][0]["reason"])
+        self.assertIn("cannot be undone", result["unavailable"][0]["reason"])
+
+    def test_a_missing_fix_tool_is_unavailable_not_silently_dropped(self):
+        finding = Finding(
+            id="f_missing", kind="test.missing", severity="info", confidence=1.0,
+            title="missing tool", evidence={}, location={}, objective="", phase="hygiene",
+            mode="auto", needs_listening=False,
+            fix={"tool": "tracks_group_by_role", "args": {}},
+        )
+        plan = diagnostics._build_plan([finding], self.catalogue)
+        self.assertEqual(plan["steps"], [])
+        self.assertIn("not implemented", plan["unavailable"][0]["reason"])
 
 
 class AutofixTests(unittest.TestCase):
