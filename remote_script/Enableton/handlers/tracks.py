@@ -535,3 +535,260 @@ def name_and_color(args, song):
         "changes": changes,
         "undo": undo,
     }
+
+
+@command("tracks.duplicate")
+def duplicate(args, song):
+    check_args(args, allowed=("track", "track_index", "count", "dry_run", "restore"))
+    dry_run = bool(args.get("dry_run", True))
+    if args.get("restore") is not None:
+        if any(key in args for key in ("track", "track_index", "count")):
+            raise ScriptError("BAD_ARGS", "restore cannot be combined with a duplicate")
+        return _restore_duplicates(args, song, dry_run)
+
+    has_track = "track" in args
+    has_index = "track_index" in args
+    if has_track == has_index:
+        raise ScriptError("BAD_ARGS", "give exactly one of track or track_index")
+    if has_track:
+        track_name = args.get("track")
+        if not isinstance(track_name, str) or not track_name:
+            raise ScriptError("BAD_ARGS", "track must be a non-empty string")
+        index, track = _one_track(song, track_name)
+    else:
+        raw_index = args.get("track_index")
+        if isinstance(raw_index, bool) or not isinstance(raw_index, int) or raw_index < 0:
+            raise ScriptError("BAD_ARGS", "track_index must be a non-negative integer")
+        if raw_index >= len(song.tracks):
+            raise ScriptError("NOT_FOUND", "no track at index %s" % (raw_index,))
+        index = raw_index
+        track = song.tracks[index]
+
+    count = args.get("count", 1)
+    if isinstance(count, bool) or not isinstance(count, int) or count < 1 or count > 8:
+        raise ScriptError("BAD_ARGS", "count must be an integer from 1 to 8")
+
+    duplicate_track = getattr(song, "duplicate_track", None)
+    if not callable(duplicate_track):
+        raise ScriptError("UNSUPPORTED", "this Live build cannot duplicate a track")
+
+    planned = [
+        {"source": str(getattr(track, "name", "")), "source_index": index,
+         "track_index": index + offset}
+        for offset in range(1, count + 1)
+    ]
+    if dry_run:
+        return {"dry_run": True, "created": planned, "undo": []}
+
+    created, undo = [], []
+    for offset in range(count):
+        try:
+            new_track = duplicate_track(index + offset)
+        except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
+            raise ScriptError(
+                "LIVE_ERROR", "could not duplicate %r: %s"
+                % (str(getattr(track, "name", "")), exc),
+            )
+        tracks = list(song.tracks)
+        new_index = index + offset + 1
+        for position, candidate in enumerate(tracks):
+            if candidate is new_track:
+                new_index = position
+                break
+        name = str(getattr(new_track, "name", "") or "")
+        created.append({"name": name, "track_index": new_index,
+                        "source": str(getattr(track, "name", ""))})
+        undo.append({"track_index": new_index, "name": name})
+
+    return {"dry_run": False, "created": created, "undo": undo}
+
+
+def _restore_duplicates(args, song, dry_run):
+    entries = args.get("restore")
+    if not isinstance(entries, list) or not entries:
+        raise ScriptError("BAD_ARGS", "restore must be a non-empty list")
+    checked = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ScriptError("BAD_ARGS", "restore entries must be objects")
+        try:
+            index = int(entry["track_index"])
+        except (KeyError, TypeError, ValueError):
+            raise ScriptError("BAD_ARGS", "restore entries need track_index")
+        checked.append((index, entry.get("name")))
+
+    delete_track = getattr(song, "delete_track", None)
+    if not callable(delete_track):
+        raise ScriptError("UNSUPPORTED", "this Live build cannot delete a track")
+
+    changes, missing = [], []
+    # Descending index order: each delete shifts everything after it down by one.
+    for index, wanted in sorted(checked, key=lambda pair: pair[0], reverse=True):
+        tracks = list(song.tracks)
+        if index < 0 or index >= len(tracks):
+            missing.append({"track_index": index, "reason": "no track at that index"})
+            continue
+        track = tracks[index]
+        name = str(getattr(track, "name", "") or "")
+        if wanted is not None and name != str(wanted):
+            missing.append(
+                {"track_index": index, "reason": "the track at that index has a different name"}
+            )
+            continue
+        if not dry_run:
+            delete_track(track)
+        changes.append({"track": name, "track_index": index})
+
+    return {"dry_run": dry_run, "restored": len(changes), "changes": changes, "missing": missing}
+
+
+def _routing_name(obj):
+    if obj is None:
+        return None
+    for name in ("display_name", "name"):
+        value = getattr(obj, name, None)
+        if isinstance(value, str) and value:
+            return value
+    text = str(obj)
+    return text or None
+
+
+def _routing_options(track, attribute, label):
+    try:
+        options = list(getattr(track, attribute) or [])
+    except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
+        raise ScriptError("UNSUPPORTED", "this Live build cannot read %s: %s" % (label, exc))
+    if not options:
+        raise ScriptError(
+            "PRECONDITION_FAILED", "%r has no %s to choose from"
+            % (str(getattr(track, "name", "")), label),
+        )
+    return options
+
+
+def _pick_routing(options, wanted, label):
+    matches = [option for option in options if _routing_name(option) == wanted]
+    if not matches:
+        matches = [
+            option for option in options
+            if str(_routing_name(option) or "").casefold() == str(wanted).casefold()
+        ]
+    if not matches:
+        raise ScriptError(
+            "NOT_FOUND", "no %s named %r; available: %s"
+            % (label, wanted, ", ".join(sorted(str(_routing_name(o)) for o in options))),
+        )
+    if len(matches) > 1:
+        raise ScriptError(
+            "AMBIGUOUS_REF", "%d %s options are named %r" % (len(matches), label, wanted)
+        )
+    return matches[0]
+
+
+_ROUTING_FIELDS = (
+    ("input_type", "input_routing_type", "available_input_routing_types", "input type"),
+    ("input_channel", "input_routing_channel", "available_input_routing_channels", "input channel"),
+    ("output_type", "output_routing_type", "available_output_routing_types", "output type"),
+    ("output_channel", "output_routing_channel", "available_output_routing_channels", "output channel"),
+)
+
+
+@command("tracks.set_routing")
+def set_routing(args, song):
+    check_args(args, allowed=(
+        "track", "input_type", "input_channel", "output_type", "output_channel",
+        "dry_run", "restore",
+    ))
+    dry_run = bool(args.get("dry_run", True))
+    if args.get("restore") is not None:
+        if any(
+            key in args
+            for key in ("track", "input_type", "input_channel", "output_type", "output_channel")
+        ):
+            raise ScriptError("BAD_ARGS", "restore cannot be combined with routing changes")
+        return _restore_routing(args, song, dry_run)
+
+    track_name = args.get("track")
+    if not isinstance(track_name, str) or not track_name:
+        raise ScriptError("BAD_ARGS", "track must be a non-empty string")
+    if not any(key in args for key in ("input_type", "input_channel", "output_type", "output_channel")):
+        raise ScriptError("BAD_ARGS", "give at least one routing change")
+    index, track = _one_track(song, track_name)
+
+    before = {field: _routing_name(getattr(track, attribute, None))
+              for field, attribute, _options, _label in _ROUTING_FIELDS}
+    changes = []
+    for field, attribute, options_attribute, label in _ROUTING_FIELDS:
+        wanted = args.get(field)
+        if wanted is None:
+            continue
+        if not isinstance(wanted, str) or not wanted:
+            raise ScriptError("BAD_ARGS", "%s must be a non-empty string" % (field,))
+        choice = _pick_routing(
+            _routing_options(track, options_attribute, label), wanted, label
+        )
+        changes.append({
+            "field": field,
+            "from": _routing_name(getattr(track, attribute, None)),
+            "to": _routing_name(choice),
+        })
+        if not dry_run:
+            try:
+                setattr(track, attribute, choice)
+            except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
+                raise ScriptError(
+                    "UNSUPPORTED", "this Live build cannot set %s: %s" % (label, exc)
+                )
+
+    return {
+        "dry_run": dry_run,
+        "track": str(getattr(track, "name", "")),
+        "track_index": index,
+        "changes": changes,
+        "undo": [{"track_index": index, **before}],
+    }
+
+
+def _restore_routing(args, song, dry_run):
+    entries = args.get("restore")
+    if not isinstance(entries, list) or not entries:
+        raise ScriptError("BAD_ARGS", "restore must be a non-empty list")
+    changes, missing = [], []
+    for entry in reversed(entries):
+        if not isinstance(entry, dict):
+            raise ScriptError("BAD_ARGS", "restore entries must be objects")
+        try:
+            index = int(entry["track_index"])
+        except (KeyError, TypeError, ValueError):
+            raise ScriptError("BAD_ARGS", "restore entries need track_index")
+        if index < 0 or index >= len(song.tracks):
+            raise ScriptError("NOT_FOUND", "no track at index %s" % (index,))
+        track = song.tracks[index]
+        restored = {}
+        for field, attribute, options_attribute, label in _ROUTING_FIELDS:
+            wanted = entry.get(field)
+            if wanted is None:
+                continue
+            try:
+                choice = _pick_routing(
+                    _routing_options(track, options_attribute, label), str(wanted), label
+                )
+            except ScriptError as exc:
+                missing.append({"track_index": index, "field": field, "reason": str(exc)})
+                continue
+            if not dry_run:
+                try:
+                    setattr(track, attribute, choice)
+                except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
+                    raise ScriptError(
+                        "UNSUPPORTED", "this Live build cannot set %s: %s" % (label, exc)
+                    )
+            restored[field] = str(wanted)
+        if restored:
+            changes.append({
+                "track": str(getattr(track, "name", "")),
+                "track_index": index,
+                "restored": restored,
+            })
+
+    return {"dry_run": dry_run, "restored": len(changes), "changes": changes, "missing": missing}

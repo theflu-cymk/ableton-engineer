@@ -1172,6 +1172,366 @@
       "needs": [],
       "min_live": null,
       "cmd": "clips.fix_loop_points"
+    },
+    {
+      "name": "sections_create_locators",
+      "domain": "sections",
+      "summary": "Create named locators at bar boundaries, with dry-run and exact restore.",
+      "description": "Creates one named locator per requested bar. Live has no create-locator call: a cue is toggled at the playhead, and the same call deletes an existing cue. So this tool reads the locator list first and refuses a bar that already holds one instead of silently removing it. The playhead is moved only to the beats being written and is put back afterwards. Dry-run by default; applying returns an undo token that deletes exactly the cues it created.",
+      "examples": ["mark the sections I mapped", "put locators at bars 1, 33 and 65", "name my arrangement sections"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "sections": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string", "minLength": 1},
+                "bar": {"type": "number", "minimum": 1}
+              },
+              "required": ["name", "bar"],
+              "additionalProperties": false
+            }
+          },
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "description": "Internal rollback token returned by an applied create.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "time": {"type": "number", "minimum": 0},
+                "bar": {"type": "number", "minimum": 1},
+                "name": {"type": "string"}
+              },
+              "required": ["time"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 4000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "sections.create_locators"
+    },
+    {
+      "name": "sections_delete",
+      "domain": "sections",
+      "summary": "Delete locators by name, bar or all of them, with exact restore.",
+      "description": "Deletes the locators selected by exact name, by bar, or every locator when all is true. Exactly one selector is required, and a duplicated name is refused rather than guessed. A deleted marker keeps its name and time in the undo token, so restore recreates the cue exactly. Dry-run by default; a bar with no locator is an error, not a silent skip.",
+      "examples": ["delete the intro marker", "clear all my locators", "remove the locator at bar 65"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "names": {"type": "array", "items": {"type": "string"}},
+          "bars": {"type": "array", "items": {"type": "number", "minimum": 1}},
+          "all": {"type": "boolean"},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "description": "Internal rollback token returned by an applied delete.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "time": {"type": "number", "minimum": 0},
+                "bar": {"type": "number", "minimum": 1},
+                "name": {"type": "string"}
+              },
+              "required": ["time"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 4000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "sections.delete"
+    },
+    {
+      "name": "sections_scenes_from_sections",
+      "domain": "sections",
+      "summary": "Create one Scene per locator, named after it, with dry-run and exact restore.",
+      "description": "Turns the Set's locators into Session scenes, in time order. A locator with no name is skipped and named in the result; a scene that already carries the name is skipped too, so running this twice does not duplicate scenes. Dry-run by default; applying returns an undo token holding each created scene's index and name, and restore deletes exactly those.",
+      "examples": ["make scenes from my sections", "turn my locators into scenes"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "prefix": {"type": "string", "description": "Optional name prefix for every created scene."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "description": "Internal rollback token returned by an applied create.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {"type": "integer", "minimum": 0},
+                "name": {"type": "string"}
+              },
+              "required": ["index"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 4000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "sections.scenes_from_sections"
+    },
+    {
+      "name": "clips_copy",
+      "domain": "clips",
+      "summary": "Copy one clip to another Session slot or arrangement bar, with exact restore.",
+      "description": "Copies one clip within the same track or onto another track, to a Session slot (session sources) or to an arrangement bar (arrangement sources). Live has no primitive for moving between Session and Arrangement, so that combination is refused with the reason instead of approximated. An occupied destination is refused. Dry-run by default; applying returns an undo token naming the clip it created, and restore deletes exactly that.",
+      "examples": ["copy this loop to slot 4", "copy this clip to bar 65", "duplicate this clip onto the drum bus"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "clip": {"type": "string"},
+          "location": {"type": "string", "enum": ["arrangement", "session"]},
+          "slot": {"type": "integer", "minimum": 0, "description": "Zero-based source slot for session clips."},
+          "to_track": {"type": "string", "description": "Destination track; defaults to the source track."},
+          "to_slot": {"type": "integer", "minimum": 0, "description": "Destination session slot."},
+          "to_bar": {"type": "number", "minimum": 1, "description": "Destination bar for arrangement clips."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "description": "Internal rollback token returned by an applied copy.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "location": {"type": "string", "enum": ["arrangement", "session"]},
+                "track_index": {"type": "integer", "minimum": 0},
+                "slot": {"type": ["integer", "null"], "minimum": 0},
+                "start": {"type": "number", "minimum": 0},
+                "name": {"type": "string"}
+              },
+              "required": ["location", "track_index"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["track", "clip"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 4000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.copy"
+    },
+    {
+      "name": "clips_transpose",
+      "domain": "clips",
+      "summary": "Shift a MIDI clip by semitones, with dry-run and exact note restore.",
+      "description": "Moves every note in one MIDI clip by the given number of semitones. It refuses rather than clipping a pitch outside 0-127. Starts, durations and velocities are untouched, and audio clips are unavailable with a reason. Dry-run by default; applying returns the clip's whole note vector as the undo token, and restore writes it back exactly.",
+      "examples": ["take this bassline up an octave", "transpose the chord clip down a fifth", "move this part up two semitones"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "clip": {"type": "string"},
+          "location": {"type": "string", "enum": ["arrangement", "session"]},
+          "slot": {"type": "integer", "minimum": 0},
+          "semitones": {"type": "integer", "minimum": -48, "maximum": 48},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "description": "Internal rollback token returned by an applied transpose.",
+            "items": {"type": "object"}
+          }
+        },
+        "required": ["track", "clip", "semitones"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.transpose"
+    },
+    {
+      "name": "clips_clear",
+      "domain": "clips",
+      "summary": "Empty a MIDI clip, with dry-run and exact note restore.",
+      "description": "Removes every note from one MIDI clip, leaving the clip itself and its length in place. An audio clip is unavailable with a reason: clearing it would delete audio this tool cannot put back, so it is not attempted. Dry-run by default; applying returns the whole note vector as the undo token, and restore writes it back exactly.",
+      "examples": ["clear this clip", "empty the notes in this pattern"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "clip": {"type": "string"},
+          "location": {"type": "string", "enum": ["arrangement", "session"]},
+          "slot": {"type": "integer", "minimum": 0},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "description": "Internal rollback token returned by an applied clear.",
+            "items": {"type": "object"}
+          }
+        },
+        "required": ["track", "clip"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.clear"
+    },
+    {
+      "name": "tracks_duplicate",
+      "domain": "tracks",
+      "summary": "Duplicate a track, with dry-run and exact restore.",
+      "description": "Duplicates one track in place, count times, and reads the new tracks back from the Set instead of assuming where Live put them. The copy carries Live's own content: clips, devices and mixer state. Dry-run by default; applying returns one undo token per created track, and restore deletes exactly those, verifying each name first.",
+      "examples": ["duplicate the drum bus", "make three copies of this track"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "track_index": {"type": "integer", "minimum": 0},
+          "count": {"type": "integer", "minimum": 1, "maximum": 8, "default": 1},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "description": "Internal rollback token returned by an applied duplicate.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "name": {"type": "string"}
+              },
+              "required": ["track_index"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 5000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "tracks.duplicate"
+    },
+    {
+      "name": "tracks_set_routing",
+      "domain": "tracks",
+      "summary": "Set a track's input or output routing, with dry-run and exact restore.",
+      "description": "Changes one track's input type, input channel, output type or output channel by Live's own display name, resolving each against the options the track reports. A name that does not match is refused with the available names. Live builds the channel list from the selected type, so when changing both, set the type first in a separate call. Dry-run by default; applying returns the previous names as an undo token.",
+      "examples": ["route this track to the master", "send the bass to the drum bus", "change the input to Ext. In"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "input_type": {"type": "string"},
+          "input_channel": {"type": "string"},
+          "output_type": {"type": "string"},
+          "output_channel": {"type": "string"},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "description": "Internal rollback token returned by an applied routing change.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "input_type": {"type": ["string", "null"]},
+                "input_channel": {"type": ["string", "null"]},
+                "output_type": {"type": ["string", "null"]},
+                "output_channel": {"type": ["string", "null"]}
+              },
+              "required": ["track_index"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["track"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "tracks.set_routing"
+    },
+    {
+      "name": "mix_routing_report",
+      "domain": "mix",
+      "summary": "Every track's input and output routing, with unreadable rows flagged.",
+      "description": "Reads input and output type and channel live, in Live's own display names, plus how many options each track offers. Routing is read here rather than in the snapshot so a plain read does not pay for it. A track whose routing cannot be read carries the reason in its row and is listed in flagged; an empty output is flagged too, never reported as a clean route.",
+      "examples": ["show me my routing", "is anything routed nowhere", "what feeds the drum bus"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "offset": {"type": "integer", "minimum": 0, "default": 0},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 2000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "mix.routing_report"
+    },
+    {
+      "name": "library_folders",
+      "domain": "library",
+      "summary": "List the browser's top-level categories and their child counts.",
+      "description": "Reads Live's browser categories — sounds, drums, instruments, effects, samples, packs, user library and the rest — with each one's display name, URI and child count. A category this build does not expose is listed in missing with the reason instead of being omitted silently. Read-only: nothing is loaded.",
+      "examples": ["what's in my library", "show me the browser categories"],
+      "input": {"type": "object", "properties": {}, "additionalProperties": false},
+      "timeout_ms": 4000,
+      "writes": false,
+      "reversible": true,
+      "needs": ["browser"],
+      "min_live": null,
+      "cmd": "library.folders"
+    },
+    {
+      "name": "library_browse",
+      "domain": "library",
+      "summary": "Page one browser folder's children by path.",
+      "description": "Walks the browser tree from a category by exact folder name, for example 'user_library' or 'sounds/Bass', and returns one page of children with name, folder flag, loadable flag and URI. A missing or ambiguous step is an error naming it; an unreadable folder reports the reason. Read-only and paged, because a sample category can hold thousands of items.",
+      "examples": ["browse my user library", "what's in the Bass folder", "show me the drum kits"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string", "description": "Slash-separated browser path, e.g. user_library/Presets."},
+          "offset": {"type": "integer", "minimum": 0, "default": 0},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 500, "default": 100}
+        },
+        "required": ["path"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 4000,
+      "writes": false,
+      "reversible": true,
+      "needs": ["browser"],
+      "min_live": null,
+      "cmd": "library.browse"
     }
   ]
 }

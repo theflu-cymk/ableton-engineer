@@ -49,12 +49,16 @@ class ManifestTests(unittest.TestCase):
         catalogue = load_manifest()
         self.assertEqual(
             remote_commands(catalogue),
-            ["clips.duplicate_range", "clips.fix_loop_points", "clips.rename",
-             "clips.set_warp_mode",
+            ["clips.clear", "clips.copy", "clips.duplicate_range", "clips.fix_loop_points",
+             "clips.rename", "clips.set_warp_mode", "clips.transpose",
+             "library.browse", "library.folders",
+             "mix.routing_report",
              "notes.humanize", "notes.quantize",
              "notes.read", "notes.replace", "notes.scale_lock", "notes.strum", "notes.transform",
-             "snapshot.get", "track.list", "tracks.gain_stage", "tracks.name_and_color",
-             "tracks.set_pan", "tracks.set_sends", "tracks.set_volume", "transport.locate",
+             "sections.create_locators", "sections.delete", "sections.scenes_from_sections",
+             "snapshot.get", "track.list", "tracks.duplicate", "tracks.gain_stage",
+             "tracks.name_and_color", "tracks.set_pan", "tracks.set_routing",
+             "tracks.set_sends", "tracks.set_volume", "transport.locate",
              "transport.play", "transport.set_loop", "transport.stop"],
         )
 

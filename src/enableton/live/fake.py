@@ -117,6 +117,21 @@ class FakeClipSlot:
     def has_clip(self) -> bool:
         return self.clip is not None
 
+    def duplicate_clip_to(self, destination: "FakeClipSlot") -> None:
+        if self.clip is None:
+            raise RuntimeError("no clip to duplicate")
+        destination.clip = copy.deepcopy(self.clip)
+
+    def delete_clip(self) -> None:
+        self.clip = None
+
+
+@dataclass
+class FakeRouting:
+    """A routing type or channel, as Live exposes it with ``display_name``."""
+
+    display_name: str
+
 
 @dataclass
 class FakeScene:
@@ -146,6 +161,22 @@ class FakeTrack:
     sends: List[FakeSend] = field(default_factory=list)
     clip_slots: List[FakeClipSlot] = field(default_factory=list)
     arrangement_clips: List[FakeClip] = field(default_factory=list)
+    input_routing_type: FakeRouting = field(default_factory=lambda: FakeRouting("All Ins"))
+    input_routing_channel: FakeRouting = field(default_factory=lambda: FakeRouting("All Channels"))
+    output_routing_type: FakeRouting = field(default_factory=lambda: FakeRouting("Master"))
+    output_routing_channel: FakeRouting = field(default_factory=lambda: FakeRouting("Track In"))
+    available_input_routing_types: List[FakeRouting] = field(
+        default_factory=lambda: [FakeRouting("All Ins"), FakeRouting("Ext. In")]
+    )
+    available_input_routing_channels: List[FakeRouting] = field(
+        default_factory=lambda: [FakeRouting("All Channels"), FakeRouting("1"), FakeRouting("2")]
+    )
+    available_output_routing_types: List[FakeRouting] = field(
+        default_factory=lambda: [FakeRouting("Master"), FakeRouting("Sends Only")]
+    )
+    available_output_routing_channels: List[FakeRouting] = field(
+        default_factory=lambda: [FakeRouting("Track In"), FakeRouting("1")]
+    )
 
     @property
     def has_midi_input(self) -> bool:
@@ -167,6 +198,34 @@ class FakeTrack:
 
 
 @dataclass
+class FakeBrowserItem:
+    name: str
+    is_folder: bool = False
+    is_loadable: bool = False
+    uri: str = ""
+    children: List["FakeBrowserItem"] = field(default_factory=list)
+
+
+@dataclass
+class FakeBrowser:
+    """Just enough of Live's browser to exercise the read path."""
+
+    sounds: FakeBrowserItem = field(default_factory=lambda: FakeBrowserItem(
+        "Sounds", True, False, "query:Sounds",
+        [
+            FakeBrowserItem("Bass", True, False, "query:Sounds#Bass", [
+                FakeBrowserItem("Sub Bass.adv", False, True, "file:Sub Bass.adv"),
+            ]),
+            FakeBrowserItem("Pads", True, False, "query:Sounds#Pads", []),
+        ],
+    ))
+    user_library: FakeBrowserItem = field(default_factory=lambda: FakeBrowserItem(
+        "User Library", True, False, "query:UserLibrary",
+        [FakeBrowserItem("Presets", True, False, "query:UserLibrary#Presets", [])],
+    ))
+
+
+@dataclass
 class FakeSong:
     name: str = "M0 Fake Set"
     file_path: str = ""
@@ -182,12 +241,42 @@ class FakeSong:
     return_tracks: List[FakeTrack] = field(default_factory=list)
     scenes: List[FakeScene] = field(default_factory=list)
     locators: List[FakeLocator] = field(default_factory=list)
+    browser: FakeBrowser = field(default_factory=FakeBrowser)
 
     def start_playing(self) -> None:
         self.is_playing = True
 
     def stop_playing(self) -> None:
         self.is_playing = False
+
+    def set_or_delete_cue(self) -> None:
+        """Live toggles one cue at the playhead; a second call at the same beat removes it."""
+        time = float(self.current_song_time)
+        for index, locator in enumerate(self.locators):
+            if abs(float(locator.time) - time) <= 1e-6:
+                del self.locators[index]
+                return
+        self.locators.append(FakeLocator("", time))
+        self.locators.sort(key=lambda item: item.time)
+
+    def duplicate_track(self, index: int) -> FakeTrack:
+        duplicate = copy.deepcopy(self.tracks[index])
+        self.tracks.insert(index + 1, duplicate)
+        return duplicate
+
+    def delete_track(self, track: FakeTrack) -> None:
+        self.tracks.remove(track)
+
+    def create_scene(self, index: int = -1) -> FakeScene:
+        scene = FakeScene("")
+        if index < 0 or index >= len(self.scenes):
+            self.scenes.append(scene)
+        else:
+            self.scenes.insert(index, scene)
+        return scene
+
+    def delete_scene(self, index: int) -> None:
+        del self.scenes[index]
 
 
 def build_song() -> FakeSong:

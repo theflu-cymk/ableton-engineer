@@ -22,7 +22,10 @@ class ModeTests(unittest.TestCase):
     def test_shipped_modes(self):
         modes = load_modes(self.catalogue)
         self.assertEqual(modes.default, "auto")
-        self.assertEqual(modes.names(), ["auto", "edit", "inspect"])
+        self.assertEqual(
+            sorted(modes.names()),
+            ["arrange", "auto", "edit", "inspect", "mix", "prep", "sound"],
+        )
         self.assertIn("ableton_status", modes.get("auto").tools)  # core injected
         self.assertIn("tracks_gain_stage", modes.get("auto").tools)
         self.assertIn("tracks_set_sends", modes.get("auto").tools)
@@ -33,6 +36,11 @@ class ModeTests(unittest.TestCase):
         self.assertIn("clips_fix_loop_points", modes.get("edit").tools)
         self.assertIn("notes_quantize", modes.get("edit").tools)
         self.assertIn("notes_read", modes.get("edit").tools)
+        self.assertIn("tracks_duplicate", modes.get("prep").tools)
+        self.assertIn("tracks_set_routing", modes.get("mix").tools)
+        self.assertIn("sections_create_locators", modes.get("arrange").tools)
+        self.assertIn("clips_copy", modes.get("edit").tools)
+        self.assertIn("library_browse", modes.get("sound").tools)
 
     def test_unknown_mode_is_a_clear_error(self):
         modes = load_modes(self.catalogue)

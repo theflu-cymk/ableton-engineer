@@ -54,7 +54,10 @@ class CliTests(unittest.TestCase):
             self.assertEqual(main(["modes"]), EXIT_OK)
         payload = json.loads(buffer.getvalue())
         self.assertEqual(payload["default"], "auto")
-        self.assertEqual([row["mode"] for row in payload["modes"]], ["auto", "edit", "inspect"])
+        self.assertEqual(
+            [row["mode"] for row in payload["modes"]],
+            ["arrange", "auto", "edit", "inspect", "mix", "prep", "sound"],
+        )
 
     def test_modes_findings_reads_per_mode_counts_from_live(self):
         server = support.fake_server()
@@ -77,7 +80,10 @@ class CliTests(unittest.TestCase):
             self.assertEqual(main(["--port", "1", "modes", "--findings"]), EXIT_OK)
         payload = json.loads(buffer.getvalue())
         self.assertFalse(payload["live"]["connected"])
-        self.assertEqual([row["mode"] for row in payload["modes"]], ["auto", "edit", "inspect"])
+        self.assertEqual(
+            [row["mode"] for row in payload["modes"]],
+            ["arrange", "auto", "edit", "inspect", "mix", "prep", "sound"],
+        )
 
     def test_inspect_prints_findings_and_returns_the_findings_exit_code(self):
         server = support.fake_server()

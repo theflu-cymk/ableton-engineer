@@ -54,6 +54,7 @@
         "inspect_unused",
         "mix_levels_report",
         "mix_headroom",
+        "mix_routing_report",
         "clips_warp_check",
         "notes_read",
         "notes_overlaps",
@@ -72,6 +73,29 @@
       "examples": ["audit this set", "what should I fix first"]
     },
     {
+      "name": "prep",
+      "summary": "Set hygiene before writing: naming, gain, routing, loop points.",
+      "tools": [
+        "inspect_run",
+        "inspect_report",
+        "tracks_list",
+        "tracks_set_volume",
+        "tracks_set_pan",
+        "tracks_set_sends",
+        "tracks_name_and_color",
+        "tracks_gain_stage",
+        "tracks_duplicate",
+        "tracks_set_routing",
+        "clips_warp_check",
+        "clips_fix_loop_points",
+        "clips_set_warp_mode",
+        "sections_create_locators"
+      ],
+      "default_scope": "set",
+      "escalate": true,
+      "examples": ["clean this set up before I write", "fix my track names and routing"]
+    },
+    {
       "name": "edit",
       "summary": "MIDI and clip surgery. Notes, clip edits and finding lookup.",
       "tools": [
@@ -87,11 +111,66 @@
         "clips_duplicate_range",
         "clips_set_warp_mode",
         "clips_fix_loop_points",
+        "clips_copy",
+        "clips_transpose",
+        "clips_clear",
         "inspect_finding"
       ],
       "default_scope": "selected_clip",
       "escalate": true,
       "examples": ["tighten the hats without losing the swing", "lock the bass to C minor"]
+    },
+    {
+      "name": "arrange",
+      "summary": "Timeline structure: sections, locators and clip placement.",
+      "tools": [
+        "sections_map",
+        "sections_create_locators",
+        "sections_delete",
+        "sections_scenes_from_sections",
+        "clips_copy",
+        "clips_duplicate_range",
+        "clips_transpose",
+        "inspect_structure",
+        "tracks_list"
+      ],
+      "default_scope": "set",
+      "escalate": true,
+      "examples": ["mark out the arrangement", "move this section later in the timeline"]
+    },
+    {
+      "name": "sound",
+      "summary": "Device chains, presets and browser material. No sample loading.",
+      "tools": [
+        "devices_read_chain",
+        "library_folders",
+        "library_browse",
+        "master_chain_read"
+      ],
+      "default_scope": "selected_track",
+      "escalate": true,
+      "examples": ["what's on this synth", "what drum kits do I have"]
+    },
+    {
+      "name": "mix",
+      "summary": "Balance, gain staging and routing.",
+      "tools": [
+        "mix_levels_report",
+        "mix_headroom",
+        "mix_routing_report",
+        "master_chain_read",
+        "devices_read_chain",
+        "tracks_list",
+        "tracks_set_volume",
+        "tracks_set_pan",
+        "tracks_set_sends",
+        "tracks_name_and_color",
+        "tracks_gain_stage",
+        "tracks_set_routing"
+      ],
+      "default_scope": "set",
+      "escalate": true,
+      "examples": ["balance my mix", "check my routing"]
     }
   ]
 }

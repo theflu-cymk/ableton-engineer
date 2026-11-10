@@ -33,7 +33,7 @@ test should assert that, or every count in the spec is wrong by 3×.
 
 ## 2. State of the build (measured, not claimed)
 
-`uv run pytest -q` → **260 passed, 7 subtests**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 acceptance gates are **real-Live verified on `0.2.3`**: duplicate dry-run matched apply, double-apply was a no-op, exact restore included the clip name, and a forced real mid-plan failure restored the arrangement object-for-object. M2 is complete. M3 is **complete and real-Live verified on `0.2.4`**: the three-fader autofix dropped findings from 25 to 22, a controlled count-rise probe halted and rolled back, `ableton_escalate` produced a stored plan that `ableton_plan_apply` executed from a separate CLI process, and `modes --findings` showed the per-mode counts before and after. All 14 needs-listening findings stayed out of every plan and apply. M4 is in progress: `ableton_guide` now returns the generated command sheet through the MCP tool surface, `enableton inspect`, `enableton plan` and `enableton run` are implemented, and `devices_read_chain`, `master_chain_read` and `sections_map` answer from one snapshot. The catalogue is now 41 tools in 3 modes (`auto 34`, `edit 18`, `inspect 21`); the inspect domain has all 8 tools, the notes domain has all 8 (`notes_read` is **Verified on real `0.2.8`** from 46 notes in a real session clip plus an audio clip's unavailable reason; all six writes are **Verified on real `0.2.10`**: quantize, transform, humanize, strum, replace and scale-lock each changed the same 46-note clip and restored it exactly, and seeded humanize reproduced identically), the new `edit` mode loads them, and `tracks_set_pan` plus `clips_rename` are implemented and **Verified on real `0.2.7`**: pan `0.0 → 0.2` on `MUSIC | vOCALS` and a unique arrangement-clip rename both applied, read back from a fresh snapshot, restored exactly, and read back again. **Real `0.2.6` is verified**: `doctor` reported script `0.2.6`, build `d9d5fefaad68`, no `stale`; play/stop, locate (bar 10 → 36 beats, confirmed by the following snapshot), loop set/clear, and loop/playhead restoration all passed.
+`uv run pytest -q` → **285 passed, 7 subtests** (2026-11-10). Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 acceptance gates are **real-Live verified on `0.2.3`**: duplicate dry-run matched apply, double-apply was a no-op, exact restore included the clip name, and a forced real mid-plan failure restored the arrangement object-for-object. M2 is complete. M3 is **complete and real-Live verified on `0.2.4`**: the three-fader autofix dropped findings from 25 to 22, a controlled count-rise probe halted and rolled back, `ableton_escalate` produced a stored plan that `ableton_plan_apply` executed from a separate CLI process, and `modes --findings` showed the per-mode counts before and after. All 14 needs-listening findings stayed out of every plan and apply. M4 is in progress: `ableton_guide` now returns the generated command sheet through the MCP tool surface, `enableton inspect`, `enableton plan` and `enableton run` are implemented, and `devices_read_chain`, `master_chain_read` and `sections_map` answer from one snapshot. The catalogue is now 41 tools in 3 modes (`auto 34`, `edit 18`, `inspect 21`); the inspect domain has all 8 tools, the notes domain has all 8 (`notes_read` is **Verified on real `0.2.8`** from 46 notes in a real session clip plus an audio clip's unavailable reason; all six writes are **Verified on real `0.2.10`**: quantize, transform, humanize, strum, replace and scale-lock each changed the same 46-note clip and restored it exactly, and seeded humanize reproduced identically), the new `edit` mode loads them, and `tracks_set_pan` plus `clips_rename` are implemented and **Verified on real `0.2.7`**: pan `0.0 → 0.2` on `MUSIC | vOCALS` and a unique arrangement-clip rename both applied, read back from a fresh snapshot, restored exactly, and read back again. **Real `0.2.6` is verified**: `doctor` reported script `0.2.6`, build `d9d5fefaad68`, no `stale`; play/stop, locate (bar 10 → 36 beats, confirmed by the following snapshot), loop set/clear, and loop/playhead restoration all passed.
 
 ### Device bypass unavailable; warp-mode write (2026-11-10, `0.2.14`)
 
@@ -46,6 +46,38 @@ test should assert that, or every count in the spec is wrong by 3×.
 **Verified on real `0.2.16`.** `doctor` reported script `0.2.16`, build `1931c2a5be95`, no `stale`, `errors 0` before and after the gate. On `SCRATCH fortnight`, `snare rush` / arrangement clip `SML_Ultra_Riddim2_Kit03_Snare-roll` was looped with loop `0.0–32.0`, warping `beats`, 3 markers, and arrangement boundaries `283.8117–300.3311`. `clips_fix_loop_points` changed the loop range to `0.0–8.0`; a fresh dry-run read back `0.0–8.0`; the arrangement start/end and warp state were unchanged. The undo token restored `0.0–32.0`, and a fresh snapshot still reported the same boundaries. `Clip.length` moved from `32.0` to `8.0` while looped because Live defines it as the loop length; the arrangement boundaries were checked separately and did not move. No user Set was written: the scratch `.als` mtime remained `2026-11-10 04:19:41`.
 
 **A defect found on real `0.2.15`:** the first gate targeted an unlooped clip, where `loop_end` is the clip end. Setting it to `8.0` changed the reported length from `59.8888` to `8.0` before restore. The tool now refuses unlooped clips with `UNSUPPORTED`, and the gate was repeated on the looped clip above. The failed attempt was fully restored and the working Set was not written.
+
+### Catalogue expansion: locators, clip edits, track routing (2026-11-10, `0.3.0`)
+
+**Implemented; the real-Live gate has not run yet.** The catalogue grew from 41 to 52 tools and from
+3 to 7 modes. `uv run pytest -q` → **285 passed, 7 subtests** against the fake LOM; that proves the
+handlers are internally consistent, **not** that Live accepts these writes.
+
+New tools (11): `sections_create_locators`, `sections_delete`, `sections_scenes_from_sections`,
+`clips_copy`, `clips_transpose`, `clips_clear`, `tracks_duplicate`, `tracks_set_routing`,
+`mix_routing_report`, `library_folders`, `library_browse`.
+
+New modes: `prep 19`, `arrange 14`, `sound 9`, `mix 17`; `auto` stays at the 34-tool cap, `edit` is
+21 and `inspect` 22. Every tool still appears in at least one mode.
+
+Three limits shaped the design and are **Assumed** until the real gate:
+
+- `Locator.time` is read-only on 12.2.5, so a marker move is a delete plus a create. No
+  `sections_move` was added, because it cannot be done in place.
+- A cue is toggled at the playhead with `Song.set_or_delete_cue()`, so writing where a cue already
+  exists deletes it. `sections_create_locators` reads first and refuses an occupied bar; both
+  locator writers put the playhead back afterwards.
+- Live has no Session↔Arrangement clip-copy primitive, so `clips_copy` refuses that pair with the
+  reason rather than approximating it. `clips_clear` likewise refuses audio, because emptying an
+  audio clip would delete material the tool cannot restore.
+
+`setup --force` installed 15 files and removed 11 stale `__pycache__` files. `doctor` still reports
+script `0.2.16`, build `1931c2a5be95`, and `stale` against this repo's build `15586a5c8528`; Live
+holds the old build in RAM until it restarts.
+
+**Next gate (Unverified until run):** after a Live restart, `doctor` must report script `0.3.0` and
+build `15586a5c8528` with no `stale`, then each new write is exercised on `SCRATCH fortnight` with
+a dry run, an apply, a fresh read-back and an exact restore.
 
 ### Tracks sends and name/colour (2026-11-10, `0.2.12`)
 
