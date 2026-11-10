@@ -201,6 +201,87 @@ class WarpFieldTests(unittest.TestCase):
         self.assertEqual(data["counts"]["warp_markers_unreadable"], 1)
 
 
+class NoteOverlapTests(unittest.TestCase):
+    def test_same_pitch_overlap_is_captured_but_a_chord_is_not(self):
+        clip = make_clip(
+            is_midi_clip=True,
+            notes=[
+                Obj(pitch=60, start_time=0.0, duration=1.0, velocity=100),
+                Obj(pitch=60, start_time=0.5, duration=1.0, velocity=90),
+                Obj(pitch=64, start_time=0.0, duration=1.0, velocity=80),
+            ],
+        )
+        data = handler.snapshot({}, make_song([make_track(arrangement_clips=[clip])]))
+        row = data["tracks"][0]["arrangement"][0]
+
+        self.assertTrue(data["captured"]["notes_available"])
+        self.assertEqual(row["note_count"], 3)
+        self.assertEqual(len(row["note_overlaps"]), 1)
+        pair = row["note_overlaps"][0]
+        self.assertEqual(pair["pitch"], 60)
+        self.assertEqual(pair["overlap"], 0.5)
+        self.assertEqual(data["counts"]["notes_read"], 3)
+        self.assertEqual(data["counts"]["note_overlaps"], 1)
+
+    def test_adjacent_notes_do_not_overlap(self):
+        clip = make_clip(
+            is_midi_clip=True,
+            notes=[
+                Obj(pitch=60, start_time=0.0, duration=1.0),
+                Obj(pitch=60, start_time=1.0, duration=1.0),
+            ],
+        )
+        row = handler.snapshot({}, make_song([make_track(arrangement_clips=[clip])]))["tracks"][0]["arrangement"][0]
+
+        self.assertEqual(row["note_count"], 2)
+        self.assertEqual(row["note_overlaps"], [])
+
+    def test_a_session_midi_clip_carries_the_same_data(self):
+        clip = make_clip(
+            name="session notes",
+            is_midi_clip=True,
+            notes=[Obj(pitch=36, start_time=0.0, duration=2.0),
+                   Obj(pitch=36, start_time=1.0, duration=2.0)],
+        )
+        data = handler.snapshot({}, make_song([make_track(clip_slots=[Obj(clip=clip)])]))
+        row = data["tracks"][0]["session"]["clips"][0]
+
+        self.assertEqual(row["note_count"], 2)
+        self.assertEqual(len(row["note_overlaps"]), 1)
+
+    def test_an_unreadable_note_vector_is_not_zero(self):
+        class _UnreadableNotes(Obj):
+            @property
+            def notes(self):
+                raise RuntimeError("no note vector")
+
+        clip = _UnreadableNotes(
+            name="broken notes", start_time=0.0, end_time=4.0, is_midi_clip=True,
+        )
+        data = handler.snapshot({}, make_song([make_track(arrangement_clips=[clip])]))
+        row = data["tracks"][0]["arrangement"][0]
+
+        self.assertIsNone(row["note_count"])
+        self.assertIn("no note vector", row["note_overlaps_reason"])
+        self.assertEqual(data["counts"]["notes_unreadable"], 1)
+
+    def test_the_capture_budget_marks_truncation(self):
+        from unittest import mock
+
+        clip = make_clip(
+            is_midi_clip=True,
+            notes=[Obj(pitch=60, start_time=0.0, duration=1.0),
+                   Obj(pitch=60, start_time=0.5, duration=1.0)],
+        )
+        with mock.patch.object(handler, "MAX_NOTE_OVERLAPS_TOTAL", 0):
+            data = handler.snapshot({}, make_song([make_track(arrangement_clips=[clip])]))
+        row = data["tracks"][0]["arrangement"][0]
+
+        self.assertTrue(row["note_overlaps_truncated"])
+        self.assertEqual(row["note_overlaps"], [])
+        self.assertEqual(data["counts"]["note_overlaps_truncated"], 1)
+
+
 class _NoLocators:
     """A Song whose locator attributes raise, as an unsupported build would."""
 

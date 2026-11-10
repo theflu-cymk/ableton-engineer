@@ -113,6 +113,27 @@
       "cmd": null
     },
     {
+      "name": "notes_overlaps",
+      "domain": "notes",
+      "summary": "Same-pitch MIDI notes whose time ranges collide.",
+      "description": "Checks every MIDI clip in the Arrangement and Session for notes of the same pitch whose time ranges intersect, and returns each collision pair with both positions and the overlap length. Chords are not flagged. The snapshot carries only bounded collision pairs; if capture was truncated or a clip's notes could not be read, the result says so and marks itself incomplete instead of claiming zero overlaps. A snapshot from before note capture reports unavailable with the required script version.",
+      "examples": ["find overlapping midi notes", "are any notes doubled", "clean up colliding notes"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "offset": {"type": "integer", "minimum": 0, "default": 0},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 2000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
       "name": "clips_warp_check",
       "domain": "clips",
       "summary": "Warp state for every audio clip, with unreadable or empty data flagged.",

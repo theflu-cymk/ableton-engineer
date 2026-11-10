@@ -10,7 +10,8 @@ import unittest
 import support  # noqa: F401
 from enableton.live.fake import FakeAdapter, build_song
 from enableton.reports import (
-    ReportError, levels, mix_headroom, structure, summary_from_snapshot, unused, warp_check,
+    ReportError, levels, mix_headroom, notes_overlaps, structure, summary_from_snapshot,
+    unused, warp_check,
 )
 
 
@@ -136,6 +137,21 @@ def _warp_clip(name="clip", warping=True, warp_mode=0, warp_mode_name="beats", m
         "warp_mode": warp_mode,
         "warp_mode_name": warp_mode_name,
         "warp_markers": markers,
+    }
+    clip.update(extra)
+    return clip
+
+
+def _midi_clip(name="clip", note_count=2, overlaps=(), truncated=False, **extra):
+    clip = {
+        "name": name,
+        "start": 0.0,
+        "end": 4.0,
+        "length": 4.0,
+        "midi": True,
+        "note_count": note_count,
+        "note_overlaps": list(overlaps),
+        "note_overlaps_truncated": truncated,
     }
     clip.update(extra)
     return clip
@@ -349,6 +365,71 @@ class HeadroomTests(unittest.TestCase):
                 mix_headroom(data, args)
 
 
+class NotesOverlapTests(unittest.TestCase):
+    def _pair(self, pitch=60):
+        return {
+            "pitch": pitch,
+            "first": {"start": 0.0, "duration": 1.0, "velocity": 100, "mute": False},
+            "second": {"start": 0.5, "duration": 1.0, "velocity": 90, "mute": False},
+            "overlap": 0.5,
+        }
+
+    def _with_notes(self, tracks):
+        data = _snapshot(tracks)
+        data["captured"]["notes_available"] = True
+        return data
+
+    def test_pages_pairs_and_summarises_pitch(self):
+        data = self._with_notes([
+            _track(0, name="drums", clips=[
+                _midi_clip("loop", note_count=3, overlaps=[self._pair(), self._pair(64)]),
+            ]),
+        ])
+
+        report = notes_overlaps(data, {"limit": 1})
+
+        self.assertEqual(report["total"], 2)
+        self.assertEqual(report["next_offset"], 1)
+        self.assertEqual(report["summary"]["notes_read"], 3)
+        self.assertEqual(report["summary"]["overlaps"], 2)
+        self.assertEqual(report["summary"]["clips_with_overlaps"], 1)
+        self.assertEqual(report["summary"]["by_pitch"], {"60": 1, "64": 1})
+        self.assertTrue(report["summary"]["complete"])
+        self.assertEqual(report["items"][0]["first"]["start"], 0.0)
+        self.assertEqual(report["items"][0]["location"], "arrangement")
+
+    def test_a_snapshot_without_note_data_is_unavailable_not_empty(self):
+        report = notes_overlaps(_snapshot([
+            _track(0, clips=[_midi_clip("loop")]),
+        ]), {})
+
+        self.assertEqual(report["total"], 0)
+        self.assertFalse(report["summary"]["note_data_available"])
+        self.assertIn("0.1.9", report["unavailable"]["reason"])
+
+    def test_truncation_and_unreadable_notes_make_the_result_incomplete(self):
+        data = self._with_notes([
+            _track(0, name="drums", clips=[
+                _midi_clip("truncated", note_count=4, overlaps=[self._pair()], truncated=True),
+                _midi_clip("broken", note_count=None, note_overlaps_reason="notes: RuntimeError: no"),
+            ]),
+        ])
+
+        report = notes_overlaps(data, {})
+
+        self.assertEqual(report["summary"]["truncated_clips"], 1)
+        self.assertEqual(report["summary"]["unreadable_clips"], 1)
+        self.assertFalse(report["summary"]["complete"])
+        self.assertEqual({warning["kind"] for warning in report["warnings"]},
+                         {"overlaps_truncated", "notes_unreadable"})
+
+    def test_bad_arguments_are_rejected(self):
+        data = self._with_notes([])
+        for args in ({"limit": 0}, {"offset": -1}, {"bogus": 1}):
+            with self.assertRaises(ReportError, msg=repr(args)):
+                notes_overlaps(data, args)
+
+
 class ToolRouterTests(unittest.TestCase):
     """A tool's output must match its description, whatever the command returns."""
 
@@ -407,6 +488,15 @@ class ToolRouterTests(unittest.TestCase):
 
         self.assertEqual(result["summary"]["audio_clips"], 2)
         self.assertEqual(result["summary"]["flagged"], 2)
+
+    def test_notes_overlaps_runs_from_the_snapshot(self):
+        from enableton.tools import run_tool
+
+        result = run_tool("notes_overlaps", {}, self.adapter)
+
+        self.assertEqual(result["summary"]["midi_clips"], 3)
+        self.assertEqual(result["summary"]["overlaps"], 1)
+        self.assertEqual(result["total"], 1)
 
     def test_a_read_does_not_invalidate(self):
         from enableton.state.snapshot import SnapshotCache

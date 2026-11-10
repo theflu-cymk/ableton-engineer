@@ -33,7 +33,7 @@ test should assert that, or every count in the spec is wrong by 3×.
 
 ## 2. State of the build (measured, not claimed)
 
-`uv run pytest -q` → **132 passed**. Read-path reports committed through `4fc7233`; the M1 acceptance test is part of this change.
+`uv run pytest -q` → **142 passed**. Read-path reports committed through `c68ed54`; `notes_overlaps` is installed but not yet live-verified.
 
 **The real-Live gate has been passed once (2026-11-09).** `uv run enableton status` returned a real
 summary from Live 12.2.5 — 4 tracks, 2 returns, 8 scenes, 120 BPM, 2 devices, `is_playing false` —
@@ -164,8 +164,24 @@ defect: future `.als` comparisons must exclude `FreezeSequencer` audio clips and
 **User-approved M1 acceptance fixture (2026-11-10):** because the 77-track remaster has never
 loaded, `fortnight` replaces it as the second fixture. `tests/test_acceptance_read_path.py` replays
 the captured snapshot through four reports and asserts exactly one `snapshot.get`. The remaster
-remains unread and no longer blocks the fixture gate. `notes_overlaps` is still the one M1 tool not
-built, so M1 is not fully closed.
+remains unread and no longer blocks the fixture gate.
+
+### `notes_overlaps` (2026-11-10, `0.1.9`)
+
+Snapshot-backed same-pitch collision report. The Remote Script reads each MIDI clip's notes once
+and stores only bounded collision pairs (`MAX_NOTE_OVERLAPS_TOTAL = 2000`), plus the note count,
+truncation flag and unreadable reason. The report pages pairs, marks itself incomplete when
+capture was truncated or a note vector could not be read, and returns `unavailable` with the
+required script version when the snapshot predates note capture.
+
+**Implemented and tested:** **142 passed**, 7 subtests. `setup --force` installed `0.1.9`;
+`doctor` still reports loaded `0.1.8`, `build 21f8e371499b` against this repo's `6da2af927e02`, and
+`stale`. Calling the tool against that old snapshot correctly returned `unavailable`,
+`midi_clips: 192`, not zero overlaps.
+
+**Live gate not passed.** Live must be restarted, then `doctor` must show `0.1.9` with a matching
+build and `notes_overlaps` must return real collision data. Until then this is implemented, not
+verified.
 
 | Area | On disk |
 |---|---|
@@ -186,7 +202,7 @@ One milestone per mission; a mission ends when its acceptance test passes as a *
 | # | Spec | Scope | Done-when (from `SPEC.md` §19) |
 |---|---|---|---|
 | **1** | M0 | gap audit, then close M0 | `pytest` green ✔; `enableton doctor` against the fake reports connected; drift test green; `ableton_status` returns a real summary from the fake; a written gap report names each uncovered M0/M1 item |
-| 2 | M1 | read path | against `Crust Wumble.als` (19 tracks, 120 BPM, 22 Session clips) **and** `fortnight.als` (32 tracks, 250 clips; user-approved replacement for the unread 77-track remaster): three questions answered from the data, the trace shows **snapshot reads ≤ 1 per request**, and `tests/test_acceptance_read_path.py` replays the captured second snapshot for four answers at one read. `notes_overlaps` remains outstanding. |
+| 2 | M1 | read path | against `Crust Wumble.als` (19 tracks, 120 BPM, 22 Session clips) **and** `fortnight.als` (32 tracks, 250 clips; user-approved replacement for the unread 77-track remaster): three questions answered from the data, the trace shows **snapshot reads ≤ 1 per request**, and `tests/test_acceptance_read_path.py` replays the captured second snapshot for four answers at one read. `notes_overlaps` is implemented in `0.1.9`; its live gate is pending a Live restart. |
 | 3 | M2 | write path + safety | dry-run trace matches applied trace; a forced mid-plan failure restores state exactly (object-by-object diff); double-apply is a no-op; a scratch copy exists before any write |
 | 4 | M3 | diagnostics | per-mode finding counts equal before/after; autofix halts when the count rises; `needs_listening` never auto-applies |
 | 5 | M4 | full catalogue + modes | drift test green; every mode ≤ 34 tools; every tool in ≥ 1 mode; escalation reaches every tool |

@@ -11,6 +11,7 @@
         "mix_levels_report",
         "mix_headroom",
         "clips_warp_check",
+        "notes_overlaps",
         "tracks_list",
         "tracks_gain_stage",
         "transport_play"
@@ -28,6 +29,7 @@
         "mix_levels_report",
         "mix_headroom",
         "clips_warp_check",
+        "notes_overlaps",
         "tracks_list"
       ],
       "default_scope": "set",

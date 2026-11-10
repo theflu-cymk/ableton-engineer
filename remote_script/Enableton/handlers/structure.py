@@ -156,7 +156,85 @@ def _warp_fields(clip, row):
         row["warp_markers_reason"] = "warp_markers: %s: %s" % (type(exc).__name__, exc)
 
 
-def _clip(clip):
+#: MIDI note collisions are captured as pairs, not as every note. This bounds a snapshot of a
+#: dense drum Set while still naming the exact collisions a producer needs to see.
+MAX_NOTE_OVERLAPS_TOTAL = 2000
+NOTE_EPSILON = 1e-9
+
+
+def _note_record(note):
+    start = float(_attr(note, "start_time", 0.0) or 0.0)
+    duration = _attr(note, "duration", None)
+    if duration is None:
+        end = _attr(note, "end_time", None)
+        duration = 0.0 if end is None else float(end) - start
+    return {
+        "pitch": int(_attr(note, "pitch", 0) or 0),
+        "start": round(start, 4),
+        "duration": round(max(0.0, float(duration or 0.0)), 4),
+        "velocity": int(_attr(note, "velocity", 0) or 0),
+        "mute": bool(_attr(note, "mute", False)),
+    }
+
+
+def _note_overlaps(clip, budget):
+    """Return ``(note_count, pairs, truncated, reason)`` for one MIDI clip.
+
+    A chord is not an overlap: only notes of the same pitch whose time ranges intersect are
+    reported. The pair list carries the two note positions and their intersection, so the report
+    does not have to re-read Live. When the read fails, the count is ``None`` and the reason
+    travels with it; zero notes and an unreadable note vector are different answers.
+    """
+    try:
+        # Do not use _attr here: it swallows the read failure, and an unreadable note vector
+        # must stay distinguishable from a clip that genuinely has zero notes.
+        raw = getattr(clip, "notes", [])
+        notes = [_note_record(note) for note in (raw or [])]
+    except Exception as exc:  # noqa: BLE001 - the reason is the point
+        return None, [], False, "notes: %s: %s" % (type(exc).__name__, exc)
+
+    by_pitch = {}
+    for note in notes:
+        if note["duration"] > NOTE_EPSILON:
+            by_pitch.setdefault(note["pitch"], []).append(note)
+
+    pairs = []
+    for pitch in sorted(by_pitch):
+        active = []
+        for note in sorted(by_pitch[pitch], key=lambda row: (row["start"], row["duration"], row["velocity"])):
+            active = [
+                row for row in active
+                if row["start"] + row["duration"] > note["start"] + NOTE_EPSILON
+            ]
+            for other in active:
+                overlap = min(
+                    other["start"] + other["duration"], note["start"] + note["duration"]
+                ) - max(other["start"], note["start"])
+                if overlap <= NOTE_EPSILON:
+                    continue
+                if budget["remaining"] <= 0:
+                    return len(notes), pairs, True, None
+                pairs.append({
+                    "pitch": pitch,
+                    "first": other,
+                    "second": note,
+                    "overlap": round(overlap, 4),
+                })
+                budget["remaining"] -= 1
+            active.append(note)
+    return len(notes), pairs, False, None
+
+
+def _note_fields(clip, row, budget):
+    count, pairs, truncated, reason = _note_overlaps(clip, budget)
+    row["note_count"] = count
+    row["note_overlaps"] = pairs
+    row["note_overlaps_truncated"] = truncated
+    if reason is not None:
+        row["note_overlaps_reason"] = reason
+
+
+def _clip(clip, budget):
     start = float(_attr(clip, "start_time", 0.0) or 0.0)
     end = float(_attr(clip, "end_time", start) or start)
     row = {
@@ -166,12 +244,14 @@ def _clip(clip):
         "length": round(max(0.0, end - start), 4),
         "midi": bool(_attr(clip, "is_midi_clip", False)),
     }
-    if not row["midi"]:
+    if row["midi"]:
+        _note_fields(clip, row, budget)
+    else:
         _warp_fields(clip, row)
     return row
 
 
-def _session(track):
+def _session(track, budget):
     slots = _attr(track, "clip_slots", []) or []
     filled = []
     for index, slot in enumerate(slots):
@@ -183,7 +263,9 @@ def _session(track):
             "name": str(_attr(clip, "name", "")),
             "midi": bool(_attr(clip, "is_midi_clip", False)),
         }
-        if not entry["midi"]:
+        if entry["midi"]:
+            _note_fields(clip, entry, budget)
+        else:
             _warp_fields(clip, entry)
         filled.append(entry)
     return {"filled": len(filled), "empty": max(0, len(slots) - len(filled)), "clips": filled}
@@ -206,7 +288,29 @@ def _warp_totals(rows):
     return markers, unreadable
 
 
-def _track_row(track, index, kind, group):
+def _note_totals(rows):
+    """Count captured MIDI notes, collision pairs, truncation and unreadable clips."""
+    notes_read = 0
+    overlaps = 0
+    truncated = 0
+    unreadable = 0
+    for row in rows:
+        clips = list(row["arrangement"]) + list(row["session"]["clips"])
+        for clip in clips:
+            if not clip.get("midi"):
+                continue
+            count = clip.get("note_count")
+            if count is None:
+                unreadable += 1
+            else:
+                notes_read += count
+            overlaps += len(clip.get("note_overlaps") or [])
+            if clip.get("note_overlaps_truncated"):
+                truncated += 1
+    return notes_read, overlaps, truncated, unreadable
+
+
+def _track_row(track, index, kind, group, budget):
     volume, volume_str = _param(track, "volume")
     pan, _ = _param(track, "panning")
     if volume is None:
@@ -227,8 +331,8 @@ def _track_row(track, index, kind, group):
         "arm": bool(_attr(track, "arm", False)),
         "devices": devices,
         "device_count": _count_devices(devices),
-        "session": _session(track),
-        "arrangement": [_clip(c) for c in (_attr(track, "arrangement_clips", []) or [])],
+        "session": _session(track, budget),
+        "arrangement": [_clip(c, budget) for c in (_attr(track, "arrangement_clips", []) or [])],
     }
 
 
@@ -257,13 +361,14 @@ def snapshot(args, song):
     everything = main + returns
     index_of = {id(track): index for index, track in enumerate(everything)}
 
+    budget = {"remaining": MAX_NOTE_OVERLAPS_TOTAL}
     rows = []
     for index, track in enumerate(main):
         group = _attr(track, "group_track")
         group_index = index_of.get(id(group)) if group is not None else _attr(track, "group_index")
-        rows.append(_track_row(track, index, _kind(track), group_index))
+        rows.append(_track_row(track, index, _kind(track), group_index, budget))
     for offset, track in enumerate(returns):
-        rows.append(_track_row(track, len(main) + offset, "return", None))
+        rows.append(_track_row(track, len(main) + offset, "return", None, budget))
 
     scenes = []
     raw_scenes = _attr(song, "scenes", []) or []
@@ -293,6 +398,7 @@ def snapshot(args, song):
     master_devices, master_available, master_reason = _master_devices(song)
     master_total = _count_devices(master_devices)
     warp_markers, warp_unreadable = _warp_totals(rows)
+    notes_read, note_overlaps, note_truncated, notes_unreadable = _note_totals(rows)
 
     return {
         "song": {
@@ -331,6 +437,10 @@ def snapshot(args, song):
             "devices_total": devices_total + master_total,
             "warp_markers": warp_markers,
             "warp_markers_unreadable": warp_unreadable,
+            "notes_read": notes_read,
+            "note_overlaps": note_overlaps,
+            "note_overlaps_truncated": note_truncated,
+            "notes_unreadable": notes_unreadable,
             "empty_session_slots": sum(row["session"]["empty"] for row in rows),
         },
         "captured": {
@@ -339,5 +449,6 @@ def snapshot(args, song):
             "locators_reason": locator_reason,
             "master_available": master_available,
             "master_reason": master_reason,
+            "notes_available": True,
         },
     }

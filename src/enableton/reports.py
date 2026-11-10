@@ -430,6 +430,114 @@ def warp_check(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> D
     }
 
 
+def notes_overlaps(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Same-pitch MIDI notes whose time ranges intersect.
+
+    Chords are not overlaps: different pitches sounding together are normal. The snapshot carries
+    only collision pairs, so this is bounded and does not pretend a truncated capture is complete.
+    An older snapshot without note fields is unavailable rather than an empty result.
+    """
+    args = dict(args or {})
+    _only(args, ("offset", "limit"))
+    offset, limit = _paging(args)
+
+    clips = []  # type: List[Tuple[Dict[str, Any], Dict[str, Any], str]]
+    for track in data.get("tracks") or []:
+        for clip in _arrangement(track):
+            if clip.get("midi"):
+                clips.append((track, clip, "arrangement"))
+        for clip in (track.get("session") or {}).get("clips") or []:
+            if clip.get("midi"):
+                clips.append((track, clip, "session"))
+
+    selected = data.get("captured") or {}
+    if not selected.get("notes_available"):
+        return {
+            "items": [],
+            "total": 0,
+            "next_offset": None,
+            "summary": {
+                "midi_clips": len(clips),
+                "note_data_available": False,
+                "notes_read": 0,
+                "overlaps": 0,
+                "complete": False,
+            },
+            "unavailable": {
+                "reason": "This snapshot has no MIDI note data; install the 0.1.9 Remote Script and restart Live.",
+                "requires": "script 0.1.9 with note capture",
+            },
+        }
+
+    rows = []  # type: List[Dict[str, Any]]
+    warnings = []  # type: List[Dict[str, Any]]
+    notes_read = 0
+    clips_with_overlaps = 0
+    truncated_clips = 0
+    unreadable_clips = 0
+    for track, clip, location in clips:
+        count = clip.get("note_count")
+        if count is None:
+            unreadable_clips += 1
+            warnings.append({
+                "kind": "notes_unreadable",
+                "track": track.get("name"),
+                "clip": clip.get("name"),
+                "reason": clip.get("note_overlaps_reason"),
+            })
+            continue
+        notes_read += int(count)
+        pairs = clip.get("note_overlaps") or []
+        if pairs:
+            clips_with_overlaps += 1
+        if clip.get("note_overlaps_truncated"):
+            truncated_clips += 1
+            warnings.append({
+                "kind": "overlaps_truncated",
+                "track": track.get("name"),
+                "clip": clip.get("name"),
+            })
+        for pair in pairs:
+            row = {
+                "track": track.get("name"),
+                "track_index": track.get("index"),
+                "location": location,
+                "clip": clip.get("name"),
+                "pitch": pair.get("pitch"),
+                "first": pair.get("first"),
+                "second": pair.get("second"),
+                "overlap": pair.get("overlap"),
+            }
+            if location == "session":
+                row["slot"] = clip.get("slot")
+            rows.append(row)
+
+    by_pitch = {}  # type: Dict[str, int]
+    for row in rows:
+        pitch = str(row.get("pitch"))
+        by_pitch[pitch] = by_pitch.get(pitch, 0) + 1
+
+    page = _page(rows, offset, limit)
+    complete = unreadable_clips == 0 and truncated_clips == 0
+    return {
+        "items": page["items"],
+        "total": page["total"],
+        "next_offset": page["next_offset"],
+        "summary": {
+            "midi_clips": len(clips),
+            "note_data_available": True,
+            "notes_read": notes_read,
+            "overlaps": len(rows),
+            "clips_with_overlaps": clips_with_overlaps,
+            "by_pitch": dict(sorted(by_pitch.items())),
+            "truncated_clips": truncated_clips,
+            "unreadable_clips": unreadable_clips,
+            "complete": complete,
+        },
+        "warnings": warnings,
+    }
+
+
 _FADER_DB_RE = re.compile(r"^\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*dB\s*$", re.IGNORECASE)
 
 

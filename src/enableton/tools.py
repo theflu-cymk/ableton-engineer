@@ -12,7 +12,8 @@ from typing import Any, Callable, Dict, Optional
 from .manifest import load_manifest
 from .protocol.codes import LiveError
 from .reports import (
-    ReportError, levels, mix_headroom, structure, summary_from_snapshot, unused, warp_check,
+    ReportError, levels, mix_headroom, notes_overlaps, structure, summary_from_snapshot, unused,
+    warp_check,
 )
 from .state.snapshot import SnapshotCache
 
@@ -22,6 +23,7 @@ LOCAL = {
     "mix_levels_report": levels,
     "mix_headroom": mix_headroom,
     "clips_warp_check": warp_check,
+    "notes_overlaps": notes_overlaps,
 }  # type: Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, Any]]]
 
 #: Tools whose script command returns more than the tool promises. A tool's output must match its

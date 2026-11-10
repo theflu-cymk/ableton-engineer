@@ -32,6 +32,15 @@ class FakeDevice:
 
 
 @dataclass
+class FakeNote:
+    pitch: int
+    start_time: float
+    duration: float
+    velocity: int = 100
+    mute: bool = False
+
+
+@dataclass
 class FakeClip:
     name: str
     start_time: float = 0.0
@@ -40,6 +49,7 @@ class FakeClip:
     warping: bool = False
     warp_mode: int = 0
     warp_markers: List[Any] = field(default_factory=list)
+    notes: List[FakeNote] = field(default_factory=list)
 
     @property
     def length(self) -> float:
@@ -122,7 +132,14 @@ def build_song() -> FakeSong:
                 is_midi=True,
                 devices=[FakeDevice("EQ Eight", "Eq8"), FakeDevice("Glue", "GlueCompressor")],
                 clip_slots=[
-                    FakeClipSlot(FakeClip("drums A", 0.0, 8.0, True)),
+                    FakeClipSlot(FakeClip(
+                        "drums A", 0.0, 8.0, True,
+                        notes=[
+                            FakeNote(36, 0.0, 1.0, 110),
+                            FakeNote(36, 0.5, 1.0, 96),
+                            FakeNote(38, 0.0, 0.5, 100),
+                        ],
+                    )),
                     FakeClipSlot(),
                     FakeClipSlot(),
                 ],

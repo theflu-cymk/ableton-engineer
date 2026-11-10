@@ -100,7 +100,8 @@ dB and counts above/at/below unity, silent, muted and soloed tracks, but never d
 from faders — `headroom.measured` is false, `mix_meter_poll` is named, and the master fader is
 unavailable because the snapshot carries only the master device chain. Against that Set it read
 54 faders spanning 0.0 to -16.0 dB, none above unity, 14 muted and 1 soloed. `notes_overlaps`
-still does not exist, and the remaining Sets' warp columns are still claims to check. Treat the
+now exists as a snapshot-backed same-pitch collision report, but Live still runs `0.1.8`; its live
+gate waits on a restart. The remaining Sets' warp columns are still claims to check. Treat the
 locator and device columns the same way.
 
 **Freeze-render trap, verified 2026-11-10 on `fortnight`.** A frozen MIDI track carries its rendered
@@ -1058,7 +1059,7 @@ clips) as the readable case and `fortnight.als` (32 tracks, 250 clips) as the se
 the unread 77-track remaster by user decision on 2026-11-10 — three questions answered from the data,
 and a trace shows the snapshot read count per request (target ≤ 1).
 `tests/test_acceptance_read_path.py` replays the captured `fortnight` snapshot for four reports and
-asserts one read. `notes_overlaps` remains outstanding.
+asserts one read. `notes_overlaps` is implemented in `0.1.9`; its live call is pending the restart.
 
 **M2 — Write path + safety.** Executor, snapshot/restore, `tracks_gain_stage` and
 `clips_duplicate_range`. *Accept:* dry-run trace matches applied trace; forced mid-plan failure
