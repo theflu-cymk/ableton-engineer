@@ -242,9 +242,10 @@ true` raises `PRECONDITION_FAILED` and writes nothing, a Set that would be left 
 refused, and every delete checks the count fell by exactly one and that the next track moved into
 the freed index. `tracks_clean_empty` refuses a named track that holds clips instead of skipping
 it, and deletes in descending index order. Autofix never plans an irreversible tool, so the
-empty-track finding now reports "cannot be undone" rather than "not implemented". The object form
-of `Song.delete_track` is the one the M2 duplicate restore exercised on real Live; the LOM map's
-index signature stays **Unverified**.
+empty-track finding now reports "cannot be undone" rather than "not implemented". `Song.delete_track` takes an **int index**, not a track object: on `0.4.1` the object form raised
+`Python argument types in Song.delete_track(Song, Track) did not match C++ signature:
+delete_track(ASong, int)`. The M2 duplicate restore passed a track object, so that rollback path was
+latently broken; `0.4.2` uses the index in both the restore and the new delete.
 
 **`0.4.0` failed its first gate (Verified).** `tracks_clean_empty` raised `INTERNAL: tracks.clean_empty
 failed: Main, Group and Return Tracks have no arrangement clips` on `SCRATCH fortnight`: Live raises
@@ -252,6 +253,17 @@ when `arrangement_clips` is read on a group track, and `song.tracks` includes th
 written. `0.4.1` reports `(None, None)` for a group without reading its clips, never lists a group
 as empty, and refuses `tracks_delete` on a group outright because deleting it would take the tracks
 inside it too.
+
+**`0.4.1` exposed a tool-surface defect (Verified).** On the `0.4.1` gate, `tracks_duplicate`
+created its copy and then the executor rejected the apply: `applied trace did not match the dry-run
+trace`. The dry run and the applied result had different shapes, and `_clean` strips only `dry_run`
+and `undo`, so any apply through `run_tool` failed after the write. `tracks_delete` and
+`tracks_clean_empty` were written the same way and would have failed identically; the gate never
+reached them. The rollback left one copy (`9-Audio`), which was deleted by name with the same tool.
+`0.4.2` returns one payload on both paths — names and undo tokens stay in `undo` — and two new tests
+apply `tracks_clean_empty` and `tracks_duplicate` through `run_tool` so the trace check is exercised
+against the fake. The same gate proved `Song.delete_track`'s real signature: the object form raises a
+C++ type error, so `_restore_duplicates` was fixed to pass the index as well.
 
 **Next:** the M4 catalogue accounting still needs its wrong rows corrected (`tracks_delete`,
 `tracks_clean_empty`, `ableton_undo` are implementable; `sections_move` is feasible via delete and

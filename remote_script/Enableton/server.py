@@ -25,7 +25,7 @@ from .framing import FrameReader, FramingError, encode_frame
 
 DEFAULT_PORT = 9878
 PROTOCOL_VERSION = 1
-SCRIPT_VERSION = "0.4.1"
+SCRIPT_VERSION = "0.4.2"
 MAX_QUEUED = 8
 
 

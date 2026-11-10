@@ -220,9 +220,9 @@ class TrackDeleteTests(unittest.TestCase):
     def test_dry_run_reports_contents_and_deletes_nothing(self):
         result = self.adapter.call("tracks.delete", {"track": "Vocal chop", "dry_run": True})
         self.assertTrue(result["dry_run"])
-        self.assertTrue(result["confirmation_required"])
-        self.assertEqual(result["contents"]["track"], "Vocal chop")
-        self.assertEqual(result["contents"]["arrangement_clips"], 0)
+        self.assertTrue(result["requires_confirm"])
+        self.assertEqual(result["deleted"][0]["track"], "Vocal chop")
+        self.assertEqual(result["deleted"][0]["arrangement_clips"], 0)
         self.assertEqual(len(self.song.tracks), 3)
 
     def test_an_apply_without_confirm_is_refused_and_nothing_is_deleted(self):
@@ -235,7 +235,7 @@ class TrackDeleteTests(unittest.TestCase):
         result = self.adapter.call(
             "tracks.delete", {"track": "Bass layer", "confirm": True, "dry_run": False}
         )
-        self.assertEqual(result["deleted"]["track"], "Bass layer")
+        self.assertEqual(result["deleted"][0]["track"], "Bass layer")
         self.assertEqual([track.name for track in self.song.tracks], ["Drums", "Vocal chop"])
 
     def test_a_single_track_set_is_refused(self):
@@ -258,7 +258,7 @@ class GroupTrackSafetyTests(unittest.TestCase):
 
     def test_a_group_track_is_never_listed_as_empty(self):
         result = self.adapter.call("tracks.clean_empty", {"dry_run": True})
-        self.assertNotIn("Group", [row["track"] for row in result["empty"]])
+        self.assertNotIn("Group", [row["track"] for row in result["deleted"]])
 
     def test_naming_a_group_track_is_refused(self):
         with self.assertRaises(ScriptError) as ctx:
@@ -284,7 +284,7 @@ class CleanEmptyTests(unittest.TestCase):
 
     def test_dry_run_lists_the_empty_track_and_deletes_nothing(self):
         result = self.adapter.call("tracks.clean_empty", {"dry_run": True})
-        self.assertEqual([row["track"] for row in result["empty"]], ["Vocal chop"])
+        self.assertEqual([row["track"] for row in result["deleted"]], ["Vocal chop"])
         self.assertEqual(result["count"], 1)
         self.assertEqual(len(self.song.tracks), 3)
 
@@ -312,6 +312,46 @@ class CleanEmptyTests(unittest.TestCase):
         with self.assertRaises(ScriptError) as ctx:
             adapter.call("tracks.clean_empty", {"confirm": True, "dry_run": False})
         self.assertEqual(ctx.exception.code, "PRECONDITION_FAILED")
+
+
+class ToolSurfaceApplyTests(unittest.TestCase):
+    """run_tool routes an apply through PlanExecutor, which rejects a payload that changes shape."""
+
+    def setUp(self):
+        import shutil
+        import tempfile
+        from pathlib import Path
+
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, str(self.root), True)
+        self.set_path = self.root / "scratch.als"
+        self.set_path.write_bytes(b"set bytes")
+        self.song = build_song()
+        self.song.file_path = str(self.set_path)
+        self.adapter = FakeAdapter(self.song)
+        self.backup = str(self.root / "backups")
+
+    def test_clean_empty_applies_through_the_tool_surface(self):
+        from enableton.tools import run_tool
+
+        result = run_tool(
+            "tracks_clean_empty",
+            {"tracks": ["Vocal chop"], "confirm": True, "dry_run": False},
+            self.adapter,
+            backup_root=self.backup,
+        )
+        self.assertEqual(result["count"], 1)
+        self.assertEqual([track.name for track in self.song.tracks], ["Drums", "Bass layer"])
+
+    def test_duplicate_applies_through_the_tool_surface(self):
+        from enableton.tools import run_tool
+
+        result = run_tool(
+            "tracks_duplicate", {"track_index": 2, "dry_run": False}, self.adapter,
+            backup_root=self.backup,
+        )
+        self.assertEqual(len(result["created"]), 1)
+        self.assertEqual(len(self.song.tracks), 4)
 
 
 if __name__ == "__main__":

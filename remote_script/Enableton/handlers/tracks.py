@@ -580,7 +580,9 @@ def duplicate(args, song):
     if dry_run:
         return {"dry_run": True, "created": planned, "undo": []}
 
-    created, undo = [], []
+    # The applied payload must match the dry run, so start from the plan and keep the names Live
+    # actually assigned in undo, which the trace comparison strips.
+    created, undo = [dict(entry) for entry in planned], []
     for offset in range(count):
         try:
             new_track = duplicate_track(index + offset)
@@ -596,10 +598,11 @@ def duplicate(args, song):
                 new_index = position
                 break
         name = str(getattr(new_track, "name", "") or "")
-        created.append({"name": name, "track_index": new_index,
-                        "source": str(getattr(track, "name", ""))})
         undo.append({"track_index": new_index, "name": name})
 
+    # The applied payload must match the dry run exactly. PlanExecutor compares the two traces
+    # after stripping only dry_run and undo, so the actual names stay in undo and the plan is the
+    # result; a copied name cannot be predicted because Live renumbers it (8-Audio became 9-Audio).
     return {"dry_run": False, "created": created, "undo": undo}
 
 
@@ -636,7 +639,7 @@ def _restore_duplicates(args, song, dry_run):
             )
             continue
         if not dry_run:
-            delete_track(track)
+            delete_track(index)
         changes.append({"track": name, "track_index": index})
 
     return {"dry_run": dry_run, "restored": len(changes), "changes": changes, "missing": missing}
@@ -667,8 +670,10 @@ def _track_clip_counts(track):
 def _delete_track(song, index, expected_name):
     """Delete the track at ``index`` after checking Live removed that one and only that one.
 
-    ``Song.delete_track`` takes the track object on this build. That is the path the M2 duplicate
-    restore has already exercised on real Live, even though the LOM map describes an index.
+    ``Song.delete_track`` takes an int index on this build. A Track object raises
+    ``Python argument types in Song.delete_track(Song, Track) did not match C++ signature:
+    delete_track(ASong, int)`` — the LOM map was right and the M2 duplicate restore, which passed a
+    track object, was latently broken until ``0.4.2``.
     """
     delete_track = getattr(song, "delete_track", None)
     if not callable(delete_track):
@@ -688,7 +693,7 @@ def _delete_track(song, index, expected_name):
         follower = str(getattr(tracks[index + 1], "name", "") or "")
     before = len(tracks)
     try:
-        delete_track(track)
+        delete_track(index)
     except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
         raise ScriptError("LIVE_ERROR", "Live refused to delete %r: %s" % (name, exc))
     after = list(song.tracks)
@@ -749,21 +754,24 @@ def delete(args, song):
         "arrangement_clips": arrangement,
         "session_clips": session,
     }
-    if dry_run:
-        return {
-            "dry_run": True,
-            "contents": contents,
-            "confirmation_required": True,
-            "undo": [],
-        }
-    if args.get("confirm") is not True:
+    if not dry_run and args.get("confirm") is not True:
         raise ScriptError(
             "PRECONDITION_FAILED",
             "%r was not deleted: this Live build cannot put a track back, "
             "so an apply needs confirm: true" % (name,),
         )
-    deleted = _delete_track(song, index, name)
-    return {"dry_run": False, "deleted": deleted, "undo": []}
+    if not dry_run:
+        _delete_track(song, index, name)
+    # One payload for both paths: PlanExecutor rejects an applied result that differs from its
+    # dry run by anything except dry_run and undo.
+    return {
+        "dry_run": dry_run,
+        "deleted": [contents],
+        "count": 1,
+        "reversible": False,
+        "requires_confirm": True,
+        "undo": [],
+    }
 
 
 @command("tracks.clean_empty")
@@ -808,22 +816,23 @@ def clean_empty(args, song):
         )
 
     empty.sort(key=lambda row: row["track_index"], reverse=True)
-    if dry_run:
-        return {
-            "dry_run": True,
-            "empty": empty,
-            "count": len(empty),
-            "confirmation_required": True,
-            "undo": [],
-        }
-    if args.get("confirm") is not True:
+    if not dry_run and args.get("confirm") is not True:
         raise ScriptError(
             "PRECONDITION_FAILED",
             "%d empty track(s) were not deleted: this cannot be undone, "
             "so an apply needs confirm: true" % (len(empty),),
         )
-    deleted = [_delete_track(song, row["track_index"], row["track"]) for row in empty]
-    return {"dry_run": False, "deleted": deleted, "count": len(deleted), "undo": []}
+    if not dry_run:
+        for row in empty:
+            _delete_track(song, row["track_index"], row["track"])
+    return {
+        "dry_run": dry_run,
+        "deleted": empty,
+        "count": len(empty),
+        "reversible": False,
+        "requires_confirm": True,
+        "undo": [],
+    }
 
 
 def _routing_name(obj):

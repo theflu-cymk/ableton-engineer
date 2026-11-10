@@ -305,8 +305,9 @@ class FakeSong:
         self.tracks.insert(index + 1, duplicate)
         return duplicate
 
-    def delete_track(self, track: FakeTrack) -> None:
-        self.tracks.remove(track)
+    def delete_track(self, index: int) -> None:
+        """Live's signature is delete_track(ASong, int): a Track object raises a type error."""
+        del self.tracks[index]
 
     def create_scene(self, index: int = -1) -> FakeScene:
         scene = FakeScene("")
