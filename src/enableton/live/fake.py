@@ -107,6 +107,9 @@ class FakeTrack:
 
     def delete_clip(self, clip: "FakeClip") -> None:
         self.arrangement_clips.remove(clip)
+        # Live's proxy no longer reports a name once the clip is deleted; keep the fake honest so a
+        # handler cannot read state after deleting and still pass here.
+        clip.name = ""
 
 
 @dataclass

@@ -93,12 +93,13 @@ def _restore(args, song, dry_run):
             raise ScriptError(
                 "UNSUPPORTED", "this Live build cannot delete an arrangement clip"
             )
+        found_name = str(_attr(found, "name", ""))
         if not dry_run:
             delete(found)
         restored.append({
             "track": track.name,
             "track_index": index,
-            "clip": str(_attr(found, "name", "")),
+            "clip": found_name,
             "start": round(start, 4),
         })
     return {

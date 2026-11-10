@@ -71,9 +71,10 @@ Rules only — the reasoning behind them lives in `SPEC.md` §3 and the module d
 - Tests never use port 9878. They bind port 0 and assert the bound port is not Live's, so the suite
   can run while Live is open.
 - Nothing in `src/` or `remote_script/` references the Sets path. The M2 safety executor and a
-  real scratch-Set write/restore exist (`0.2.1`), and `clips_duplicate_range` is implemented and
-  fake-tested in `0.2.2`; its real-Live gate and a forced real mid-plan failure are still pending.
-  Don't assume full save/restore works because `SPEC.md` describes it.
+  real scratch-Set write/restore exist (`0.2.1`), and the M2 acceptance gates passed on real
+  `0.2.2`, including a forced mid-plan failure. `0.2.3` only fixes the restore response's clip name
+  and is awaiting a restart smoke test. Don't assume full save/restore works because `SPEC.md`
+  describes it.
 - `enableton serve` is a stub until M5: it prints a message and exits 0.
 - `doctor` and `status` need Live running with `Enableton` selected in a Control Surface slot
   (Preferences > Link, Tempo & MIDI). `hello` answers on the socket thread, so `connected yes` alone

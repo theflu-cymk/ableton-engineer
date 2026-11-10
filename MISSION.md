@@ -33,7 +33,7 @@ test should assert that, or every count in the spec is wrong by 3×.
 
 ## 2. State of the build (measured, not claimed)
 
-`uv run pytest -q` → **160 passed, 7 subtests**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 safety foundation and `clips_duplicate_range` handler are implemented, with a real gain-stage scratch-Set write/restore verified; the real duplicate and forced mid-plan failure gates remain.
+`uv run pytest -q` → **160 passed, 7 subtests**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 acceptance gates are **real-Live verified on `0.2.2`**: duplicate dry-run matched apply, double-apply was a no-op, exact restore passed, and a forced real mid-plan failure restored the arrangement object-for-object. A `0.2.3` restore-report fix is installed but not yet loaded by Live.
 
 **The real-Live gate has been passed once (2026-11-09).** `uv run enableton status` returned a real
 summary from Live 12.2.5 — 4 tracks, 2 returns, 8 scenes, 120 BPM, 2 devices, `is_playing false` —
@@ -223,14 +223,31 @@ transactional rollback, double-apply, and an unavailable duplicate primitive rep
 two copies. This verifies the scratch-copy and exact-restore path on real Live. The forced mid-plan
 failure is still covered by the fake executor test, not real Live.
 
-**`clips_duplicate_range` implemented (2026-11-10, `0.2.2`, installed but not loaded by Live).**
-The handler duplicates arrangement clips whose starts fall in `[from_bar, to_bar)`, preserving each
-clip's offset from the range start, and returns an undo token that deletes exactly the created clips.
-The manifest exposes it in `auto`, and `PlanExecutor` covers it with dry-run, scratch-copy, trace and
-rollback tests. **Unverified on real Live:** `setup --force` installed `0.2.2`, but Live still reports
-`0.2.1` / `build d70bd71e8360` / `stale`. Restart was not attempted because the open scratch Set was
-marked unsaved (`SCRATCH fortnight*`). No real duplicate has run, and no forced real mid-plan failure
-has been exercised. M2 is not done.
+### `clips_duplicate_range` real gate (2026-11-10, `0.2.2`)
+
+`doctor` reported script `0.2.2`, build `4e23159ea418`, Live 12.2.5, no `stale`. The loaded Set was
+`SCRATCH fortnight.als` (32 tracks, 137 arrangement clips), not the user's working `fortnight` Set.
+
+On `DRUMS | Remix 808 kit`, bars 17-18 contain one clip, `RMX | drums | 1`, at beat 64.0. A dry run
+predicted exactly one copy at beat 372.0. The transactional apply made a timestamped
+`%APPDATA%\Enableton\backups` copy first, created the clip, and its applied trace matched the
+dry-run trace. A second `apply` on the same executor returned `already_applied: true` and left the
+arrangement unchanged. The tool's undo token deleted the created clip; the before/after comparison
+of every arrangement clip was exact.
+
+A second real plan applied one duplicate and then raised a forced `RuntimeError` on its second step.
+`PlanExecutor` restored through the first step's undo token, reported `restore.ok: true`, and the
+arrangement matched the pre-plan object list exactly. This is the forced mid-plan failure gate, run
+against real Live rather than the fake.
+
+**One defect found by the real call:** the restore response read the clip's name after `delete_clip`,
+so `changes[0].clip` came back as `""` even though deletion succeeded. `0.2.3` captures the name
+before deleting; the fake now blanks a deleted clip's name so the test can catch this. **Pending:**
+`0.2.3` is installed but Live still runs `0.2.2`. A graceful close was refused (Live stayed open on
+its unsaved-changes prompt), so the scratch Set was saved, an extra backup was made, and Live was
+left running rather than force-discarded. The next restart should load `0.2.3` and re-check the
+restore response name. M2's acceptance gates have passed on `0.2.2`; `0.2.3` is a one-field reporting
+fix awaiting its restart smoke test.
 
 | Area | On disk |
 |---|---|
@@ -252,7 +269,7 @@ One milestone per mission; a mission ends when its acceptance test passes as a *
 |---|---|---|---|
 | **1** | M0 | gap audit, then close M0 | `pytest` green ✔; `enableton doctor` against the fake reports connected; drift test green; `ableton_status` returns a real summary from the fake; a written gap report names each uncovered M0/M1 item |
 | 2 | M1 | read path | against `Crust Wumble.als` (19 tracks, 120 BPM, 22 Session clips) **and** `fortnight.als` (32 tracks, 250 clips; user-approved replacement for the unread 77-track remaster): three questions answered from the data, the trace shows **snapshot reads ≤ 1 per request**, and `tests/test_acceptance_read_path.py` replays the captured second snapshot for four answers at one read. `notes_overlaps` is implemented in `0.2.0`, which reads the extended note API after `0.1.9` read an absent legacy attribute and reported zero; its live gate passed on `fortnight` (3,364 notes, 16 overlaps). |
-| 3 | M2 | write path + safety | dry-run trace matches applied trace; a forced mid-plan failure restores state exactly (object-by-object diff); double-apply is a no-op; a scratch copy exists before any write. Safety executor, scratch copy and real gain-stage restore are verified; `clips_duplicate_range` is implemented and fake-tested, but its real gate and a forced real mid-plan failure remain pending. |
+| 3 | M2 | write path + safety | dry-run trace matches applied trace; a forced mid-plan failure restores state exactly (object-by-object diff); double-apply is a no-op; a scratch copy exists before any write. M2 acceptance gates passed on real `0.2.2`: dry-run trace matched apply, double-apply was a no-op, a scratch copy preceded every write, exact restore passed, and a forced real mid-plan failure restored the arrangement object-for-object. `0.2.3` is a restore-response label fix installed but not yet loaded by Live. |
 | 4 | M3 | diagnostics | per-mode finding counts equal before/after; autofix halts when the count rises; `needs_listening` never auto-applies |
 | 5 | M4 | full catalogue + modes | drift test green; every mode ≤ 34 tools; every tool in ≥ 1 mode; escalation reaches every tool |
 | 6 | M5 | UX | every screen renders as text with working `ableton_choose` ids; scope chip matches the loaded tool set; a full flow completes with Apps disabled |

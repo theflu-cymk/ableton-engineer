@@ -79,6 +79,7 @@ class DuplicateRangeTests(unittest.TestCase):
         )
 
         self.assertEqual(restored["restored"], 1)
+        self.assertEqual(restored["changes"][0]["clip"], "drums 1")
         self.assertEqual(restored["missing"], [])
         self.assertEqual(
             [(clip.name, clip.start_time, clip.end_time) for clip in self.drums.arrangement_clips],
