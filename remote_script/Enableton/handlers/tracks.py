@@ -674,6 +674,10 @@ def _delete_track(song, index, expected_name):
     ``Python argument types in Song.delete_track(Song, Track) did not match C++ signature:
     delete_track(ASong, int)`` — the LOM map was right and the M2 duplicate restore, which passed a
     track object, was latently broken until ``0.4.2``.
+
+    Live renumbers its own default audio-track names when positions shift (``16-...`` became
+    ``17-...`` after an insert), so the post-delete check is the track count, not the follower's
+    name: comparing names false-failed a correct delete.
     """
     delete_track = getattr(song, "delete_track", None)
     if not callable(delete_track):
@@ -688,9 +692,6 @@ def _delete_track(song, index, expected_name):
             "PRECONDITION_FAILED",
             "index %d now holds %r, not %r" % (index, name, expected_name),
         )
-    follower = None
-    if index + 1 < len(tracks):
-        follower = str(getattr(tracks[index + 1], "name", "") or "")
     before = len(tracks)
     try:
         delete_track(index)
@@ -701,14 +702,6 @@ def _delete_track(song, index, expected_name):
         raise ScriptError(
             "LIVE_ERROR",
             "Live reported success but the track count went from %d to %d" % (before, len(after)),
-        )
-    if follower is not None and (
-        index >= len(after)
-        or str(getattr(after[index], "name", "") or "") != follower
-    ):
-        raise ScriptError(
-            "LIVE_ERROR",
-            "Live deleted a track but %r did not move into index %d" % (follower, index),
         )
     return {"track": name, "track_index": index}
 

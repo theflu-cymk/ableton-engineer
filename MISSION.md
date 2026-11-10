@@ -265,6 +265,12 @@ apply `tracks_clean_empty` and `tracks_duplicate` through `run_tool` so the trac
 against the fake. The same gate proved `Song.delete_track`'s real signature: the object form raises a
 C++ type error, so `_restore_duplicates` was fixed to pass the index as well.
 
+**Live renumbers default audio-track names when positions shift (Verified).** Duplicating `8-Audio`
+made Live rename the existing `16-…` and `21-…` tracks to `17-…` and `22-…` as their indices moved,
+so a name-by-name comparison of the track list is not a valid post-write check. `0.4.3` verifies a
+delete by the track count alone, because the follower-name check false-failed a correct delete on a
+renumbered track; the gate compares kind, clip counts and device counts instead of names.
+
 **Next:** the M4 catalogue accounting still needs its wrong rows corrected (`tracks_delete`,
 `tracks_clean_empty`, `ableton_undo` are implementable; `sections_move` is feasible via delete and
 create; `devices_insert` is confirmed, not Verified).
