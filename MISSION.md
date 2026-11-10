@@ -113,6 +113,13 @@ Session clips, 139 audio clips, `counts.warp_markers: 547`, `warp_markers_unread
 `AudioClip` elements. This is **not** the 77-track stress fixture: `paper tiger heart remaster.als`
 holds 1825 markers (1787 under 245 clips) and has not been read live yet.
 
+**Substitute stress read — `paper tiger heart update og` (2026-11-10, `0.1.8`):** 52 tracks plus 2
+returns, 324 arrangement clips, 299 audio clips, `counts.warp_markers: 932`,
+`warp_markers_unreadable: 0`, every mode `beats`. The snapshot took **412.6 ms** and was **83,739
+bytes**. The file holds the same 932 markers under its 299 `AudioClip` elements and the per-clip
+distribution matches exactly (`{164: 1, 81: 1, 3: 93, 2: 204}`). This is a **substitute**, not the
+M1 acceptance fixture: the 77-track remaster has still not been loaded.
+
 | Area | On disk |
 |---|---|
 | server | `src/enableton/`: `cli.py`, `manifest.py`, `modes.json`, `modes.py`, `reports.py`, `setup.py`, `tools.json`, `tools.py`, plus `live/`, `protocol/`, `state/` packages |

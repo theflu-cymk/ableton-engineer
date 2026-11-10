@@ -92,8 +92,10 @@ exact per-clip distribution (two 108s, one 4, twelve 3s, 319 2s). `warp_mode` us
 enum; **Verified** on `0.1.8` that raw 6 names `complex_pro` (5 is REX), with no unnamed modes left
 in the Set. The 930 above counted 36
 instrument markers inside a Simpler `MultiSampleMap` (`SampleWarpProperties` under `Player`) as
-well; those are not clip markers. `clips_warp_check` does not exist yet, and the other Sets' warp
-columns remain claims to check. Treat the locator and device columns the same way.
+well; those are not clip markers. `paper tiger heart update og` was verified the same way on
+`0.1.8`: 932 clip markers under 299 clips, exact per-clip distribution. `clips_warp_check` does
+not exist yet, and the remaining Sets' warp columns are still claims to check. Treat the locator
+and device columns the same way.
 
 **The User Library is not at `Documents\Ableton` on this machine.** Live's library is
 redirected to `C:\Users\brian\OneDrive\Attachments\Documentos\Ableton\User Library`, while the
