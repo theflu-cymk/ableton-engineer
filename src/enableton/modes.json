@@ -66,6 +66,26 @@
       "default_scope": "set",
       "escalate": true,
       "examples": ["audit this set", "what should I fix first"]
+    },
+    {
+      "name": "edit",
+      "summary": "MIDI and clip surgery. Notes, clip edits and finding lookup.",
+      "tools": [
+        "notes_read",
+        "notes_overlaps",
+        "notes_quantize",
+        "notes_transform",
+        "notes_humanize",
+        "notes_strum",
+        "notes_replace",
+        "notes_scale_lock",
+        "clips_rename",
+        "clips_duplicate_range",
+        "inspect_finding"
+      ],
+      "default_scope": "selected_clip",
+      "escalate": true,
+      "examples": ["tighten the hats without losing the swing", "lock the bass to C minor"]
     }
   ]
 }

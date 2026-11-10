@@ -56,6 +56,13 @@ class FakeClip:
     def length(self) -> float:
         return max(0.0, self.end_time - self.start_time)
 
+    def set_notes(self, notes) -> None:
+        """Mirror Live's whole-vector write so notes handlers take the real path here."""
+        self.notes = [
+            FakeNote(int(pitch), float(start), float(duration), int(velocity), bool(mute))
+            for pitch, start, duration, velocity, mute in notes
+        ]
+
 
 @dataclass
 class FakeClipSlot:

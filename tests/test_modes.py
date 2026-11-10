@@ -22,9 +22,11 @@ class ModeTests(unittest.TestCase):
     def test_shipped_modes(self):
         modes = load_modes(self.catalogue)
         self.assertEqual(modes.default, "auto")
-        self.assertEqual(modes.names(), ["auto", "inspect"])
+        self.assertEqual(modes.names(), ["auto", "edit", "inspect"])
         self.assertIn("ableton_status", modes.get("auto").tools)  # core injected
         self.assertIn("tracks_gain_stage", modes.get("auto").tools)
+        self.assertIn("notes_quantize", modes.get("edit").tools)
+        self.assertIn("notes_read", modes.get("edit").tools)
 
     def test_unknown_mode_is_a_clear_error(self):
         modes = load_modes(self.catalogue)

@@ -228,6 +228,292 @@
       "cmd": "notes.read"
     },
     {
+      "name": "notes_quantize",
+      "domain": "notes",
+      "summary": "Move note starts toward a grid, with strength and exact restore.",
+      "description": "Quantizes each note's start to the nearest grid line in beats, with strength blending from 0 (unchanged) to 1 (full snap). Durations, pitches and velocities are untouched. Dry-run by default; applying returns an undo token holding the clip's original note vector, and restore writes that vector back exactly. Ties at half a grid step move later.",
+      "examples": ["quantize the hats to 1/16", "tighten this clip's timing", "snap the notes halfway"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "clip": {"type": "string"},
+          "location": {"type": "string", "enum": ["arrangement", "session"]},
+          "slot": {"type": "integer", "minimum": 0},
+          "grid": {"type": "number", "minimum": 0.03125, "maximum": 16, "default": 0.25, "description": "Grid step in beats; 0.25 is a sixteenth in 4/4."},
+          "strength": {"type": "number", "minimum": 0, "maximum": 1, "default": 1},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "location": {"type": "string", "enum": ["arrangement", "session"]},
+                "slot": {"type": ["integer", "null"], "minimum": 0},
+                "start": {"type": ["number", "null"]},
+                "clip": {"type": "string"},
+                "notes": {"type": "array", "items": {"type": "array"}}
+              },
+              "required": ["track_index", "location", "notes"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["track", "clip"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "notes.quantize"
+    },
+    {
+      "name": "notes_transform",
+      "domain": "notes",
+      "summary": "Transpose, rescale velocity or stretch note durations.",
+      "description": "Applies pitch, velocity and duration changes to every note without changing their starts or the note count. Transposition refuses rather than clipping a pitch outside 0-127; velocity is clamped to 0-127. At least one transform must be given. Dry-run by default; applying returns an undo token holding the original vector, and restore writes it back exactly.",
+      "examples": ["transpose this clip up a fifth", "soften the velocities", "double the note lengths"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "clip": {"type": "string"},
+          "location": {"type": "string", "enum": ["arrangement", "session"]},
+          "slot": {"type": "integer", "minimum": 0},
+          "transpose": {"type": "integer", "minimum": -48, "maximum": 48, "default": 0},
+          "velocity_scale": {"type": "number", "minimum": 0, "maximum": 4, "default": 1},
+          "velocity_offset": {"type": "integer", "minimum": -127, "maximum": 127, "default": 0},
+          "duration_scale": {"type": "number", "minimum": 0.125, "maximum": 8, "default": 1},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "location": {"type": "string", "enum": ["arrangement", "session"]},
+                "slot": {"type": ["integer", "null"], "minimum": 0},
+                "start": {"type": ["number", "null"]},
+                "clip": {"type": "string"},
+                "notes": {"type": "array", "items": {"type": "array"}}
+              },
+              "required": ["track_index", "location", "notes"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["track", "clip"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "notes.transform"
+    },
+    {
+      "name": "notes_humanize",
+      "domain": "notes",
+      "summary": "Add seeded timing and velocity variation.",
+      "description": "Moves each note start by a random offset within the timing window and each velocity within the velocity window. The seed makes the result reproducible: the same clip and seed produce the same variation. Starts never go below zero and velocities stay within 0-127. Dry-run by default; applying returns an undo token holding the original vector, and restore writes it back exactly.",
+      "examples": ["humanize the hats a little", "loosen this pattern without changing the notes", "add velocity variation"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "clip": {"type": "string"},
+          "location": {"type": "string", "enum": ["arrangement", "session"]},
+          "slot": {"type": "integer", "minimum": 0},
+          "timing": {"type": "number", "minimum": 0, "maximum": 0.25, "default": 0.01, "description": "Maximum timing offset in beats."},
+          "velocity": {"type": "integer", "minimum": 0, "maximum": 64, "default": 8, "description": "Maximum velocity offset."},
+          "seed": {"type": "integer", "default": 0},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "location": {"type": "string", "enum": ["arrangement", "session"]},
+                "slot": {"type": ["integer", "null"], "minimum": 0},
+                "start": {"type": ["number", "null"]},
+                "clip": {"type": "string"},
+                "notes": {"type": "array", "items": {"type": "array"}}
+              },
+              "required": ["track_index", "location", "notes"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["track", "clip"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "notes.humanize"
+    },
+    {
+      "name": "notes_strum",
+      "domain": "notes",
+      "summary": "Stagger chord notes in pitch order.",
+      "description": "Groups notes that share a start and delays them in pitch order: up starts the lowest note first, down starts the highest first. Notes outside a chord are untouched. Dry-run by default; applying returns an undo token holding the original vector, and restore writes it back exactly.",
+      "examples": ["strum this chord upward", "strum the chord down slowly", "spread the chord notes"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "clip": {"type": "string"},
+          "location": {"type": "string", "enum": ["arrangement", "session"]},
+          "slot": {"type": "integer", "minimum": 0},
+          "offset": {"type": "number", "minimum": 0.001, "maximum": 0.5, "default": 0.02, "description": "Delay per note in beats."},
+          "direction": {"type": "string", "enum": ["up", "down"], "default": "up"},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "location": {"type": "string", "enum": ["arrangement", "session"]},
+                "slot": {"type": ["integer", "null"], "minimum": 0},
+                "start": {"type": ["number", "null"]},
+                "clip": {"type": "string"},
+                "notes": {"type": "array", "items": {"type": "array"}}
+              },
+              "required": ["track_index", "location", "notes"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["track", "clip"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "notes.strum"
+    },
+    {
+      "name": "notes_replace",
+      "domain": "notes",
+      "summary": "Replace a clip's whole note vector.",
+      "description": "Replaces every note in one MIDI clip with the supplied list; an empty list clears the clip. Each note needs pitch, start and duration, with optional velocity and mute. This is the primitive for generated or imported patterns. Dry-run by default; applying returns an undo token holding the original vector, and restore writes it back exactly.",
+      "examples": ["replace this clip with these notes", "write this pattern into the clip", "clear the notes in this clip"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "clip": {"type": "string"},
+          "location": {"type": "string", "enum": ["arrangement", "session"]},
+          "slot": {"type": "integer", "minimum": 0},
+          "notes": {
+            "type": "array",
+            "maxItems": 10000,
+            "items": {
+              "type": "object",
+              "properties": {
+                "pitch": {"type": "integer", "minimum": 0, "maximum": 127},
+                "start": {"type": "number", "minimum": 0},
+                "duration": {"type": "number", "minimum": 0},
+                "velocity": {"type": "integer", "minimum": 0, "maximum": 127, "default": 100},
+                "mute": {"type": "boolean", "default": false}
+              },
+              "required": ["pitch", "start", "duration"],
+              "additionalProperties": false
+            }
+          },
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "location": {"type": "string", "enum": ["arrangement", "session"]},
+                "slot": {"type": ["integer", "null"], "minimum": 0},
+                "start": {"type": ["number", "null"]},
+                "clip": {"type": "string"},
+                "notes": {"type": "array", "items": {"type": "array"}}
+              },
+              "required": ["track_index", "location", "notes"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["track", "clip", "notes"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "notes.replace"
+    },
+    {
+      "name": "notes_scale_lock",
+      "domain": "notes",
+      "summary": "Move out-of-scale pitches to the nearest scale tone.",
+      "description": "Constrains pitches to a named scale from a named root, moving each out-of-scale note to the nearest pitch in the scale; ties move down. Starts, durations, velocities and note count are unchanged. Dry-run by default; applying returns an undo token holding the original vector, and restore writes it back exactly.",
+      "examples": ["lock this bass to C minor", "put these notes in F# major", "fix the out-of-key notes"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "clip": {"type": "string"},
+          "location": {"type": "string", "enum": ["arrangement", "session"]},
+          "slot": {"type": "integer", "minimum": 0},
+          "root": {
+            "oneOf": [
+              {"type": "integer", "minimum": 0, "maximum": 11},
+              {"type": "string"}
+            ],
+            "default": "C",
+            "description": "Pitch class 0-11 or a note name such as C, F# or Eb."
+          },
+          "scale": {
+            "type": "string",
+            "enum": ["blues", "dorian", "harmonic_minor", "lydian", "major", "major_pentatonic", "minor", "minor_pentatonic", "mixolydian", "phrygian"],
+            "default": "major"
+          },
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "location": {"type": "string", "enum": ["arrangement", "session"]},
+                "slot": {"type": ["integer", "null"], "minimum": 0},
+                "start": {"type": ["number", "null"]},
+                "clip": {"type": "string"},
+                "notes": {"type": "array", "items": {"type": "array"}}
+              },
+              "required": ["track_index", "location", "notes"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["track", "clip"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "notes.scale_lock"
+    },
+    {
       "name": "clips_warp_check",
       "domain": "clips",
       "summary": "Warp state for every audio clip, with unreadable or empty data flagged.",
