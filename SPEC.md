@@ -1068,12 +1068,11 @@ clips and returned 16 same-pitch collisions in 14 clips with a complete, non-tru
 `clips_duplicate_range`. *Accept:* dry-run trace matches applied trace; forced mid-plan failure
 restores state exactly (object-by-object diff); double-apply is a no-op.
 
-*Status (2026-11-10):* the acceptance gates passed on real Live script `0.2.2`. On `SCRATCH
-fortnight`, `clips_duplicate_range` predicted one copy, its applied trace matched the dry run, a
-scratch copy preceded the write, double-apply was a no-op, and the undo token restored the exact
-arrangement object list. A forced mid-plan failure after one real duplicate also restored exactly.
-`0.2.3` fixes the restore response's clip name (read after deletion in `0.2.2`) and is installed, but
-Live still has `0.2.2` loaded because it stayed open on its unsaved-changes prompt. The current
+*Status (2026-11-10):* the acceptance gates passed on real Live script `0.2.3` after restart. On
+`SCRATCH fortnight`, `clips_duplicate_range` predicted one copy, its applied trace matched the dry
+run, a scratch copy preceded the write, double-apply was a no-op, and the undo token restored the
+exact arrangement object list. The restore response named the deleted clip correctly. A forced
+mid-plan failure after one real duplicate also restored exactly. M2 is complete. The current
 `fortnight` Set must not be used for writes.
 
 **M3 — Diagnostics.** Findings, phases, `inspect_run/plan/autofix`, `ableton_escalate`,
