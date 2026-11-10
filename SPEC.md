@@ -77,8 +77,10 @@ scenes, **0 locators** and **18 top-level devices**.
 
 - **108 is right, and now reproducible.** The file holds 108 device elements: 102 under `<Tracks>`
   (returns included) and 6 under `<MainTrack>` — one `AudioEffectGroupDevice` plus the five devices
-  inside it. Live's snapshot reads tracks and returns but not the master, so it said 102; `0.1.6`
-  walks `song.master_track` too and reports `devices_total: 108` with `devices_master: 6`.
+  inside it. Live's snapshot read tracks and returns but not the master, so `0.1.5` said 102;
+  `0.1.6` walks `song.master_track` too. **Verified** on 12.2.5 that the attribute answers
+  (`master_available: true` on an empty master); that a loaded `Crust Wumble` now reports
+  `devices_total: 108` with `devices_master: 6` is **Unverified** until that Set is reopened.
 - **The "1, unnamed locator" was a parse artifact.** The block is
   `<Locators><Locators /></Locators>` with zero `<Locator>` elements. Live's 0 was correct all
   along; `Song.locators` simply does not answer on 12.2.5 (`cue_points` does), which is what made

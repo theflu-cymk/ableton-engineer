@@ -72,9 +72,15 @@ line, so the digest gate from `AGENTS.md` closed on real evidence.
   `0.1.6` reads `song.master_track` through the same recursive walk and adds
   `counts.devices_master`; `counts.devices_total` now includes it.
 
-**Unverified until the next restart:** the master read itself. `song.master_track` is assumed to
-answer on this build — if it does not, `captured.master_available` is `False` and
-`captured.master_reason` carries the exception, so the failure cannot masquerade as an empty master.
+**Verified after the restart onto `0.1.6` (2026-11-10):** `doctor` reported `script 0.1.6`,
+`build 6f6efe415c7e`, no `stale`. On the Set Live opened — an untitled 4-track default —
+`captured.master_available` was `true` with `master_reason: null`, and `master_track.device_count`
+was 0, matching `counts.devices_master: 0` and `devices_total: 2`. So `song.master_track` answers
+on 12.2.5, and an empty master reads as empty rather than as an error.
+
+**Still unverified:** the six-device master itself. Crust Wumble was not the Set open at that
+restart, so `devices_total: 108` and `devices_master: 6` have not been observed live; loading that
+Set and running `status` is the outstanding check.
 
 | Area | On disk |
 |---|---|
