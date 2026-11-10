@@ -20,7 +20,6 @@
         "notes_read",
         "notes_overlaps",
         "devices_read_chain",
-        "devices_bypass",
         "master_chain_read",
         "sections_map",
         "clips_duplicate_range",
