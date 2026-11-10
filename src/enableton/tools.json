@@ -202,6 +202,32 @@
       "cmd": null
     },
     {
+      "name": "notes_read",
+      "domain": "notes",
+      "summary": "Read one MIDI clip's notes, with source and paging.",
+      "description": "Resolves one MIDI clip by exact track and clip name, optionally constrained by location and session slot, then returns its notes in time order with pitch, start, duration, velocity and mute. Duplicate matches are refused rather than guessed. Reads through get_all_notes_extended when Live exposes it and the legacy notes vector otherwise; the source that answered travels with the result. A non-MIDI clip or an unreadable note vector reports notes_available false with the reason instead of an empty list. Paging is by note, not by clip.",
+      "examples": ["read the notes in this clip", "show the midi notes", "what notes are in the bass clip"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
+          "clip": {"type": "string", "description": "Exact clip name."},
+          "location": {"type": "string", "enum": ["arrangement", "session"]},
+          "slot": {"type": "integer", "minimum": 0, "description": "Zero-based session slot."},
+          "offset": {"type": "integer", "minimum": 0, "default": 0},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "default": 200}
+        },
+        "required": ["track", "clip"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "notes.read"
+    },
+    {
       "name": "clips_warp_check",
       "domain": "clips",
       "summary": "Warp state for every audio clip, with unreadable or empty data flagged.",
