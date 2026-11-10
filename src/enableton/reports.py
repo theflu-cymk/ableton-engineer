@@ -464,8 +464,12 @@ def notes_overlaps(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) 
                 "complete": False,
             },
             "unavailable": {
-                "reason": "This snapshot has no MIDI note data; install the 0.1.9 Remote Script and restart Live.",
-                "requires": "script 0.1.9 with note capture",
+                # The snapshot's own reason wins: "reinstall the script" is the wrong advice for a
+                # clip whose notes could not be read, and a version number here goes stale.
+                "reason": selected.get("notes_reason")
+                or "This snapshot has no MIDI note data; reinstall the Remote Script and restart "
+                   "Live so note capture runs.",
+                "requires": "note capture in the Remote Script",
             },
         }
 

@@ -166,22 +166,37 @@ loaded, `fortnight` replaces it as the second fixture. `tests/test_acceptance_re
 the captured snapshot through four reports and asserts exactly one `snapshot.get`. The remaster
 remains unread and no longer blocks the fixture gate.
 
-### `notes_overlaps` (2026-11-10, `0.1.9`)
+### `notes_overlaps` (2026-11-10, `0.2.0`)
 
 Snapshot-backed same-pitch collision report. The Remote Script reads each MIDI clip's notes once
 and stores only bounded collision pairs (`MAX_NOTE_OVERLAPS_TOTAL = 2000`), plus the note count,
-truncation flag and unreadable reason. The report pages pairs, marks itself incomplete when
-capture was truncated or a note vector could not be read, and returns `unavailable` with the
-required script version when the snapshot predates note capture.
+truncation flag and the source that answered. The report pages pairs, marks itself incomplete when
+capture was truncated or a note vector could not be read, and returns `unavailable` carrying the
+snapshot's own reason.
 
-**Implemented and tested:** **142 passed**, 7 subtests. `setup --force` installed `0.1.9`;
-`doctor` still reports loaded `0.1.8`, `build 21f8e371499b` against this repo's `6da2af927e02`, and
-`stale`. Calling the tool against that old snapshot correctly returned `unavailable`,
-`midi_clips: 192`, not zero overlaps.
+**Verified on the real Set (`0.1.9`, restarted Live):** `enableton status` returned `Crust Wumble`,
+120 BPM, 8 scenes, 17 tracks + 2 returns, 315 arrangement and 22 Session clips, 18 top-level / 108
+total devices in **363 ms**. A keyed comparison against `in hell Project\Crust Wumble.als` (clips
+keyed by track and arrangement start, never by name) matched tempo, tracks, returns, scenes,
+locators, 108 devices total, per-track device counts on **19 of 19** rows, per-track arrangement and
+Session counts, and 894 warp markers with **no per-clip disagreement**.
 
-**Live gate not passed.** Live must be restarted, then `doctor` must show `0.1.9` with a matching
-build and `notes_overlaps` must return real collision data. Until then this is implemented, not
-verified.
+**Defect found by that read, fixed in `0.2.0`:** notes were read with
+`getattr(clip, "notes", [])`. Live 12.2.5 reads notes through `get_all_notes_extended()`; the legacy
+attribute did not answer, and the `getattr` default turned "cannot read" into "this clip is empty".
+Two clips holding 412 and 799 `<MidiNoteEvent>` elements (parsed straight out of the `.als`, both
+main-lane arrangement MIDI clips) reported `note_count: 0` beside `notes_available: true`. `0.2.0`
+reads `get_all_notes_extended()` first, falls back to the legacy vector, records `notes_source` per
+clip plus `counts.notes_sources` and `captured.notes_reason`, and reports an unreadable clip as
+`note_count: null` with its reason — never zero.
+
+**Tested:** **146 passed**, 7 subtests, three of them new (extended API preferred and named; legacy
+vector still accepted; clip with no note API unavailable rather than empty). `setup --force`
+installed `0.2.0`: repo and install digests both `de1dad141c14`, 9 stale `__pycache__` files removed.
+
+**Live gate not passed for `0.2.0`.** Live holds `0.1.9` in memory. After a restart, `doctor` must
+show `0.2.0` with a matching build and those two clips must report 412 and 799 notes with
+`notes_source: "extended"`. Until then the note fix is implemented, not verified.
 
 | Area | On disk |
 |---|---|
@@ -202,7 +217,7 @@ One milestone per mission; a mission ends when its acceptance test passes as a *
 | # | Spec | Scope | Done-when (from `SPEC.md` §19) |
 |---|---|---|---|
 | **1** | M0 | gap audit, then close M0 | `pytest` green ✔; `enableton doctor` against the fake reports connected; drift test green; `ableton_status` returns a real summary from the fake; a written gap report names each uncovered M0/M1 item |
-| 2 | M1 | read path | against `Crust Wumble.als` (19 tracks, 120 BPM, 22 Session clips) **and** `fortnight.als` (32 tracks, 250 clips; user-approved replacement for the unread 77-track remaster): three questions answered from the data, the trace shows **snapshot reads ≤ 1 per request**, and `tests/test_acceptance_read_path.py` replays the captured second snapshot for four answers at one read. `notes_overlaps` is implemented in `0.1.9`; its live gate is pending a Live restart. |
+| 2 | M1 | read path | against `Crust Wumble.als` (19 tracks, 120 BPM, 22 Session clips) **and** `fortnight.als` (32 tracks, 250 clips; user-approved replacement for the unread 77-track remaster): three questions answered from the data, the trace shows **snapshot reads ≤ 1 per request**, and `tests/test_acceptance_read_path.py` replays the captured second snapshot for four answers at one read. `notes_overlaps` is implemented in `0.2.0`, which reads the extended note API after `0.1.9` read an absent legacy attribute and reported zero; its live gate is pending a Live restart. |
 | 3 | M2 | write path + safety | dry-run trace matches applied trace; a forced mid-plan failure restores state exactly (object-by-object diff); double-apply is a no-op; a scratch copy exists before any write |
 | 4 | M3 | diagnostics | per-mode finding counts equal before/after; autofix halts when the count rises; `needs_listening` never auto-applies |
 | 5 | M4 | full catalogue + modes | drift test green; every mode ≤ 34 tools; every tool in ≥ 1 mode; escalation reaches every tool |

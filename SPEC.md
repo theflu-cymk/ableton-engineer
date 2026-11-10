@@ -1059,7 +1059,9 @@ clips) as the readable case and `fortnight.als` (32 tracks, 250 clips) as the se
 the unread 77-track remaster by user decision on 2026-11-10 — three questions answered from the data,
 and a trace shows the snapshot read count per request (target ≤ 1).
 `tests/test_acceptance_read_path.py` replays the captured `fortnight` snapshot for four reports and
-asserts one read. `notes_overlaps` is implemented in `0.1.9`; its live call is pending the restart.
+asserts one read. `notes_overlaps` is implemented in `0.2.0`; `0.1.9` read notes through a legacy attribute this build
+does not expose and reported 0 for clips holding 412 and 799 notes, so its live call is pending the
+restart.
 
 **M2 — Write path + safety.** Executor, snapshot/restore, `tracks_gain_stage` and
 `clips_duplicate_range`. *Accept:* dry-run trace matches applied trace; forced mid-plan failure

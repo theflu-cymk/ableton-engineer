@@ -265,6 +265,48 @@ class NoteOverlapTests(unittest.TestCase):
         self.assertIn("no note vector", row["note_overlaps_reason"])
         self.assertEqual(data["counts"]["notes_unreadable"], 1)
 
+    def test_the_extended_note_api_is_read_and_named_as_the_source(self):
+        class _ExtendedOnly(Obj):
+            def get_all_notes_extended(self):
+                return [
+                    Obj(pitch=36, start_time=0.0, duration=1.0),
+                    Obj(pitch=36, start_time=0.5, duration=1.0),
+                ]
+
+        clip = _ExtendedOnly(name="extended", start_time=0.0, end_time=4.0, is_midi_clip=True)
+        data = handler.snapshot({}, make_song([make_track(arrangement_clips=[clip])]))
+        row = data["tracks"][0]["arrangement"][0]
+
+        self.assertEqual(row["notes_source"], "extended")
+        self.assertEqual(row["note_count"], 2)
+        self.assertEqual(len(row["note_overlaps"]), 1)
+        self.assertEqual(data["counts"]["notes_read"], 2)
+        self.assertEqual(data["counts"]["notes_sources"], {"extended": 1})
+        self.assertTrue(data["captured"]["notes_available"])
+
+    def test_the_legacy_note_vector_still_answers_and_says_which_answered(self):
+        clip = make_clip(
+            is_midi_clip=True,
+            notes=[Obj(pitch=60, start_time=0.0, duration=1.0)],
+        )
+        data = handler.snapshot({}, make_song([make_track(arrangement_clips=[clip])]))
+        row = data["tracks"][0]["arrangement"][0]
+
+        self.assertEqual(row["notes_source"], "notes")
+        self.assertEqual(row["note_count"], 1)
+
+    def test_a_clip_with_no_note_api_is_unavailable_not_empty(self):
+        clip = Obj(name="no note api", start_time=0.0, end_time=4.0, is_midi_clip=True)
+        data = handler.snapshot({}, make_song([make_track(arrangement_clips=[clip])]))
+        row = data["tracks"][0]["arrangement"][0]
+
+        self.assertIsNone(row["note_count"])
+        self.assertIn("absent", row["note_overlaps_reason"])
+        self.assertEqual(data["counts"]["notes_unreadable"], 1)
+        self.assertEqual(data["counts"]["notes_sources"], {})
+        self.assertFalse(data["captured"]["notes_available"])
+        self.assertIn("no note api", data["captured"]["notes_reason"])
+
     def test_the_capture_budget_marks_truncation(self):
         from unittest import mock
 

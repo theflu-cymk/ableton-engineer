@@ -177,8 +177,39 @@ def _note_record(note):
     }
 
 
+def _read_notes(clip):
+    """Return ``(notes, source)`` for one MIDI clip, or raise naming everything that failed.
+
+    Live 11 and later read notes through ``get_all_notes_extended()``; ``Clip.notes`` is the legacy
+    attribute, and on a build that does not expose it a ``getattr`` default turns "cannot read"
+    into "this clip is empty". Crust Wumble showed exactly that: clips holding 412 and 799 notes
+    came back as zero, with ``notes_available: true`` beside them. The source that answered
+    travels with the count, so a zero is never ambiguous.
+    """
+    problems = []
+    extended = getattr(clip, "get_all_notes_extended", None)
+    if callable(extended):
+        try:
+            return list(extended()), "extended"
+        except Exception as exc:  # noqa: BLE001 - fall back, but keep the reason
+            problems.append("get_all_notes_extended: %s: %s" % (type(exc).__name__, exc))
+    try:
+        legacy = getattr(clip, "notes", None)
+    except Exception as exc:  # noqa: BLE001 - the reason is the point
+        problems.append("notes: %s: %s" % (type(exc).__name__, exc))
+        legacy = None
+    if legacy is not None:
+        try:
+            return list(legacy), "notes"
+        except Exception as exc:  # noqa: BLE001 - the reason is the point
+            problems.append("notes: %s: %s" % (type(exc).__name__, exc))
+    else:
+        problems.append("notes: attribute absent")
+    raise RuntimeError("; ".join(problems))
+
+
 def _note_overlaps(clip, budget):
-    """Return ``(note_count, pairs, truncated, reason)`` for one MIDI clip.
+    """Return ``(note_count, pairs, truncated, reason, source)`` for one MIDI clip.
 
     A chord is not an overlap: only notes of the same pitch whose time ranges intersect are
     reported. The pair list carries the two note positions and their intersection, so the report
@@ -186,12 +217,10 @@ def _note_overlaps(clip, budget):
     travels with it; zero notes and an unreadable note vector are different answers.
     """
     try:
-        # Do not use _attr here: it swallows the read failure, and an unreadable note vector
-        # must stay distinguishable from a clip that genuinely has zero notes.
-        raw = getattr(clip, "notes", [])
+        raw, source = _read_notes(clip)
         notes = [_note_record(note) for note in (raw or [])]
     except Exception as exc:  # noqa: BLE001 - the reason is the point
-        return None, [], False, "notes: %s: %s" % (type(exc).__name__, exc)
+        return None, [], False, "note read failed: %s" % (exc,), None
 
     by_pitch = {}
     for note in notes:
@@ -213,7 +242,7 @@ def _note_overlaps(clip, budget):
                 if overlap <= NOTE_EPSILON:
                     continue
                 if budget["remaining"] <= 0:
-                    return len(notes), pairs, True, None
+                    return len(notes), pairs, True, None, source
                 pairs.append({
                     "pitch": pitch,
                     "first": other,
@@ -222,14 +251,15 @@ def _note_overlaps(clip, budget):
                 })
                 budget["remaining"] -= 1
             active.append(note)
-    return len(notes), pairs, False, None
+    return len(notes), pairs, False, None, source
 
 
 def _note_fields(clip, row, budget):
-    count, pairs, truncated, reason = _note_overlaps(clip, budget)
+    count, pairs, truncated, reason, source = _note_overlaps(clip, budget)
     row["note_count"] = count
     row["note_overlaps"] = pairs
     row["note_overlaps_truncated"] = truncated
+    row["notes_source"] = source
     if reason is not None:
         row["note_overlaps_reason"] = reason
 
@@ -289,11 +319,17 @@ def _warp_totals(rows):
 
 
 def _note_totals(rows):
-    """Count captured MIDI notes, collision pairs, truncation and unreadable clips."""
+    """Count captured MIDI notes, collision pairs, truncation and unreadable clips.
+
+    Also returns which API answered for the readable clips, and the first read failure, so the
+    payload says *how* it knows a clip is empty instead of only that it thinks so.
+    """
     notes_read = 0
     overlaps = 0
     truncated = 0
     unreadable = 0
+    sources = {}
+    reason = None
     for row in rows:
         clips = list(row["arrangement"]) + list(row["session"]["clips"])
         for clip in clips:
@@ -302,12 +338,19 @@ def _note_totals(rows):
             count = clip.get("note_count")
             if count is None:
                 unreadable += 1
+                if reason is None:
+                    reason = "%s / %s: %s" % (
+                        row.get("name"), clip.get("name"), clip.get("note_overlaps_reason")
+                    )
             else:
                 notes_read += count
+            source = clip.get("notes_source")
+            if source:
+                sources[source] = sources.get(source, 0) + 1
             overlaps += len(clip.get("note_overlaps") or [])
             if clip.get("note_overlaps_truncated"):
                 truncated += 1
-    return notes_read, overlaps, truncated, unreadable
+    return notes_read, overlaps, truncated, unreadable, sources, reason
 
 
 def _track_row(track, index, kind, group, budget):
@@ -398,7 +441,8 @@ def snapshot(args, song):
     master_devices, master_available, master_reason = _master_devices(song)
     master_total = _count_devices(master_devices)
     warp_markers, warp_unreadable = _warp_totals(rows)
-    notes_read, note_overlaps, note_truncated, notes_unreadable = _note_totals(rows)
+    (notes_read, note_overlaps, note_truncated, notes_unreadable,
+     notes_sources, notes_reason) = _note_totals(rows)
 
     return {
         "song": {
@@ -441,6 +485,7 @@ def snapshot(args, song):
             "note_overlaps": note_overlaps,
             "note_overlaps_truncated": note_truncated,
             "notes_unreadable": notes_unreadable,
+            "notes_sources": notes_sources,
             "empty_session_slots": sum(row["session"]["empty"] for row in rows),
         },
         "captured": {
@@ -449,6 +494,7 @@ def snapshot(args, song):
             "locators_reason": locator_reason,
             "master_available": master_available,
             "master_reason": master_reason,
-            "notes_available": True,
+            "notes_available": notes_unreadable == 0,
+            "notes_reason": notes_reason,
         },
     }

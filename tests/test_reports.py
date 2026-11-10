@@ -405,7 +405,17 @@ class NotesOverlapTests(unittest.TestCase):
 
         self.assertEqual(report["total"], 0)
         self.assertFalse(report["summary"]["note_data_available"])
-        self.assertIn("0.1.9", report["unavailable"]["reason"])
+        self.assertIn("restart", report["unavailable"]["reason"])
+
+    def test_a_clip_that_could_not_be_read_keeps_its_own_reason(self):
+        data = _snapshot([_track(0, clips=[_midi_clip("loop")])])
+        data["captured"]["notes_reason"] = "Drums / loop: note read failed: notes: attribute absent"
+
+        report = notes_overlaps(data, {})
+
+        self.assertFalse(report["summary"]["note_data_available"])
+        self.assertIn("attribute absent", report["unavailable"]["reason"])
+        self.assertNotIn("reinstall", report["unavailable"]["reason"])
 
     def test_truncation_and_unreadable_notes_make_the_result_incomplete(self):
         data = self._with_notes([
