@@ -7,6 +7,7 @@ from . import (  # noqa: F401
     library,
     master,
     mix,
+    mixsnap,
     notes,
     sections,
     structure,

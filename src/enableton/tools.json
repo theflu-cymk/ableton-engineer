@@ -1711,6 +1711,46 @@
       "needs": [],
       "min_live": null,
       "cmd": "master.set_gain"
+    },
+    {
+      "name": "mix_snapshot_save",
+      "domain": "mix",
+      "summary": "Capture the whole balance as a file the Set does not have to change for.",
+      "description": "Captures every track and return's volume, pan, sends, mute and solo, plus the master fader the snapshot cannot see, into a small JSON snapshot stored beside the plans. The Set is not written at all. The response names the snapshot id, the file, the per-track rows and any field that could not be read, so a snapshot is never silently partial. Save one before a risky mix move and restore it exactly afterwards.",
+      "examples": ["save my mix", "snapshot this balance before I change it"],
+      "input": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "timeout_ms": 4000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "mix.snapshot_save"
+    },
+    {
+      "name": "mix_snapshot_restore",
+      "domain": "mix",
+      "summary": "Put a saved mix back, refusing a Set that no longer matches it.",
+      "description": "Applies a snapshot from mix_snapshot_save, or the undo token from an earlier restore, field by field across tracks, returns and the master fader. Dry-run by default and reports every change with both display strings and the exact prior values as an undo token. It refuses with nothing written when the Set no longer matches the snapshot's track names at the same indexes, so a reordered Set cannot move the wrong fader. A write that Live refuses reverts the fields this call already changed before raising, so a failed restore never leaves half a mix behind.",
+      "examples": ["put my mix back", "restore the balance I saved", "undo that mix change"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "snapshot_id": {"type": "string", "description": "A snapshot id from mix_snapshot_save, like m_0123abcd."},
+          "restore": {"type": "array", "items": {"type": "object"}, "description": "An undo token from an earlier restore."},
+          "dry_run": {"type": "boolean", "default": true}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 6000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "mix.snapshot_restore"
     }
   ]
 }

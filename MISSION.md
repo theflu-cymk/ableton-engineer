@@ -107,7 +107,7 @@ because `is_active` is read-only on this build.
 
 Modes, counting the five injected core tools the way `enableton modes` does: `sound` 9 → 14,
 `mix` 17 → 18; `auto` stays at the 34-tool cap. `uv run pytest -q` →
-**342 passed, 7 subtests**, including a new test that the executor refuses a multi-step plan
+**354 passed, 7 subtests**, including a new test that the executor refuses a multi-step plan
 containing `devices_delete`.
 
 **A real-Live find, fixed in `0.3.2` (Verified).** On loaded `0.3.1`,
@@ -176,11 +176,23 @@ apply wrote nothing.
   `run_tool` raises with it, so the caller sees `PRECONDITION_FAILED` and the confirm instruction.
   Covered by a fake test; the real-Live confirmation needs the next restart.
 
-**Next gate (Unverified until run):** restart onto `0.3.5` (`doctor` build must match, no `stale`),
+**Mix snapshots, built in `0.3.6` (Unverified).** `mix_snapshot_save` captures every track and
+return's volume, pan, sends, mute and solo, plus the master fader, into a small JSON file under
+`%APPDATA%\Enableton\mix`; `mix_snapshot_restore` applies a snapshot, or its own undo token, field
+by field. The restore preflights every target and refuses with nothing written when the Set's track
+names no longer match the snapshot's indexes; a write Live refuses reverts the fields the call
+already changed. Both tools load in `mix`, which is now 16 declared tools. The suite covers save,
+dry run, apply, exact undo, a renamed track, a removed track, a forced mid-restore failure revert,
+and payload equality between dry run and apply (**354 passed, 7 subtests**). The real-Live gate has
+not run: the read and write fallbacks follow the shapes `tracks.set_volume` and `master.set_gain`
+already use against Live, but that is reasoning, not evidence.
+
+**Next gate (Unverified until run):** restart onto `0.3.6` (`doctor` build must match, no `stale`),
 then on `SCRATCH fortnight`: `devices_move` on `Remove Mud` both ways, `devices_set_macro` macro 1
 on `808 Core Kit` with a fresh read-back and exact restore, the unconfirmed-delete refusal showing
-`PRECONDITION_FAILED`, one confirmed delete of a duplicate `Flanger Rebound`, and `master_set_gain`
-with dry run → apply → read-back → restore.
+`PRECONDITION_FAILED`, one confirmed delete of a duplicate `Flanger Rebound`, `master_set_gain`
+with dry run → apply → read-back → restore, and a `mix_snapshot_save` → perturb two faders and a
+send → dry run → restore → undo round trip.
 
 ### Tracks sends and name/colour (2026-11-10, `0.2.12`)
 

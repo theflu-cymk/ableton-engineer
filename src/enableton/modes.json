@@ -175,7 +175,9 @@
         "tracks_set_sends",
         "tracks_name_and_color",
         "tracks_gain_stage",
-        "tracks_set_routing"
+        "tracks_set_routing",
+        "mix_snapshot_save",
+        "mix_snapshot_restore"
       ],
       "default_scope": "set",
       "escalate": true,
