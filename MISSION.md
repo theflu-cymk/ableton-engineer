@@ -33,7 +33,7 @@ test should assert that, or every count in the spec is wrong by 3×.
 
 ## 2. State of the build (measured, not claimed)
 
-`uv run pytest -q` → **160 passed, 7 subtests**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 acceptance gates are **real-Live verified on `0.2.3`**: duplicate dry-run matched apply, double-apply was a no-op, exact restore included the clip name, and a forced real mid-plan failure restored the arrangement object-for-object. M2 is complete.
+`uv run pytest -q` → **179 passed, 7 subtests**. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 acceptance gates are **real-Live verified on `0.2.3`**: duplicate dry-run matched apply, double-apply was a no-op, exact restore included the clip name, and a forced real mid-plan failure restored the arrangement object-for-object. M2 is complete. M3's diagnostics read and dry-run paths are **real-Live verified on `0.2.3`**; its one new write command is **Unverified** until Live restarts onto `0.2.4`.
 
 **The real-Live gate has been passed once (2026-11-09).** `uv run enableton status` returned a real
 summary from Live 12.2.5 — 4 tracks, 2 returns, 8 scenes, 120 BPM, 2 devices, `is_playing false` —
@@ -210,7 +210,8 @@ the first applied call, and reverses tool-owned undo tokens when a step fails. `
 now returns the track index and exact undo values, and accepts the executor's `restore` token.
 `run_tool` routes an applied gain stage through the executor instead of calling the handler directly.
 
-**Tested:** **160 passed**, 7 subtests. New safety tests cover dry-run trace equality, scratch-copy
+**Tested at that milestone:** **160 passed**, 7 subtests; the current suite is **179 passed**.
+New safety tests cover dry-run trace equality, scratch-copy
 bytes and pre-write timing, refusal when the Set has no path, exact rollback after a synthetic
 second-step failure, and double-apply on one executor. `clips_duplicate_range` has handler tests for
 the half-open bar window, predicted destinations, applied changes, exact clip-list restoration,
@@ -253,6 +254,24 @@ the undo token with `restore.ok: true` and an exact object diff.
 M2's acceptance gates are met on the loaded build. The current `fortnight` Set must not be used for
 writes; the test ran on `SCRATCH fortnight.als`.
 
+### M3 diagnostics read and dry run (2026-11-10, loaded `0.2.3`)
+
+**Verified** on the open `SCRATCH fortnight` Set. `inspect_run` returned 25 findings: 3 `auto`,
+22 `inspect`, 14 `needs_listening`, 9 `info`, 16 `warn`, 0 `error`, with note data available. The
+findings included 14 MIDI same-pitch overlaps, 6 empty tracks, 2 duplicate track names and 3 faders
+above unity. `inspect_plan` produced exactly 3 gain steps for those faders, listed the 14
+needs-listening findings without turning any into a step, and returned the 8 unimplemented hygiene
+fixes as `unavailable` with their tool names. `inspect_autofix` in dry-run mode reported the same
+25/25 counts and wrote nothing.
+
+The real call exposed a bug the fake suite had not covered: `inspect_run` paged `Finding`
+dataclasses rather than dictionaries, so JSON serialization failed. `run()` now converts at the
+output boundary, and the test asserts `json.dumps` on the result.
+
+**Unverified:** applying `tracks_set_volume` on real Live. The command ships in repo `0.2.4`; the
+loaded `0.2.3` does not have it. The repo is installed, but Live must be restarted before the first
+real autofix write. No write was attempted on `0.2.3`.
+
 | Area | On disk |
 |---|---|
 | server | `src/enableton/`: `cli.py`, `manifest.py`, `modes.json`, `modes.py`, `reports.py`, `setup.py`, `tools.json`, `tools.py`, plus `live/`, `protocol/`, `state/` packages |
@@ -261,7 +280,9 @@ writes; the test ran on `SCRATCH fortnight.als`.
 
 M0's acceptance test is green. M1's read path is closed on real evidence: all six reports are
 implemented, `Crust Wumble` and `fortnight` have been read, and the one-read acceptance test is
-green. **Mission 2 (write path + safety) is next.**
+green. **Mission 3 (diagnostics) is current.** Its detection, plan and dry-run paths are real-Live
+verified on `0.2.3`; applying the new `tracks_set_volume` fix is Unverified until Live restarts
+onto `0.2.4`.
 
 ---
 
@@ -280,8 +301,8 @@ One milestone per mission; a mission ends when its acceptance test passes as a *
 | 7 | M6 | audio tiers | capture produces a WAV, analysis reads it, routing verification catches a failed arm |
 | 8 | M7 | library, build, recipes | the user's own sentence — "create a dubstep drum beat using loops from my riddim one shots folder" — builds a playable 2-bar pattern whose every sample came from that folder; `recipe_learn` recovers tempo and half-time feel with per-lane confidence and refuses below 0.6 |
 
-Missions 2 and 3 are the ones that prove the whole architecture; everything after is catalogue
-breadth on a proven frame. **Do not start Mission 5 before 2–3 are green.**
+Mission 2 is complete; Mission 3 is the current gate. Everything after is catalogue breadth on a
+proven frame. **Do not start Mission 5 before Mission 3's autofix acceptance is green.**
 
 ---
 
@@ -331,8 +352,11 @@ breadth on a proven frame. **Do not start Mission 5 before 2–3 are green.**
 
 ---
 
-## 7. What M2 needs
+## 7. What M3 needs
 
-M1 is closed on real evidence: all six read-path reports are implemented, the two fixtures have been
-read, and `tests/test_acceptance_read_path.py` proves four answers from one snapshot read. M2 starts
-with the scratch copy and dry-run/restore safety; no user `.als` is written in place.
+M2 is closed on real evidence: the scratch copy, dry-run/apply trace equality, exact restore and a
+forced mid-plan failure all passed on `0.2.3`. M3's read path is implemented and its findings,
+counts, phase plan and dry run are real-Live verified on the same build. The remaining acceptance
+work is to restart Live onto `0.2.4`, confirm `doctor` reports the matching build with no `stale`,
+then apply the three-fader plan on `SCRATCH fortnight` and show the count drops by three. Do not use
+the working `fortnight` Set for that write.

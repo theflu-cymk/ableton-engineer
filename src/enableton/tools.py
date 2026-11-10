@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Optional
 
+from . import diagnostics
 from .manifest import load_manifest
 from .plans.executor import PlanError, PlanExecutor, Step
 from .protocol.codes import LiveError
@@ -25,6 +26,9 @@ LOCAL = {
     "mix_headroom": mix_headroom,
     "clips_warp_check": warp_check,
     "notes_overlaps": notes_overlaps,
+    "inspect_run": diagnostics.run,
+    "inspect_report": diagnostics.report,
+    "inspect_finding": diagnostics.get,
 }  # type: Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, Any]]]
 
 #: Tools whose script command returns more than the tool promises. A tool's output must match its
@@ -52,15 +56,30 @@ def run_tool(
 
     cache = cache or SnapshotCache(adapter)
 
+    if name == "ableton_status":
+        snapshot = adapter.call(tool.cmd, args, timeout_ms=tool.timeout_ms)
+        result = summary_from_snapshot(snapshot)
+        # Counts come from this same read, not a second snapshot fetch.
+        result["findings"] = diagnostics.counts(
+            diagnostics.detect(snapshot, "standard")
+        )
+        return result
+
     if tool.local:
-        handler = LOCAL.get(name)
-        if handler is None:
-            raise LiveError(
-                "UNSUPPORTED", "tool %r has no server-side implementation yet" % (name,)
-            )
         try:
+            if name == "inspect_autofix":
+                return diagnostics.autofix(
+                    adapter, cache, args, catalogue, backup_root=backup_root
+                )
+            if name == "inspect_plan":
+                return diagnostics.plan(cache.get(), args, catalogue)
+            handler = LOCAL.get(name)
+            if handler is None:
+                raise LiveError(
+                    "UNSUPPORTED", "tool %r has no server-side implementation yet" % (name,)
+                )
             return handler(cache.get(), args)
-        except ReportError as exc:
+        except (ReportError, diagnostics.DiagnosticsError) as exc:
             raise LiveError("BAD_ARGS", str(exc))
 
     # Bulk writes with a dry-run switch go through the M2 transaction path: preflight, a scratch

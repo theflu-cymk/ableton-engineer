@@ -14,7 +14,13 @@
         "notes_overlaps",
         "clips_duplicate_range",
         "tracks_list",
+        "tracks_set_volume",
         "tracks_gain_stage",
+        "inspect_run",
+        "inspect_report",
+        "inspect_finding",
+        "inspect_plan",
+        "inspect_autofix",
         "transport_play"
       ],
       "default_scope": "set",
@@ -31,7 +37,11 @@
         "mix_headroom",
         "clips_warp_check",
         "notes_overlaps",
-        "tracks_list"
+        "tracks_list",
+        "inspect_run",
+        "inspect_report",
+        "inspect_finding",
+        "inspect_plan"
       ],
       "default_scope": "set",
       "escalate": true,

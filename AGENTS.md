@@ -74,6 +74,10 @@ Rules only — the reasoning behind them lives in `SPEC.md` §3 and the module d
   real scratch-Set write/restore exist (`0.2.1`), and the M2 acceptance gates passed on real
   `0.2.3`, including the restore response name and a forced mid-plan failure. Don't assume full
   save/restore works because `SPEC.md` describes it.
+- M3 diagnostics and plan exist. `inspect_run` and dry-run autofix were **Verified** on real
+  `0.2.3` against `SCRATCH fortnight`; the new `tracks_set_volume` command is in `0.2.4` but is
+  **Unverified** on real Live until a restart loads that build. Do not call an autofix apply before
+  `doctor` reports the matching script and build.
 - `enableton serve` is a stub until M5: it prints a message and exits 0.
 - `doctor` and `status` need Live running with `Enableton` selected in a Control Surface slot
   (Preferences > Link, Tempo & MIDI). `hello` answers on the socket thread, so `connected yes` alone

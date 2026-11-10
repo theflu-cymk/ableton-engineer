@@ -1079,6 +1079,15 @@ mid-plan failure after one real duplicate also restored exactly. M2 is complete.
 `ableton_plan_apply`. *Accept:* count on the modes screen equals findings per mode before and after;
 autofix halts when count rises; `needs_listening` never auto-applies.
 
+*Status (2026-11-10):* the finding model, per-mode counts, phase order, plan bounds and autofix
+guards are implemented, with the first write fix in `tracks_set_volume`. **Verified** on real Live
+`0.2.3` against `SCRATCH fortnight`: `inspect_run` returned 25 findings (3 auto, 22 inspect, 14
+needs_listening); `inspect_plan` produced three gain steps, excluded every needs-listening finding
+and named the eight unimplemented hygiene fixes as unavailable; dry-run autofix kept the 25/25
+counts and wrote nothing. **Unverified:** applying `tracks_set_volume` on real Live. The command is
+in repo `0.2.4`; Live still runs `0.2.3`, so M3's autofix acceptance waits for a restart onto the
+matching build.
+
 **M4 — Full catalogue + modes.** All 86 tools, all 9 modes, guide generation. *Accept:* drift test
 green; each mode ≤ 34 tools; every tool appears in ≥ 1 mode; every mode's escalate path reaches
 every tool.

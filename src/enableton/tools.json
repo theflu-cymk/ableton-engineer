@@ -155,6 +155,112 @@
       "cmd": null
     },
     {
+      "name": "inspect_run",
+      "domain": "inspect",
+      "summary": "Findings for the current Set with counts per mode.",
+      "description": "Runs the diagnostic detectors against the snapshot and returns stable findings plus total, per-mode, per-severity, needs-listening and auto-fixable counts. Tiers are fast (hygiene), standard (the default: hygiene, gain and notes) and deep. The notes detector reports only overlaps present in the snapshot; missing note data is returned as unavailable with its reason, never as a clean result.",
+      "examples": ["what's wrong with my set", "find problems in this arrangement", "run a diagnostic"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "tier": {"type": "string", "enum": ["fast", "standard", "deep"], "default": "standard"},
+          "offset": {"type": "integer", "minimum": 0, "default": 0},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "inspect_report",
+      "domain": "inspect",
+      "summary": "Filter and page the current Set's findings.",
+      "description": "Returns the full finding counts plus a filtered, paged list. Filters are mode, severity, phase and needs_listening; an empty filtered list is distinct from a Set with no findings because the unfiltered counts remain visible.",
+      "examples": ["show the autofix findings", "what needs my ears", "list the warnings"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "mode": {"type": "string", "enum": ["auto", "inspect"]},
+          "severity": {"type": "string", "enum": ["info", "warn", "error"]},
+          "phase": {"type": "string", "enum": ["grid", "alignment", "notes", "hygiene", "routing", "gain", "spectral", "master"]},
+          "needs_listening": {"type": "boolean"},
+          "offset": {"type": "integer", "minimum": 0, "default": 0},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "inspect_finding",
+      "domain": "inspect",
+      "summary": "Read one finding by its stable id.",
+      "description": "Returns one finding with its evidence, location, phase, mode, severity, confidence and either a concrete fix or needs_listening. An unknown id is an error, not an empty result.",
+      "examples": ["explain that finding", "show finding f_1234"],
+      "input": {
+        "type": "object",
+        "properties": {"id": {"type": "string"}},
+        "required": ["id"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "inspect_plan",
+      "domain": "inspect",
+      "summary": "Build a bounded, phase-ordered repair plan without writing.",
+      "description": "Turns available findings into plan steps, ordered grid to master and capped at 12 steps across 3 phases. Findings that need listening are listed but never become steps; a fix whose tool is missing or has no dry-run is returned as unavailable with the reason. Truncation is reported explicitly.",
+      "examples": ["plan the fixes", "what would autofix do"],
+      "input": {
+        "type": "object",
+        "properties": {"phases": {"type": "array", "items": {"type": "string"}}},
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "inspect_autofix",
+      "domain": "inspect",
+      "summary": "Apply available fixes phase by phase, with count checks and rollback.",
+      "description": "Dry-run by default. Applying runs one phase at a time through the transactional executor, re-reads after each phase, and stops as soon as the total finding count rises above the starting count. needs_listening findings are never applied, and an error-severity finding blocks the rest of its phase.",
+      "examples": ["fix the safe problems", "autofix this set"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "phases": {"type": "array", "items": {"type": "string"}},
+          "dry_run": {"type": "boolean", "default": true},
+          "checkpoint": {"type": "boolean", "default": true}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 30000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
       "name": "clips_duplicate_range",
       "domain": "clips",
       "summary": "Duplicate arrangement clips from one bar range to another.",
@@ -213,6 +319,41 @@
       "needs": [],
       "min_live": null,
       "cmd": "track.list"
+    },
+    {
+      "name": "tracks_set_volume",
+      "domain": "tracks",
+      "summary": "Set a track fader, with dry-run and exact restore.",
+      "description": "Sets the volume of the named tracks (or all tracks when omitted). Volume is 0..1 as Live stores it, so 0.85 is 0.0 dB. Dry-run by default; applying returns one undo token per track and restore puts back exactly those values.",
+      "examples": ["set the drums to unity", "pull that fader down"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "tracks": {"type": "array", "items": {"type": "string"}},
+          "volume": {"type": "number", "minimum": 0, "maximum": 1},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "volume": {"type": "number", "minimum": 0, "maximum": 1}
+              },
+              "required": ["track_index", "volume"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["volume"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "tracks.set_volume"
     },
     {
       "name": "tracks_gain_stage",
