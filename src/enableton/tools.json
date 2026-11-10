@@ -1532,6 +1532,138 @@
       "needs": ["browser"],
       "min_live": null,
       "cmd": "library.browse"
+    },
+    {
+      "name": "devices_set_parameter",
+      "domain": "devices",
+      "summary": "Set one device parameter by name or index, with an exact undo token.",
+      "description": "Resolves one track, one device on it and one parameter, each strictly by exact name or by index. A device name matching several devices is refused with the candidate indexes instead of picking the first, because two EQ Eights on one chain is normal. The value must sit inside the parameter's own min and max, and a disabled parameter is refused before Live sees the write. The change reports the value before and Live's read-back after, and the undo token restores the exact prior number.",
+      "examples": ["turn the EQ gain down 3 dB", "set the compressor threshold on the drum bus", "close the filter on the bass"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
+          "track_index": {"type": "integer", "minimum": 0},
+          "device": {"type": "string", "description": "Exact device name on that track."},
+          "device_index": {"type": "integer", "minimum": 0},
+          "parameter": {"type": "string", "description": "Exact parameter name, for example Gain."},
+          "parameter_index": {"type": "integer", "minimum": 0},
+          "value": {"type": "number", "description": "The new value, inside the parameter's own range."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {"type": "array", "items": {"type": "object"}}
+        },
+        "required": ["value"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "devices.set_parameter"
+    },
+    {
+      "name": "devices_set_macro",
+      "domain": "devices",
+      "summary": "Set a rack macro by number, with the same undo token as a parameter write.",
+      "description": "Live names rack macros Macro 1 to Macro 16, so this resolves the rack, then the macro parameter by that name, and refuses a device without it rather than inventing a mapping. Only racks carry macros; a bare EQ Eight reports that with a reason. The value must sit inside the macro's own range, and the undo token restores the prior number.",
+      "examples": ["set macro 1 on the rack to half", "open the filter macro a little"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
+          "track_index": {"type": "integer", "minimum": 0},
+          "device": {"type": "string", "description": "Exact rack name on that track."},
+          "device_index": {"type": "integer", "minimum": 0},
+          "macro": {"type": "integer", "minimum": 1, "maximum": 16},
+          "value": {"type": "number", "description": "The new macro value, normally 0 to 1."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {"type": "array", "items": {"type": "object"}}
+        },
+        "required": ["macro", "value"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "devices.set_macro"
+    },
+    {
+      "name": "devices_move",
+      "domain": "devices",
+      "summary": "Reorder one device within its chain, with an exact undo token.",
+      "description": "Moves the resolved device to a final index in the same track's chain and reads the chain back to confirm the device landed there. The undo token moves it back from where it ended up, so a restore is exact rather than positional guesswork. The chain length must be unchanged; a backend that loses or duplicates devices during the move is reported as a Live error.",
+      "examples": ["put the compressor before the EQ", "move the saturation to the end of the chain"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
+          "track_index": {"type": "integer", "minimum": 0},
+          "device": {"type": "string", "description": "Exact device name to move."},
+          "device_index": {"type": "integer", "minimum": 0},
+          "to_index": {"type": "integer", "minimum": 0, "description": "Final position in the chain."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {"type": "array", "items": {"type": "object"}}
+        },
+        "required": ["to_index"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "devices.move"
+    },
+    {
+      "name": "devices_delete",
+      "domain": "devices",
+      "summary": "Delete one device from a chain; irreversible on this Live build, so it needs confirm.",
+      "description": "Deletes the resolved device and checks the chain shrank by exactly one. This build cannot put a device back: insert_device arrives in Live 12.3, so the delete has no undo token and is declared irreversible. An apply therefore refuses without confirm: true, while a dry run previews the device and states that confirmation is required.",
+      "examples": ["remove the broken plug-in from this chain", "delete the second EQ Eight"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
+          "track_index": {"type": "integer", "minimum": 0},
+          "device": {"type": "string", "description": "Exact device name to delete."},
+          "device_index": {"type": "integer", "minimum": 0},
+          "confirm": {"type": "boolean", "description": "Must be true to apply; this cannot be undone."},
+          "dry_run": {"type": "boolean", "default": true}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": false,
+      "needs": [],
+      "min_live": null,
+      "cmd": "devices.delete"
+    },
+    {
+      "name": "devices_browse_presets",
+      "domain": "devices",
+      "summary": "List device preset folders, or one device's presets, from the browser.",
+      "description": "Reads the instruments, audio-effects and MIDI-effects categories. Without a device it lists the preset folders with child counts; with an exact device name it lists that folder's presets and their URIs. It never loads anything. A category or folder that cannot be read reports the reason, and a browse that hits the folder cap says so rather than presenting a capped answer as complete.",
+      "examples": ["what presets do I have for EQ Eight", "which instrument folders are in my library"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "device": {"type": "string", "description": "Exact preset-folder name, e.g. EQ Eight."},
+          "category": {"type": "string", "enum": ["instruments", "audio_effects", "midi_effects"]},
+          "offset": {"type": "integer", "minimum": 0, "default": 0},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 4000,
+      "writes": false,
+      "reversible": true,
+      "needs": ["browser"],
+      "min_live": null,
+      "cmd": "devices.browse_presets"
     }
   ]
 }

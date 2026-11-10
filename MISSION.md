@@ -79,6 +79,43 @@ holds the old build in RAM until it restarts.
 build `15586a5c8528` with no `stale`, then each new write is exercised on `SCRATCH fortnight` with
 a dry run, an apply, a fresh read-back and an exact restore.
 
+### Device chain writes (2026-11-10, `0.3.1`)
+
+**Implemented; the real-Live gate has not run.** Five tools, catalogue 52 → 57:
+
+- `devices_set_parameter` — track, device and parameter each resolve by exact name or by index.
+  A duplicate device name is `AMBIGUOUS_REF` with the candidate indexes, a value outside the
+  parameter's own min/max is refused before Live sees it, and so is a disabled parameter. The undo
+  token carries the old number.
+- `devices_set_macro` — resolves `Macro N` on a rack and refuses a device without it, because
+  macros belong to racks; the number is bounded 1–16.
+- `devices_move` — calls `Track.move_device`, then reads the chain back and confirms both the length
+  and the device that landed at the target index. The undo token moves it back from where it
+  actually ended up.
+- `devices_delete` — a one-way door on 12.2.5: `insert_device` is 12.3+, so there is no undo token.
+  It applies only with `confirm: true` and is declared `reversible: false`. The plan executor now
+  refuses an irreversible tool inside a multi-step plan, because a later failure would leave the Set
+  changed with nothing to roll back.
+- `devices_browse_presets` — read-only preset folders and presets from the instruments,
+  audio-effects and MIDI-effects categories, with a folder cap stated in the result and a reason
+  for every category that cannot be read.
+
+`devices_insert` and `devices_load_preset` are **not** shipped: `insert_device` needs 12.3 and no
+manifest-level gate is enforced, so the tool would raise at call time; the browser's only load path
+(`Browser.load_item`) targets the current selection, not a named device. `devices_bypass` stays out
+because `is_active` is read-only on this build.
+
+Modes, counting the five injected core tools the way `enableton modes` does: `sound` 9 → 14,
+`mix` 17 → 18; `auto` stays at the 34-tool cap. `uv run pytest -q` →
+**311 passed, 7 subtests**, including a new test that the executor refuses a multi-step plan
+containing `devices_delete`.
+
+**Next gate (Unverified until run):** with `doctor` reporting `0.3.1` and no `stale`,
+`devices_set_parameter` gets a dry run, an apply, a fresh read-back and an exact restore on
+`SCRATCH fortnight`; then `devices_set_macro` on a rack, `devices_move` in both directions, and
+`devices_browse_presets` against the real browser tree. `devices_delete` runs last, on a device
+whose loss would not matter.
+
 ### Tracks sends and name/colour (2026-11-10, `0.2.12`)
 
 **Verified on real `0.2.12`.** `doctor` reported script `0.2.12`, build `05e390922f63`, no `stale`, `errors 0`. The gate checked the Set name and file path before writing: `SCRATCH fortnight`, `F:\ableton songs\Fortnight\fortnight Project\SCRATCH fortnight.als`. On `MUSIC | vOCALS` (index 5) the before state was colour `16725558` and sends `A-Reverb 0.0`, `B-Delay 0.0`. Sends were applied as `0.21` and `0.09`, read back from a fresh `tracks_list`, and restored exactly to `0.0` / `0.0`. Name and colour were then applied as `GATE 0.2.12 VOCALS` and RGB `9160191`; a fresh read by index returned the exact name and colour; the undo token restored `MUSIC | vOCALS` / `16725558` exactly, with sends still `0.0` / `0.0`. `tracks_list` now returns `color` and a per-return `sends` map.

@@ -87,6 +87,15 @@ class PlanExecutor:
                     "PRECONDITION_FAILED",
                     "write tool %r has no dry-run mode; it cannot join a transaction" % (step.tool,),
                 )
+            if len(steps) > 1 and not tool.reversible:
+                # A single step runs as a direct write and still takes a scratch copy first; inside a
+                # multi-step plan there is nothing to roll it back, so a later failure would leave
+                # the Set partly changed.
+                raise PlanError(
+                    "PRECONDITION_FAILED",
+                    "tool %r cannot be undone on this build, so it cannot join a multi-step plan"
+                    % (step.tool,),
+                )
             resolved.append((step, tool))
         if not resolved:
             raise PlanError("BAD_ARGS", "a plan needs at least one write step")

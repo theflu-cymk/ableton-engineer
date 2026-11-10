@@ -143,6 +143,11 @@
       "summary": "Device chains, presets and browser material. No sample loading.",
       "tools": [
         "devices_read_chain",
+        "devices_set_parameter",
+        "devices_set_macro",
+        "devices_move",
+        "devices_delete",
+        "devices_browse_presets",
         "library_folders",
         "library_browse",
         "master_chain_read"
@@ -160,6 +165,7 @@
         "mix_routing_report",
         "master_chain_read",
         "devices_read_chain",
+        "devices_set_parameter",
         "tracks_list",
         "tracks_set_volume",
         "tracks_set_pan",

@@ -26,10 +26,20 @@ FEATURES = frozenset({"levels", "snapshot"})
 
 
 @dataclass
+class FakeDeviceParameter:
+    name: str
+    value: float = 0.0
+    min: float = 0.0
+    max: float = 1.0
+    is_enabled: bool = True
+
+
+@dataclass
 class FakeDevice:
     name: str
     class_name: str = "Eq8"
     is_active: bool = True
+    parameters: List["FakeDeviceParameter"] = field(default_factory=list)
 
 
 @dataclass
@@ -196,6 +206,13 @@ class FakeTrack:
         # handler cannot read state after deleting and still pass here.
         clip.name = ""
 
+    def move_device(self, device: "FakeDevice", new_index: int) -> None:
+        """Live's move_device takes a device object and its final index."""
+        self.devices.insert(new_index, self.devices.pop(self.devices.index(device)))
+
+    def delete_device(self, index: int) -> None:
+        del self.devices[index]
+
 
 @dataclass
 class FakeBrowserItem:
@@ -222,6 +239,28 @@ class FakeBrowser:
     user_library: FakeBrowserItem = field(default_factory=lambda: FakeBrowserItem(
         "User Library", True, False, "query:UserLibrary",
         [FakeBrowserItem("Presets", True, False, "query:UserLibrary#Presets", [])],
+    ))
+    instruments: FakeBrowserItem = field(default_factory=lambda: FakeBrowserItem(
+        "Instruments", True, False, "query:Instruments",
+        [
+            FakeBrowserItem("Analog", True, False, "query:Instruments#Analog", [
+                FakeBrowserItem("Bass Analog.adv", False, True, "file:Bass Analog.adv"),
+            ]),
+            FakeBrowserItem("Operator", True, False, "query:Instruments#Operator", [
+                FakeBrowserItem("Pad Operator.adv", False, True, "file:Pad Operator.adv"),
+            ]),
+        ],
+    ))
+    audio_effects: FakeBrowserItem = field(default_factory=lambda: FakeBrowserItem(
+        "Audio Effects", True, False, "query:AudioEffects",
+        [
+            FakeBrowserItem("EQ Eight", True, False, "query:AudioEffects#EQ Eight", [
+                FakeBrowserItem("Vocal EQ.adv", False, True, "file:Vocal EQ.adv"),
+            ]),
+        ],
+    ))
+    midi_effects: FakeBrowserItem = field(default_factory=lambda: FakeBrowserItem(
+        "MIDI Effects", True, False, "query:MidiEffects", []
     ))
 
 
@@ -292,7 +331,13 @@ def build_song() -> FakeSong:
                 volume=0.82,
                 peak_db=-1.5,
                 is_midi=True,
-                devices=[FakeDevice("EQ Eight", "Eq8"), FakeDevice("Glue", "GlueCompressor")],
+                devices=[
+                    FakeDevice(
+                        "EQ Eight", "Eq8",
+                        parameters=[FakeDeviceParameter("Gain", 0.0, -12.0, 12.0)],
+                    ),
+                    FakeDevice("Glue", "GlueCompressor"),
+                ],
                 clip_slots=[
                     FakeClipSlot(FakeClip(
                         "drums A", 0.0, 8.0, True,

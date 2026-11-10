@@ -289,7 +289,10 @@ class LibraryTests(unittest.TestCase):
     def test_folders_reports_missing_categories_with_reasons(self):
         result = FakeAdapter().call("library.folders", {})
         names = {row["category"] for row in result["categories"]}
-        self.assertEqual(names, {"sounds", "user_library"})
+        self.assertEqual(
+            names,
+            {"sounds", "user_library", "instruments", "audio_effects", "midi_effects"},
+        )
         missing = {row["name"] for row in result["missing"]}
         self.assertIn("samples", missing)
         for row in result["missing"]:

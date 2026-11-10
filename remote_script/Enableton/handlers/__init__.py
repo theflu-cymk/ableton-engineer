@@ -3,6 +3,7 @@
 from . import (  # noqa: F401
     clip_edit,
     clips,
+    devices,
     library,
     mix,
     notes,
