@@ -264,6 +264,31 @@ class MoveTests(unittest.TestCase):
             [device.name for device in adapter.song.tracks[0].devices], ["Glue", "EQ Eight"]
         )
 
+    def test_a_long_forward_move_lands_on_the_requested_index_and_restores(self):
+        adapter = FakeAdapter()
+        device_cls = type(adapter.song.tracks[0].devices[0])
+        adapter.song.tracks[0].devices = [device_cls(name) for name in ("A", "B", "C", "D")]
+        result = adapter.call("devices.move", {
+            "track": "Drums", "device": "A", "to_index": 3, "dry_run": False,
+        })
+        self.assertEqual(
+            [device.name for device in adapter.song.tracks[0].devices], ["B", "C", "D", "A"]
+        )
+        adapter.call("devices.move", {"restore": result["undo"], "dry_run": False})
+        self.assertEqual(
+            [device.name for device in adapter.song.tracks[0].devices], ["A", "B", "C", "D"]
+        )
+
+    def test_a_restore_that_cannot_land_raises_instead_of_claiming_success(self):
+        adapter = FakeAdapter()
+        adapter.song.tracks[0] = _NoMoveTrack(adapter.song.tracks[0])
+        adapter.song.move_device = lambda device, track, position: position
+        with self.assertRaises(ScriptError) as ctx:
+            adapter.call("devices.move", {"restore": [
+                {"track_index": 0, "device_index": 1, "device": "Glue", "to_index": 0},
+            ], "dry_run": False})
+        self.assertEqual(ctx.exception.code, "LIVE_ERROR")
+
 
 class DeleteTests(unittest.TestCase):
     def setUp(self):

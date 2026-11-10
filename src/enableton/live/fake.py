@@ -320,8 +320,19 @@ class FakeSong:
         del self.scenes[index]
 
     def move_device(self, device: "FakeDevice", track: "FakeTrack", position: int) -> int:
-        """Live 12.2.5's mover lives on Song, not Track; the position it used is returned."""
-        track.devices.insert(position, track.devices.pop(track.devices.index(device)))
+        """Live 12.2.5's mover lives on Song, not Track; the position it used is returned.
+
+        It indexes the chain *before* the device is taken out, so a forward move lands one index
+        short unless the caller raises the position by one. The real gate caught this: ``2 -> 3``
+        did nothing and ``2 -> 4`` landed at 3. Mirroring that here is what keeps a handler that
+        forgets the correction from passing.
+        """
+        start = track.devices.index(device)
+        track.devices.pop(start)
+        if position > start:
+            position -= 1
+        position = max(0, min(position, len(track.devices)))
+        track.devices.insert(position, device)
         return position
 
 

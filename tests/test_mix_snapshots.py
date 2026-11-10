@@ -74,6 +74,24 @@ class MixSnapshotTests(unittest.TestCase):
         self.assertEqual(reverb["name"], "Reverb")
         self.assertEqual(saved["master"]["volume"], 0.85)
 
+    def test_a_snapshot_keeps_full_fader_precision(self):
+        awkward = 0.794921875
+        self.song.tracks[0].volume = awkward
+        saved = self.save()
+        self.assertEqual(saved["tracks"][0]["volume"], awkward)
+
+        self.song.tracks[0].volume = 0.5
+        applied = self.adapter.call(
+            "mix.snapshot_restore", {"snapshot_id": saved["snapshot_id"], "dry_run": False}
+        )
+        self.assertEqual(applied["changes"][0]["to"], awkward)
+        self.assertAlmostEqual(self.song.tracks[0].volume, awkward, places=12)
+
+        self.adapter.call(
+            "mix.snapshot_restore", {"restore": applied["undo"], "dry_run": False}
+        )
+        self.assertAlmostEqual(self.song.tracks[0].volume, 0.5, places=12)
+
     def test_dry_run_reports_changes_without_writing(self):
         saved = self.save()
         self.song.tracks[0].volume = 0.5

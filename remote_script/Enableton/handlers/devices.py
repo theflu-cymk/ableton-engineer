@@ -444,23 +444,50 @@ def _move(song, track, device, to_index):
     """Move a device with whichever primitive this Live build exposes.
 
     12.2.5 has no ``Track.move_device``; ``Song.move_device(device, target, position)`` is the one
-    that works there, and its return value is the position the device landed at. The track form is
-    kept first for builds that have it.
+    that works there, and it indexes the chain *before* the device is taken out. A forward move
+    therefore lands one index short: the real 0.3.6 gate saw ``2 -> 3`` do nothing and ``2 -> 4``
+    land at 3. The track form, where a build has it, takes the final index. Both paths verify where
+    the device actually landed, so a move that did not happen is an error rather than a report.
     """
+    name = str(_attr(device, "name", "") or "")
+    devices = _devices(track)
+    count = len(devices)
+    start = None
+    for index, item in enumerate(devices):
+        if item is device:
+            start = index
+            break
+    if start is None:
+        start = to_index
+
     mover = _attr(track, "move_device", None)
+    song_mover = _attr(song, "move_device", None)
     if callable(mover):
+        attempts = [to_index]
+    elif callable(song_mover):
+        attempts = [to_index + 1, to_index] if to_index > start else [to_index]
+    else:
+        raise ScriptError("UNSUPPORTED", "this Live build cannot reorder devices")
+
+    landed = [str(_attr(item, "name", "") or "") for item in _devices(track)]
+    for position in attempts:
+        if position < 0 or position > count:
+            continue
         try:
-            mover(device, to_index)
+            if callable(mover):
+                mover(device, position)
+            else:
+                song_mover(device, track, position)
         except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
             raise ScriptError("LIVE_ERROR", "Live refused the device move: %s" % (exc,))
-        return
-    song_mover = _attr(song, "move_device", None)
-    if not callable(song_mover):
-        raise ScriptError("UNSUPPORTED", "this Live build cannot reorder devices")
-    try:
-        song_mover(device, track, to_index)
-    except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
-        raise ScriptError("LIVE_ERROR", "Live refused the device move: %s" % (exc,))
+        landed = [str(_attr(item, "name", "") or "") for item in _devices(track)]
+        if to_index < len(landed) and landed[to_index] == name:
+            return to_index
+    raise ScriptError(
+        "LIVE_ERROR",
+        "Live did not move %r to index %d; the chain now holds %s"
+        % (name, to_index, ", ".join(landed) if landed else "nothing"),
+    )
 
 
 @command("devices.move")

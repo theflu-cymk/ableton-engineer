@@ -136,7 +136,7 @@ def _capture_track(song, kind, index, track, unreadable):
         except (ValueError, TypeError) as exc:
             unreadable.append("%s %d %s: %s" % (kind, index, field, exc))
             continue
-        row[field] = round(value, 4)
+        row[field] = value
         row[field + "_display"] = _display(parameter, value)
     try:
         params = _send_params(track)
@@ -152,7 +152,7 @@ def _capture_track(song, kind, index, track, unreadable):
         row["sends"].append({
             "index": send_index,
             "name": names[send_index],
-            "value": round(float(value), 4),
+            "value": float(value),
             "display": _display(parameter, value),
         })
     for field in ("mute", "solo"):
@@ -175,7 +175,7 @@ def _capture_master(song, unreadable):
         return None, str(exc)
     return {
         "name": str(getattr(master, "name", "") or "Master"),
-        "volume": round(value, 4),
+        "volume": value,
         "volume_display": _display(parameter, value),
     }, None
 
@@ -524,8 +524,8 @@ def _change_row(op, current, target):
         "index": op["index"],
         "name": op["name"],
         "field": op["field"],
-        "from": round(float(current), 4) if not isinstance(current, bool) else current,
-        "to": round(float(target), 4) if not isinstance(target, bool) else target,
+        "from": current if isinstance(current, bool) else float(current),
+        "to": target if isinstance(target, bool) else float(target),
         "display_from": None,
         "display_to": None,
     }
@@ -544,7 +544,7 @@ def _undo_row(op, current):
         "index": op["index"],
         "name": op["name"],
         "field": op["field"],
-        "value": round(float(current), 4) if not isinstance(current, bool) else current,
+        "value": current if isinstance(current, bool) else float(current),
     }
     if op["field"] == "send":
         row["send_index"] = op["send_index"]
