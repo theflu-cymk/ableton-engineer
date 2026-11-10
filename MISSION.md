@@ -208,9 +208,9 @@ intersection, so these are boundary-level rather than necessarily audible overla
 | remote script | `remote_script/Enableton/`: `dispatch.py`, `errors.py`, `framing.py`, `server.py`, `handlers/` |
 | tests | `tests/` incl. `test_acceptance_read_path.py`, `test_bridge.py`, `test_build_digest.py`, `test_drift.py`, `test_framing.py`, `test_manifest.py`, `test_modes.py`, `test_snapshot.py`, `test_adapter_conformance.py`, `test_cli.py`, `test_setup.py` |
 
-M0's acceptance test is green. M1 (snapshot, reports) is partly built. **Mission 1 therefore starts
-with a gap audit against `SPEC.md` §19**, not with a rewrite — writing code over already-landed work
-is the expensive failure mode here.
+M0's acceptance test is green. M1's read path is closed on real evidence: all six reports are
+implemented, `Crust Wumble` and `fortnight` have been read, and the one-read acceptance test is
+green. **Mission 2 (write path + safety) is next.**
 
 ---
 
@@ -280,8 +280,8 @@ breadth on a proven frame. **Do not start Mission 5 before 2–3 are green.**
 
 ---
 
-## 7. What Mission 1 needs
+## 7. What M2 needs
 
-Nothing blocking. It audits the existing code against `SPEC.md` §19, closes M0, and stops before
-touching M1 behaviour. For Mission 3 it will need the scratch copy of `Crust Wumble.als` — read-only
-until then.
+M1 is closed on real evidence: all six read-path reports are implemented, the two fixtures have been
+read, and `tests/test_acceptance_read_path.py` proves four answers from one snapshot read. M2 starts
+with the scratch copy and dry-run/restore safety; no user `.als` is written in place.
