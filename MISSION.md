@@ -211,19 +211,31 @@ found the start index by object identity, and Live returns a fresh proxy on ever
 access, so `start` fell back to `to_index` and the forward attempt list collapsed to the single
 no-op position. `0.3.8` takes the resolved `device_index` from both callers, tries each candidate
 position even when one raises, and the fake resolves a device by name when identity fails. The
-snapshot half of the `0.3.7` gate never ran, so exact-precision restore is still **Unverified**.
+snapshot half of the `0.3.7` gate never ran; both are Verified on `0.3.9` below.
 
-**Macro units, fixed in `0.3.9` (Unverified).** `devices_set_macro` documented "normally 0 to 1",
+**Macro units, fixed and Verified in `0.3.9`.** `devices_set_macro` documented "normally 0 to 1",
 but the real rack's `Low Gain` macro reads `63.35` on a 0..127-style range. The manifest now says
 `value` is in the macro's native units, and `fraction` takes 0..1 of that range and maps it.
 Exactly one of the two is required; the undo token is unchanged.
 
-**Next gate (Unverified until run):** restart onto `0.3.9` (`doctor` build `745b4fb993fb` before
-the macro change, then the new build, no `stale`), then on `SCRATCH fortnight`: `devices_move`
-forward and backward with the undo token each way, a `mix_snapshot_save` → perturb two faders, a
-pan and a send → dry run exactly four changes → apply → zero changes → undo → four changes again,
-and `devices_set_macro` macro 1 on `808 Core Kit` with `fraction: 0.5` landing on the midpoint of
-`Low Gain`'s own range, read back, and restored exactly.
+**Verified on `0.3.9`** (build `fa017e4ba642`, `doctor` clean with no `stale`, on `SCRATCH fortnight`):
+
+- `devices_move` on `Remove Mud` (`BASS | Remix midbass`, index 24): backward `3 -> 2` and forward
+  `2 -> 3` each landed at the requested index and each undo token put it back. The chain returned to
+  `Wobbly Flag Bass, Saturator, Auto Filter, Remove Mud, Utility`. This is the exact case `0.3.6`
+  and `0.3.7` both failed; the forward compensation is real now, not a no-op.
+- `mix_snapshot_save` wrote `m_7182b8d5` with 32 tracks, 2 returns, 68 sends, 137 fields and no
+  unreadable rows. Perturbing two faders, a pan and a send produced exactly four dry-run changes,
+  apply left zero, and undo brought back exactly four. The values came back raw
+  (`0.8500000238418579`, `0.33000001311302185`, `0.42000001311302185`), so rounding is gone.
+- `devices_set_macro` macro 1 on the `808 Core Kit` rack (`DRUMS | Remix 808 kit`, track 11): range
+  `0 .. 127`, sitting at `63.35280227661133`. `fraction: 0.5` wrote `63.5` — the exact midpoint —
+  read back `63.5`, and the undo token restored `63.35280227661133` exactly. The earlier `value`
+  path remains the native-units form.
+
+**Next:** the M4 catalogue accounting still needs its wrong rows corrected (`tracks_delete`,
+`tracks_clean_empty`, `ableton_undo` are implementable; `sections_move` is feasible via delete and
+create; `devices_insert` is confirmed, not Verified).
 
 ### Tracks sends and name/colour (2026-11-10, `0.2.12`)
 
