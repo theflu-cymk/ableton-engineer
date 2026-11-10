@@ -100,8 +100,12 @@ instrument.
 
 The same read exposed an enum bug: one clip returned `warp_mode: 6` with no name. The LOM documents
 **5 = REX, 6 = Complex Pro**; the shipped table had 5 = Complex Pro and no REX. `0.1.8` corrects it
-and a test walks all seven values; it is installed but Live still runs `0.1.7` until the next
-restart.
+and a test walks all seven values.
+
+**Verified after the restart onto `0.1.8`** (`build 21f8e371499b`, no `stale`): Crust Wumble read
+894 markers again with `warp_markers_unreadable: 0`, and the mode-6 clip now reports
+`warp_mode_name: "complex_pro"` with 3 markers. Mode counts were 277 `beats`, 56 `complex` and 1
+`complex_pro`; no audio clip had an unnamed mode.
 
 | Area | On disk |
 |---|---|

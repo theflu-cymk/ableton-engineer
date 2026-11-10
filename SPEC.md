@@ -88,7 +88,9 @@ scenes, **0 locators** and **18 top-level devices**.
 
 **Warp markers verified on Live 2026-11-10 (`0.1.7`):** `counts.warp_markers: 894` across 334 audio
 clips with `warp_markers_unreadable: 0`, matching the file's 894 markers under `AudioClip` in the
-exact per-clip distribution (two 108s, one 4, twelve 3s, 319 2s). The 930 above counted 36
+exact per-clip distribution (two 108s, one 4, twelve 3s, 319 2s). `warp_mode` uses the documented
+enum; **Verified** on `0.1.8` that raw 6 names `complex_pro` (5 is REX), with no unnamed modes left
+in the Set. The 930 above counted 36
 instrument markers inside a Simpler `MultiSampleMap` (`SampleWarpProperties` under `Player`) as
 well; those are not clip markers. `clips_warp_check` does not exist yet, and the other Sets' warp
 columns remain claims to check. Treat the locator and device columns the same way.
