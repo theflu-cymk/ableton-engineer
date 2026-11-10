@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "tools": [
+    {
+      "name": "ableton_status",
+      "domain": "core",
+      "summary": "Connection state, Set summary and finding counts.",
+      "description": "Call this first in a session, and whenever the user asks what is in the Set or whether Live is connected. Returns tempo, time signature, track and scene counts, whether transport is running, and how the material is split between Arrangement and Session. Also refreshes the snapshot every other read answers from.",
+      "examples": ["what's in my set", "are you connected to Live"],
+      "input": {"type": "object", "properties": {}, "additionalProperties": false},
+      "timeout_ms": 6000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "snapshot.get"
+    },
+    {
+      "name": "ableton_guide",
+      "domain": "core",
+      "summary": "The command sheet for the current mode.",
+      "description": "Lists the tools available in this session with a one-line description each, plus the producer-language examples they accept. Use it when the user asks what Enableton can do.",
+      "examples": ["what can you do", "show me the commands"],
+      "input": {
+        "type": "object",
+        "properties": {"mode": {"type": "string", "description": "Mode to describe; defaults to the current one."}},
+        "additionalProperties": false
+      },
+      "timeout_ms": 500,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "inspect_structure",
+      "domain": "inspect",
+      "summary": "How the Set is built: sections, tracks, clips and device counts.",
+      "description": "Derives sections from where arrangement clips actually are, because these Sets have no named locators. Returns the bar count, the sections with their clip and track counts, per-track rows with clip and device counts, and the signals worth knowing first: duplicate track names, how many sections are named, and the Arrangement versus Session split.",
+      "examples": ["how is this song structured", "where are the sections", "what's in this arrangement"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "offset": {"type": "integer", "minimum": 0, "default": 0},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50},
+          "section_offset": {"type": "integer", "minimum": 0, "default": 0},
+          "section_limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 2000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "inspect_unused",
+      "domain": "inspect",
+      "summary": "Material doing nothing: empty tracks, empty scenes, ambiguous names.",
+      "description": "Names the tracks with no clips anywhere, the scenes with nothing in them, the tracks with no devices, empty Session slots, and any names shared by more than one track. It does not claim clips were never launched: that is not observable, and a guess would be worse than silence.",
+      "examples": ["what am I not using", "any empty tracks", "find dead weight in this set"],
+      "input": {"type": "object", "properties": {}, "additionalProperties": false},
+      "timeout_ms": 2000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "mix_levels_report",
+      "domain": "mix",
+      "summary": "Every fader, pan and mute, with the outliers flagged.",
+      "description": "Returns volume and pan per track with Live's own display string where available, plus flags for muted, soloed, at-unity and silent tracks and any duplicate names. Peak levels are reported as not measured rather than estimated; measuring them needs a meter pass.",
+      "examples": ["show me my levels", "is anything muted", "how are my faders sitting"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "offset": {"type": "integer", "minimum": 0, "default": 0},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 2000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "tracks_list",
+      "domain": "tracks",
+      "summary": "List tracks with name, role, volume and pan.",
+      "description": "Returns a page of tracks in Set order. Use offset/limit for large Sets; next_offset is null on the last page.",
+      "examples": ["what tracks do I have", "list my drum tracks"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "offset": {"type": "integer", "minimum": 0, "default": 0},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 200}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 1500,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "track.list"
+    },
+    {
+      "name": "tracks_gain_stage",
+      "domain": "tracks",
+      "summary": "Normalise track levels toward a headroom target.",
+      "description": "Moves each track's volume so its observed peak sits headroom_db below full scale. Tracks without a measured peak are skipped and named in the result. Dry-run by default.",
+      "examples": ["gain stage the drums to -6", "even out all the track levels"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "tracks": {"type": "array", "items": {"type": "string"}, "description": "Track names; omit for all."},
+          "headroom_db": {"type": "number", "minimum": -24, "maximum": -1, "default": -6},
+          "dry_run": {"type": "boolean", "default": true}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 4000,
+      "writes": true,
+      "reversible": true,
+      "needs": ["levels"],
+      "min_live": null,
+      "cmd": "tracks.gain_stage"
+    },
+    {
+      "name": "transport_play",
+      "domain": "transport",
+      "summary": "Start playback, optionally from a bar.",
+      "description": "Starts the transport so the user can hear an edit. Not a performance tool: use it to audition, not to run a set.",
+      "examples": ["play from bar 64", "let me hear that"],
+      "input": {
+        "type": "object",
+        "properties": {"from_bar": {"type": "number", "minimum": 1, "description": "Bar to start from; omit to continue from the playhead."}},
+        "additionalProperties": false
+      },
+      "timeout_ms": 1500,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "transport.play"
+    }
+  ]
+}

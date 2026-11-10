@@ -1,0 +1,34 @@
+{
+  "validation": {"max_tools_per_mode": 34},
+  "core_tools": ["ableton_status", "ableton_guide"],
+  "modes": [
+    {
+      "name": "auto",
+      "summary": "Default. Triage and everyday edits.",
+      "tools": [
+        "inspect_structure",
+        "inspect_unused",
+        "mix_levels_report",
+        "tracks_list",
+        "tracks_gain_stage",
+        "transport_play"
+      ],
+      "default_scope": "set",
+      "escalate": true,
+      "examples": ["what's wrong with my set", "gain stage my drums"]
+    },
+    {
+      "name": "inspect",
+      "summary": "Audits and reports. No edits.",
+      "tools": [
+        "inspect_structure",
+        "inspect_unused",
+        "mix_levels_report",
+        "tracks_list"
+      ],
+      "default_scope": "set",
+      "escalate": true,
+      "examples": ["audit this set", "what should I fix first"]
+    }
+  ]
+}

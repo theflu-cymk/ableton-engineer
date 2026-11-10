@@ -1,0 +1,119 @@
+# Enableton — Mission plan
+
+Written 2026-11-09. **`SPEC.md` owns the design and wins any conflict**; this file owns sequencing,
+gates and the verified state of the machine. `PROMPT.md` is the origin brief and is now history.
+The earlier TypeScript/Node plan this file used to contain is **withdrawn** — the code on disk is
+Python 3.11 + `uv`, and that is correct.
+
+---
+
+## 1. Verified on this machine (2026-11-09)
+
+| Fact | Value | How verified |
+|---|---|---|
+| Live edition / version | **Suite 12.2.5** | exe `ProductVersion`, `C:\ProgramData\Ableton\Live 12 Suite` |
+| Extensions SDK | **unavailable** — needs 12.4.5+, install is 12.2.5 | version compare |
+| Backend | **Python Remote Script + LOM over local TCP** | only surface with read + write + observers here |
+| Python (server) | **3.11.17 via uv** | `uv run python -V` |
+| Runtime dependency | `mcp>=2.3` only | `pyproject.toml` |
+| Test runner | pytest 9.2.0 via the `dev` extra | `uv sync --extra dev` |
+| Sets root | **`F:\ableton songs`** — **66 working Sets + 126 backups = 192 `.als`** | `find` scan |
+| `.als` format | gzip container (magic `1f 8b`) → compressed XML | `head -c 4` on a real Set |
+| M1 readable fixture | `F:\ableton songs\in hell Project\Crust Wumble.als` | located |
+| M1 stress fixture | `F:\ableton songs\beat Project\paper tiger heart remaster.als` | located |
+| ABL user library at `Documents\Ableton` | absent — library is redirected (see `SPEC.md` §2) | directory listing |
+| Existing Remote Scripts | none — the installer is part of the deliverable | directory listing |
+
+Reconciled: `SPEC.md` says "66 `.als` files"; a naive scan says 192. Both are right — 66 are working
+Sets, 126 live in `Backup\` directories. **Any scan or fixture walk must exclude `/Backup/`**, and a
+test should assert that, or every count in the spec is wrong by 3×.
+
+---
+
+## 2. State of the build (measured, not claimed)
+
+`uv run pytest -q` → **84 passed in 5.64s**. Everything below is **untracked** (no commit yet).
+
+| Area | On disk |
+|---|---|
+| server | `src/enableton/`: `cli.py`, `manifest.py`, `modes.json`, `modes.py`, `reports.py`, `setup.py`, `tools.json`, `tools.py`, plus `live/`, `protocol/`, `state/` packages |
+| remote script | `remote_script/Enableton/`: `dispatch.py`, `errors.py`, `framing.py`, `server.py`, `handlers/` |
+| tests | 12 files incl. `test_drift.py`, `test_framing.py`, `test_manifest.py`, `test_modes.py`, `test_snapshot.py`, `test_adapter_conformance.py`, `test_cli.py`, `test_setup.py` |
+
+M0's acceptance test is green. M1 (snapshot, reports) is partly built. **Mission 1 therefore starts
+with a gap audit against `SPEC.md` §19**, not with a rewrite — writing code over already-landed work
+is the expensive failure mode here.
+
+---
+
+## 3. Mission sequence
+
+One milestone per mission; a mission ends when its acceptance test passes as a **measurement**.
+
+| # | Spec | Scope | Done-when (from `SPEC.md` §19) |
+|---|---|---|---|
+| **1** | M0 | gap audit, then close M0 | `pytest` green ✔; `enableton doctor` against the fake reports connected; drift test green; `ableton_status` returns a real summary from the fake; a written gap report names each uncovered M0/M1 item |
+| 2 | M1 | read path | against `Crust Wumble.als` (19 tracks, 120 BPM, 22 Session clips) **and** `paper tiger heart remaster.als` (77 tracks, 1825 warp markers): three questions answered from the data, and the trace shows **snapshot reads ≤ 1 per request** |
+| 3 | M2 | write path + safety | dry-run trace matches applied trace; a forced mid-plan failure restores state exactly (object-by-object diff); double-apply is a no-op; a scratch copy exists before any write |
+| 4 | M3 | diagnostics | per-mode finding counts equal before/after; autofix halts when the count rises; `needs_listening` never auto-applies |
+| 5 | M4 | full catalogue + modes | drift test green; every mode ≤ 34 tools; every tool in ≥ 1 mode; escalation reaches every tool |
+| 6 | M5 | UX | every screen renders as text with working `ableton_choose` ids; scope chip matches the loaded tool set; a full flow completes with Apps disabled |
+| 7 | M6 | audio tiers | capture produces a WAV, analysis reads it, routing verification catches a failed arm |
+| 8 | M7 | library, build, recipes | the user's own sentence — "create a dubstep drum beat using loops from my riddim one shots folder" — builds a playable 2-bar pattern whose every sample came from that folder; `recipe_learn` recovers tempo and half-time feel with per-lane confidence and refuses below 0.6 |
+
+Missions 2 and 3 are the ones that prove the whole architecture; everything after is catalogue
+breadth on a proven frame. **Do not start Mission 5 before 2–3 are green.**
+
+---
+
+## 4. Decisions locked for this build
+
+- **Python 3.11 + uv**, `mcp>=2.3`, pytest as the only dev dependency. The Remote Script is
+  **stdlib-only** on Live's embedded CPython.
+- **Feature detection, never version branches.** No `if live_version == "12.2.5"` anywhere; the
+  script reports `features[]`, tools declare `needs`/`min_live`, absent means `unavailable` + reason.
+- **One socket, one in-flight request, one scheduler.** `LIVE_BUSY` rather than queuing.
+- **All LOM access on Live's main thread**, marshalled through a thread-safe queue drained in
+  `update_display()` — *not* `schedule_message`, whose dropped-task failure mode surfaces as a
+  timeout.
+- **Reversibility over confirmation.** Snapshot before bulk/plan writes; `%APPDATA%\Enableton` holds
+  config, logs and backups; **a user `.als` is never written in place**.
+- **Remote Script discovery is explicit**: `ENABLETON_USER_LIBRARY`, then `Documents`, then a
+  shallow OneDrive search — the default path is a silent no-op on this machine.
+- **No LLM inside the server.** The LLM is the MCP client; the server exposes vocabulary.
+
+---
+
+## 5. Risks added for this environment
+
+| Risk | Mitigation | Trigger |
+|---|---|---|
+| Two authoritative docs drift apart | `SPEC.md` wins; this file is sequencing only, never design | a conflict appears in a diff |
+| `Backup\` Sets triple every count | exclude `/Backup/` in scans and fixtures; assert it in a test | a Set count or fixture list looks 3× too big |
+| `F:` is removable or unmounted | preflight names the missing root; never crash; never write to `F:` except an explicit staging dir | a read or rollback test fails with a drive error |
+| `dev` extra isn't synced, so tests "don't exist" | `uv sync --extra dev` is part of the check command | `pytest: program not found` |
+| A path in a doc holds a control byte (a real `\a` became `0x07` in `SPEC.md`) | validate path strings on load; fixed today | a path that exists won't open |
+| Already-landed work gets rewritten by a fresh mission | gap audit first, one milestone per mission | a mission deletes or restructures green code |
+| Live's linear undo can't unwind a plan | our own snapshot transaction + `ableton_undo` | a partial plan leaves the Set changed |
+
+`SPEC.md` §21 remains the full register; the rows above are the ones this machine adds.
+
+---
+
+## 6. Open decisions
+
+| Decision | Default | Needs the user |
+|---|---|---|
+| Upgrade Live to 12.4.5+ | **stay on 12.2.5**, gate those capabilities `unavailable` | only if warp-marker writes / envelopes / `insert_device` are wanted soon |
+| Scratch copy location for M2 | `%APPDATA%\Enableton\backups\` — nothing on `F:` | confirm, if they'd rather it sat beside the song |
+| MCP App auto-opens on `ableton_start` | automatic on first run, then remembered | no |
+| Meter poll interval | 100 ms, capped at 5 s total | no |
+| Starter recipe pack | small shipped set, overridable by id | no |
+
+---
+
+## 7. What Mission 1 needs
+
+Nothing blocking. It audits the existing code against `SPEC.md` §19, closes M0, and stops before
+touching M1 behaviour. For Mission 3 it will need the scratch copy of `Crust Wumble.als` — read-only
+until then.
