@@ -96,8 +96,10 @@ def read(args, song):
 # --- writes --------------------------------------------------------------
 #
 # Every write shares one undo shape: the clip's raw note vector before the edit, in
-# ``[pitch, start, duration, velocity, mute]`` form. ``set_notes`` replaces the whole vector, so a
-# restore is exact rather than an inverse operation that has to guess what the first edit did.
+# ``[pitch, start, duration, velocity, mute]`` form. Live's ``Clip.set_notes`` **adds** notes to
+# the clip rather than replacing the vector (confirmed against Live 12.2.5: writing the same
+# vector twice doubled the count), so every write clears the clip first. The undo token is still
+# a whole-vector restore, exact for these five fields, rather than an inverse of the first edit.
 
 MAX_REPLACE_NOTES = 10000
 
@@ -163,14 +165,40 @@ def _raw_notes(clip):
     return notes, source
 
 
+def _clear_notes(clip):
+    """Remove every note, because ``set_notes`` appends instead of replacing."""
+    existing, _ = _raw_notes(clip)
+    end = float(_attr(clip, "length", 0.0) or 0.0)
+    if existing:
+        end = max(end, max(note[1] + note[2] for note in existing))
+
+    ranged = getattr(clip, "remove_notes_extended", None)
+    if callable(ranged):
+        # The window is derived from the actual notes, so it covers material past the loop end.
+        ranged(0, 128, 0.0, end + 0.001)
+        return
+
+    extended = getattr(clip, "get_all_notes_extended", None)
+    by_id = getattr(clip, "remove_notes_by_id", None)
+    if callable(extended) and callable(by_id):
+        ids = [int(_attr(note, "note_id", 0)) for note in extended()]
+        if ids:
+            by_id(ids)
+        return
+
+    raise ScriptError("UNSUPPORTED", "this Live build cannot clear clip notes")
+
+
 def _write_notes(clip, notes):
     setter = getattr(clip, "set_notes", None)
     if not callable(setter):
         raise ScriptError("UNSUPPORTED", "this Live build cannot write clip notes")
-    setter(tuple(
-        (int(pitch), float(start), float(duration), int(velocity), bool(mute))
-        for pitch, start, duration, velocity, mute in notes
-    ))
+    _clear_notes(clip)
+    if notes:
+        setter(tuple(
+            (int(pitch), float(start), float(duration), int(velocity), bool(mute))
+            for pitch, start, duration, velocity, mute in notes
+        ))
 
 
 def _validated_notes(value):
@@ -228,6 +256,12 @@ def _context(args, song):
         raise ScriptError("UNSUPPORTED", "clip is not a MIDI clip")
     if not callable(getattr(clip, "set_notes", None)):
         raise ScriptError("UNSUPPORTED", "this Live build cannot write clip notes")
+    can_clear = (
+        callable(getattr(clip, "get_all_notes_extended", None))
+        and callable(getattr(clip, "remove_notes_by_id", None))
+    ) or callable(getattr(clip, "remove_notes_extended", None))
+    if not can_clear:
+        raise ScriptError("UNSUPPORTED", "this Live build cannot clear clip notes")
     original, source = _raw_notes(clip)
     return {
         "index": index,

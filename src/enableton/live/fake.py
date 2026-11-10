@@ -39,6 +39,7 @@ class FakeNote:
     duration: float
     velocity: int = 100
     mute: bool = False
+    note_id: int = 0
 
 
 @dataclass
@@ -51,16 +52,51 @@ class FakeClip:
     warp_mode: int = 0
     warp_markers: List[Any] = field(default_factory=list)
     notes: List[FakeNote] = field(default_factory=list)
+    _next_note_id: int = field(default=1, init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        for note in self.notes:
+            if not note.note_id:
+                note.note_id = self._next_note_id
+                self._next_note_id += 1
+        if self.notes:
+            self._next_note_id = max(
+                self._next_note_id, max(note.note_id for note in self.notes) + 1
+            )
 
     @property
     def length(self) -> float:
         return max(0.0, self.end_time - self.start_time)
 
     def set_notes(self, notes) -> None:
-        """Mirror Live's whole-vector write so notes handlers take the real path here."""
+        """Live's ``set_notes`` adds notes; it does not replace the vector.
+
+        The handlers must clear with ``remove_notes_extended`` (or ``remove_notes_by_id``)
+        first. Modelling the real append here is what keeps a replacing fake from hiding
+        that defect again.
+        """
+        for pitch, start, duration, velocity, mute in notes:
+            self.notes.append(FakeNote(
+                int(pitch), float(start), float(duration), int(velocity), bool(mute),
+                note_id=self._next_note_id,
+            ))
+            self._next_note_id += 1
+
+    def get_all_notes_extended(self):
+        return list(self.notes)
+
+    def remove_notes_by_id(self, ids) -> None:
+        doomed = {int(note_id) for note_id in ids}
+        self.notes = [note for note in self.notes if note.note_id not in doomed]
+
+    def remove_notes_extended(self, from_pitch, pitch_span, from_time, time_span) -> None:
+        """Live deletes notes whose start lies in the given pitch/time window."""
         self.notes = [
-            FakeNote(int(pitch), float(start), float(duration), int(velocity), bool(mute))
-            for pitch, start, duration, velocity, mute in notes
+            note for note in self.notes
+            if not (
+                from_pitch <= note.pitch < from_pitch + pitch_span
+                and from_time <= note.start_time < from_time + time_span
+            )
         ]
 
 

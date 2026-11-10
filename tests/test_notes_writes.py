@@ -143,6 +143,28 @@ class NotesWriteTests(unittest.TestCase):
         self.assertTrue(all(note["pitch"] % 12 in {0, 2, 4, 5, 7, 9, 11} for note in notes))
         self.restore("notes.scale_lock", applied)
 
+    def test_live_set_notes_appends_so_writes_clear_first(self):
+        clip = self.song.tracks[0].arrangement_clips[-1]
+        self.assertEqual(len(clip.notes), 3)
+        clip.set_notes(((60, 0.0, 1.0, 100, False),))
+        self.assertEqual(len(clip.notes), 4)
+        before = self.read()
+
+        applied = self.write("notes.replace", notes=[
+            {"pitch": 61, "start": 0.0, "duration": 1.0, "velocity": 90},
+        ], dry_run=False)
+        self.assertEqual(self.read()["total"], 1)
+        self.assertEqual(self.read()["notes"][0]["pitch"], 61)
+        self.restore("notes.replace", applied)
+        self.assertEqual(self.read(), before)
+
+    def test_replace_with_an_empty_vector_clears_the_clip(self):
+        before = self.read()
+        applied = self.write("notes.replace", notes=[], dry_run=False)
+        self.assertEqual(self.read()["total"], 0)
+        self.restore("notes.replace", applied)
+        self.assertEqual(self.read(), before)
+
     def test_invalid_arguments_write_nothing(self):
         before = self.read()
         cases = [

@@ -36,7 +36,7 @@ class NotesReadTests(unittest.TestCase):
         result = self.read(track="Drums", clip="drums A", location="session", slot=0)
 
         self.assertTrue(result["notes_available"])
-        self.assertEqual(result["source"], "notes")
+        self.assertEqual(result["source"], "extended")
         self.assertEqual(result["location"], "session")
         self.assertEqual(result["slot"], 0)
         self.assertIsNone(result["start"])
@@ -62,7 +62,7 @@ class NotesReadTests(unittest.TestCase):
     def test_an_empty_midi_clip_is_readable_and_zero(self):
         result = self.read(track="Drums", clip="drums 1")
         self.assertTrue(result["notes_available"])
-        self.assertEqual(result["source"], "notes")
+        self.assertEqual(result["source"], "extended")
         self.assertEqual(result["total"], 0)
         self.assertEqual(result["notes"], [])
         self.assertEqual(result["location"], "arrangement")
