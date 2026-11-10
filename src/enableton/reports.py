@@ -67,8 +67,9 @@ def summary_from_snapshot(data: Dict[str, Any]) -> Dict[str, Any]:
         "scenes": counts.get("scenes"),
         "locators": counts.get("locators"),
         # Additive, not a rewrite: the count stands, but a reader can see whether the build
-        # could read locators at all. Crust Wumble has none (its .als holds an empty <Locators>),
-        # yet the script reports False — a false negative we have not yet explained.
+        # could read locators at all. Crust Wumble genuinely has none (its .als holds
+        # <Locators><Locators /></Locators>); 0.1.5 made `cue_points` the fallback, so the
+        # zero is a read result rather than the old false negative.
         "locators_available": bool(captured.get("locators_available")),
         "arrangement_clips": counts.get("arrangement_clips"),
         "session_clips": counts.get("session_clips"),

@@ -78,9 +78,12 @@ line, so the digest gate from `AGENTS.md` closed on real evidence.
 was 0, matching `counts.devices_master: 0` and `devices_total: 2`. So `song.master_track` answers
 on 12.2.5, and an empty master reads as empty rather than as an error.
 
-**Still unverified:** the six-device master itself. Crust Wumble was not the Set open at that
-restart, so `devices_total: 108` and `devices_master: 6` have not been observed live; loading that
-Set and running `status` is the outstanding check.
+**Verified with `Crust Wumble` open (2026-11-10):** `status` reported `devices_total: 108` from 18
+top-level devices across 17 tracks and 2 returns. The raw snapshot's `master_track` held exactly the
+six file devices: `KIS_FREE Techno Mastering Chain` (`AudioEffectGroupDevice`) containing
+`EQ Eight`, `Saturator`, `Multiband Compression`, `Mastering - Add Sustain` and `Limiter`.
+`counts.devices_master` was 6, `master_available` true, `master_reason` null. The 102 → 108 gap is
+closed on real Live, not just in a fixture.
 
 | Area | On disk |
 |---|---|
