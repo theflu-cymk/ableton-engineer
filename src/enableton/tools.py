@@ -12,6 +12,7 @@ import weakref
 from typing import Any, Callable, Dict, Optional
 
 from . import diagnostics, escalation
+from .audio_analysis import AudioAnalysisError, analyze_wave
 from .manifest import load_manifest
 from .modes import ModeError, guide as build_guide
 from .plans import PlanStore, PlanStoreError, TransactionStore, undo_transaction
@@ -68,6 +69,18 @@ def _clear_applied_slots(adapter: Any) -> None:
         _APPLIED_SLOTS.pop(adapter, None)
 
 
+def _with_analysis(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Attach the local PCM analysis to a capture result, or the reason it could not run."""
+    path = result.get("file_path")
+    if not result.get("recorded") or not path:
+        return result
+    try:
+        result["analysis"] = analyze_wave(path)
+    except AudioAnalysisError as exc:
+        result["analysis"] = {"measured": False, "reason": str(exc)}
+    return result
+
+
 def run_tool(
     name: str,
     args: Optional[Dict[str, Any]] = None,
@@ -107,6 +120,15 @@ def run_tool(
             diagnostics.detect(snapshot, "standard")
         )
         return result
+
+    if name == "mix_resample_capture":
+        # A capture is not a replayable write: the M2 preflight/apply trace comparison cannot
+        # apply to a recording that happens once. The handler owns its own restore, so it runs
+        # directly and the local analyzer reads the WAV it produced.
+        result = adapter.call(tool.cmd, args, timeout_ms=tool.timeout_ms)
+        if not args.get("dry_run", True):
+            cache.invalidate()
+        return _with_analysis(result)
 
     if tool.local:
         try:

@@ -721,6 +721,25 @@ restored to 372.0. Offline suite **462 passed, 42 subtests**. This is a client-s
 Script change, so no version bump or restart was needed. The master fader itself remains
 unavailable because the snapshot has no master fader; its meter is measured.
 
+### Resample capture (2026-11-11, `0.4.15`)
+
+**Implemented and installed; Unverified on Live — Live still loads `0.4.14` while this repo is
+`0.4.15`.** `mix_resample_capture` records the master through a scratch audio track whose input
+routing is `Resampling` into an empty Session slot on display ticks through `Deferred`, so the
+main thread never blocks. It is real time and audible, and dry-run by default. An apply refuses
+while the Set is playing, an occupied slot or a MIDI track; it sets the routing and reads it back
+**before** arming because an invalid arm is a silent no-op, fires the slot, stops after `ms`,
+resolves the recorded clip's `file_path`, restores the previous routing by resolving it from
+Live's current option vector, restores the arm state, deletes the temporary clip and keeps the
+WAV. The client reads the WAV with `audio_analysis.analyze_wave` and attaches sample peak, RMS
+and DC offset. Fake tests cover a successful capture, a deliberately stubborn routing setter
+(the failed-arm path), restore and analysis; the failed-arm path has no real-Live equivalent yet.
+Offline suite **471 passed, 42 subtests**. `setup --force` installed 20 files and removed 19 stale
+`.pyc` files; repo build is `4be9df47b888`, while `doctor` still reports script `0.4.14`, build
+`2d3a0a801a4d`, `stale`. Next gate: restart Live, confirm `doctor` reports `0.4.15` /
+`4be9df47b888`, dry-run on `SCRATCH fortnight`, then one short **audible** capture on `Unused`
+(index 26) and an analysis readback.
+
 ### Current-file acceptance read — `fortnight` (2026-11-10, `0.1.8`)
 
 The current Set is `fortnight*` (unsaved). Four reports — `inspect_structure`, `inspect_unused`,

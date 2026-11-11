@@ -224,6 +224,30 @@
       "cmd": "mix.meter_poll"
     },
     {
+      "name": "mix_resample_capture",
+      "domain": "mix",
+      "summary": "Record the master through a Resampling track, then measure the WAV.",
+      "description": "Captures the master output in real time through a scratch audio track routed to Resampling, then reports the WAV path, its size and a PCM analysis of sample peak, RMS and DC offset. This is audible and lasts as long as the capture. Dry-run by default: the plan names the track, the empty slot and the routing change without playing anything. An apply refuses while Live is playing, refuses an occupied slot and a MIDI track, sets the input routing and verifies Live actually took it before arming and firing the slot because an invalid arm is a silent no-op, stops after ms, restores the previous routing and arm state, deletes the temporary clip and keeps the WAV. It does not report LUFS, and a WAV sample peak is not master headroom.",
+      "examples": ["capture the master for two seconds", "record my mix to a wav", "measure the master output"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": ["string", "integer"], "description": "Scratch audio track by name or zero-based index; it needs an empty Session slot."},
+          "slot": {"type": "integer", "minimum": 0, "description": "Session clip slot to record into; defaults to the first empty slot."},
+          "ms": {"type": "integer", "minimum": 250, "maximum": 10000, "default": 2000},
+          "dry_run": {"type": "boolean", "default": true}
+        },
+        "required": ["track"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 20000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "mix.resample_capture"
+    },
+    {
       "name": "notes_overlaps",
       "domain": "notes",
       "summary": "Same-pitch MIDI notes whose time ranges collide.",

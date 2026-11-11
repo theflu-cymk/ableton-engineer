@@ -184,6 +184,7 @@
         "tracks_gain_stage",
         "tracks_set_routing",
         "mix_snapshot_save",
+        "mix_resample_capture",
         "mix_snapshot_restore"
       ],
       "default_scope": "set",
