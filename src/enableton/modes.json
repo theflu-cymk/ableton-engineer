@@ -54,6 +54,7 @@
         "inspect_unused",
         "mix_levels_report",
         "mix_headroom",
+        "mix_meter_poll",
         "mix_routing_report",
         "clips_warp_check",
         "notes_read",
@@ -169,6 +170,7 @@
       "tools": [
         "mix_levels_report",
         "mix_headroom",
+        "mix_meter_poll",
         "mix_routing_report",
         "master_chain_read",
         "master_set_gain",

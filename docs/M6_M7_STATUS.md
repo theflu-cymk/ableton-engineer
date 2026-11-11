@@ -6,8 +6,10 @@ Branch `theflu-cymk-m6-audio-tools` was reconciled with the M4 accounting base
 candidate `a4d9681` and landed the accounting-only correction on top. The original M6/M7 base was
 `5761472b6c77a9e4360a004daee832bca3102677`.
 
-**Parked:** shared-file integration remains parked. Do not add M6/M7 catalogue, mode,
-catalogue-test or Remote Script changes until M4 is accepted.
+**Parked, with one directed exception:** shared-file integration remains parked until M4 is
+accepted. On 2026-11-11 the user directed this branch to push the Live-gated blocker, so
+`mix_meter_poll` is registered end-to-end. That registration is the only M6/M7 runtime change on
+this branch.
 
 | Item/task | Status | Blocker and evidence | Unblock condition / owner | Shared files or decision dependencies | Next independent task |
 |---|---|---|---|---|---|
@@ -15,6 +17,7 @@ catalogue-test or Remote Script changes until M4 is accepted.
 | Recipe pattern parser and v1 validator | offline-ready | Synthetic tests cover format, required fields, documented `hit`/`layer` modes, bar divisibility, duplicate lane/slot identifier rejection, and optional source metadata (kind, file, window, confidence); no MIDI scheduling, clip writing, or recipe tools. | Integrator wires recipe handlers/catalog after M4 shared files are available. | `tools.json`, modes/catalogue tests are now present from M4 base `bd023bf`; integration remains parked. | Continue pure recipe data validation; catalog/mode integration remains blocked. |
 | Recipe JSON store | offline-ready | Temporary-directory tests cover list/show/save/override/delete; default application config path is intentionally not selected, and storage is not registered as a tool. | Configuration owner selects/implements the supported user data directory; integrator registers recipe tools. | Planned `%APPDATA%\\Enableton` location is not implemented in the base; registration uses the candidate `tools.json`; integration remains parked. | Recipe schema edge cases that do not choose global paths. |
 | M6 meter polling, resample capture, routing verification, spectral/loudness analysis, master compare/device audition | Live-gated | No Live API probing or captured audio is available under this offline assignment; fake tests would not establish LOM semantics. | Approved scratch-Set probes with real Live readback, capture file verification, and explicit failed-arm exercise; Live operator. | Runtime catalogue plus Remote Script handler surfaces; the latter also contains concurrent M4 work. | Continue a separate offline, file-only analysis increment. |
+| `mix_meter_poll` runtime slice | offline-ready, Live gate pending | Handler samples `output_meter_level` plus instantaneous `output_meter_left/right` across display ticks through `Deferred`; each row reports its latest level, highest observed peak, sample count, and `unavailable` with the reason when a meter cannot be read. 12 new fake tests cover peak-across-ticks, zero-vs-unavailable, selection, ambiguity and arguments. `SCRIPT_VERSION` is `0.4.14`; `setup --force` installed 19 files and removed 19 stale `.pyc` files; repo build is `2d3a0a801a4d`. **Live still runs `0.4.13`/`e9fb28eabb94`, so `doctor` reports `stale`.** | Restart Live, confirm `doctor` shows `0.4.14` and build `2d3a0a801a4d` with no `stale`, then run one read-only `mix_meter_poll` on `SCRATCH fortnight` and record the real payload. | `tools.json`, `modes.json`, `tests/test_manifest.py` and the Remote Script, changed at the user's explicit direction while M4 acceptance is pending. | The real call, once Live is restarted. |
 | M7 generation audition/accept/discard and Browser-backed recipe build/learn | Live-gated | No Browser load, scratch-preview scene, audition, or real clip write has been exercised. | Approved scratch-Set probes with identity guards/readback and Browser-backed sample provenance; Live operator/integrator. | Catalogue/modes and Remote Script handler surfaces; do not collide with M4 changes. | Continue pure recipe data validation and offline sample-analysis utilities. |
 | M6/M7 runtime catalogue registration and mission reconciliation | reconciled, parked | M4 accounting base `bd023bf` is merged into this branch; the M4 owner confirmed the base and landed the accounting correction. MISSION/SPEC retain both M4 and M6/M7 content. Full offline suite: **445 passed, 42 subtests**; no M6/M7 runtime tools are registered. M4 accounting branch `7de7e66` is superseded; M5 `c57edc7` remains separate. | M4 acceptance; then integrate M5 and decide M6/M7 runtime. Runtime handlers still require their scratch-Set gates. | `tools.json`, modes, catalogue tests and Remote Script are parked for M6/M7 registration. | Continue pure offline M6/M7 work only; no shared-file edits. |
 
@@ -39,5 +42,17 @@ and `confidence` is a finite number in `0..1` when present. The focused foundati
 `git diff --check` passed. This is synthetic schema validation only; no Live, catalogue, mode, or
 Remote Script change was made.
 
-No Live, setup, doctor, or Live tool was run for these slices. This ledger records offline work on
-the reconciled branch only; it does not claim M6/M7 acceptance or Live verification.
+### 2026-11-11: `mix_meter_poll` runtime slice (offline-ready, Live gate pending)
+
+Registered `mix_meter_poll` end-to-end at the user's explicit direction to push the Live-gated
+blocker. The handler samples `output_meter_level` and the instantaneous left/right meters on later
+display ticks, so the main thread never blocks; `peak` is the highest instantaneous reading
+observed, `level` is the latest peak-hold value, and an unreadable meter is `unavailable` with its
+reason rather than a zero that would look like silence. The poll covers regular tracks, return
+tracks and the master by default, resolves names across all three and refuses an ambiguous name.
+
+`SCRIPT_VERSION` is `0.4.14`. Full offline suite: **457 passed, 42 subtests**; `compileall` and
+`git diff --check` passed. `setup --force` installed 19 files and removed 19 stale `.pyc` files.
+`doctor` still reports Live on `0.4.13` build `e9fb28eabb94` against the repo's `2d3a0a801a4d`
+(`stale`), because Live has not been restarted. **No real meter call has been made**: the Live gate
+for this tool remains open, and no M6/M7 acceptance is claimed.

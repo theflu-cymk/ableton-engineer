@@ -201,6 +201,27 @@
       "cmd": null
     },
     {
+      "name": "mix_meter_poll",
+      "domain": "mix",
+      "summary": "Real meter readings, sampled across display ticks.",
+      "description": "Samples Live's own output meters for each track, return track and the master over a short window, and reports the latest peak-hold level, the instantaneous left and right readings, and the highest instantaneous value actually observed. Sampling runs across display ticks without blocking Live, and a track whose meter cannot be read is reported unavailable with the reason instead of a zero that would look like silence. It does not capture audio or estimate levels from faders, and an observed peak is not a true-peak measurement.",
+      "examples": ["how hot is my mix", "show me the meters", "is the master clipping"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "tracks": {"type": "array", "items": {"type": ["string", "integer"]}, "minItems": 1, "maxItems": 200},
+          "ms": {"type": "integer", "minimum": 0, "maximum": 5000, "default": 100}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 7000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "mix.meter_poll"
+    },
+    {
       "name": "notes_overlaps",
       "domain": "notes",
       "summary": "Same-pitch MIDI notes whose time ranges collide.",

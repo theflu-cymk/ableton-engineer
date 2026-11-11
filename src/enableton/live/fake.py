@@ -167,6 +167,10 @@ class FakeTrack:
     pan: float = 0.0
     color: int = 0
     peak_db: Optional[float] = None
+    #: Live's output meters: peak-hold level plus instantaneous left/right, all 0.0-1.0.
+    output_meter_level: float = 0.0
+    output_meter_left: float = 0.0
+    output_meter_right: float = 0.0
     is_midi: bool = False
     mute: bool = False
     solo: bool = False
