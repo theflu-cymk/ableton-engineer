@@ -560,8 +560,8 @@ the required version-1 recipe fields, documented `hit`/`layer` slot modes, that 
 length divides the recipe bar length, and unique lane/slot identifiers. It is not a recipe store,
 builder, or Live writer.
 
-**Integration status (2026-11-11):** this branch was reconciled with current `main`
-`a4d9681f3d07482f7e232c7c76f5133cbf508f63`; the M4 routing/report and Remote Script changes are
+**Integration status (2026-11-11):** this branch was reconciled with the M4 accounting base
+`bd023bfd2611ba6c043426f5d98fbaa7150b52b2`; the M4 routing/report and Remote Script changes are
 present alongside these offline M6/M7 foundations. The shared `MISSION.md`, `SPEC.md`, catalogue,
 mode files and Remote Script are now merged; no M6/M7 runtime tools are registered or Live-verified
 yet. Keep the remaining runtime work behind its scratch-Set gates.
