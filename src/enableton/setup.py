@@ -12,12 +12,15 @@ from __future__ import annotations
 import glob
 import hashlib
 import os
+import re
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional
 
 SCRIPT_PACKAGE = "Enableton"
+
+_VERSION_RE = re.compile(r'^SCRIPT_VERSION\s*=\s*"([^"]+)"', re.MULTILINE)
 
 
 class InstallError(Exception):
@@ -70,6 +73,22 @@ def default_source() -> Path:
             % (candidate, SCRIPT_PACKAGE)
         )
     return candidate
+
+
+def script_version(source: Optional[Path] = None) -> Optional[str]:
+    """The version the shipped Remote Script declares.
+
+    This is the version that matters: ``pyproject.toml`` sits at 0.1.0 and has never tracked the
+    script, so reading it would put two different numbers on one screen. Returns None rather than
+    raising, because a missing script is the installer's problem, not the menu's.
+    """
+    try:
+        root = Path(source) if source else default_source()
+        text = (root / "server.py").read_text(encoding="utf-8")
+    except (InstallError, OSError):
+        return None
+    match = _VERSION_RE.search(text)
+    return match.group(1) if match else None
 
 
 @dataclass
