@@ -733,6 +733,15 @@ One milestone per mission; a mission ends when its acceptance test passes as a *
 | 7 | M6 | audio tiers | capture produces a WAV, analysis reads it, routing verification catches a failed arm |
 | 8 | M7 | library, build, recipes | the user's own sentence — "create a dubstep drum beat using loops from my riddim one shots folder" — builds a playable 2-bar pattern whose every sample came from that folder; `recipe_learn` recovers tempo and half-time feel with per-lane confidence and refuses below 0.6 |
 
+**Verified offline foundation (synthetic unit tests only; does not satisfy M6 or M7 acceptance):**
+the PCM WAV analyzer measures file-level sample peak, RMS, duration, and DC offset; the recipe
+pattern utility validates and splits 16-step bars. Neither uses Live or claims actual capture,
+spectral/LUFS analysis, meter polling, routing verification, audition, or recipe building.
+
+**Unverified; later scratch-Set gates required:** real resample capture and WAV readback, failed-arm
+detection, Live meter/LOM behavior, spectral and loudness reports, device audition, generation
+preview/accept/discard, and Browser-backed recipe learning/building.
+
 Missions 2 and 3 are complete. Mission 4 is in progress; everything after is catalogue breadth on a
 proven frame. **Do not start Mission 5 before Mission 4 is green.**
 
