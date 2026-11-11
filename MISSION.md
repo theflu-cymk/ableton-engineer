@@ -544,6 +544,15 @@ restored at index 0 with `missing: []`. Four scratch copies were made under the 
 folder; the staging `.als` mtime and size were unchanged. This verifies the index path and the
 corrected response metadata.
 
+**`0.4.13` zero-option report fix (Verified on real `0.4.13`).** A nameless current routing value
+is now flagged only when that field has at least one selectable option. On `SCRATCH fortnight`,
+`mix_routing_report` returned 32 rows; 19 rows had `input_channels: 0`, and none carried an
+`input_routing_channel` reason. The report's `flagged` list was empty. `8-Audio` (track index 7)
+still read `input_channel: null`, `input_channels: 0`, output type `Main` at index 1 and the
+nameless output channel at index 0, with no reason. `doctor` before and after reported script
+`0.4.13`, build `e9fb28eabb94`, no `stale`, `ran 2`, `errors 0`, `super_errors 0`. The fake suite
+is **404 passed, 7 subtests**; the staging `.als` mtime and size were unchanged.
+
 **Gain staging cannot write on this build.** A dry `tracks_gain_stage` over the whole Set returned
 `changes: 0` and `skipped: 32`; every real `Track.peak_db` read was `None`. The audit's
 "`tracks_gain_stage` (0.2.1)" evidence was only the restore path (`0.85 -> 0.5` through a restore
@@ -553,10 +562,9 @@ claimed.
 
 **Verdict.** Bundle B is **not green**. Volume, pan, ambiguity, duplicate idempotency and duplicate
 cleanup are Verified on real Live (`0.4.7` writes, `0.4.8` cleanup); routing indexes are Verified
-on real `0.4.12`, including duplicate `Main` 1/19 and nameless channel 0. `mix_routing_report`
-still flags 19 audio input channels that have no selectable input channel; that is a remaining
-report-quality issue, not a routing-write blocker. `tracks_gain_stage` remains a blocker. No user
-Set was written.
+on real `0.4.12`, including duplicate `Main` 1/19 and nameless channel 0. `mix_routing_report` no
+longer flags zero-option input channels: 19 such real rows are clean and `flagged` is empty.
+`tracks_gain_stage` remains a blocker. No user Set was written.
 
 ### Tracks sends and name/colour (2026-11-10, `0.2.12`)
 
