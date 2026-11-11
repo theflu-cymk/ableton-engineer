@@ -14,7 +14,7 @@ import wave
 
 import support  # noqa: F401
 from enableton.live.fake import (
-    FakeAdapter, FakeClip, FakeClipSlot, FakeRouting, FakeSong, FakeTrack,
+    FakeAdapter, FakeClip, FakeClipSlot, FakeRouting, FakeScene, FakeSong, FakeTrack,
 )
 from enableton.manifest import load_manifest
 from enableton.modes import load_modes
@@ -87,6 +87,7 @@ class CaptureTests(unittest.TestCase):
         self.assertTrue(result["ready"])
         self.assertEqual(result["routing"]["target"]["name"], "Resampling")
         self.assertEqual(result["will_record"]["slot"], 0)
+        self.assertIsNone(result["will_record"]["scene"])
         self.assertFalse(self.track.arm)
         self.assertEqual(self.track.input_routing_type.identifier, "ExtIn")
         self.assertFalse(self.track.clip_slots[0].has_clip)
@@ -109,6 +110,21 @@ class CaptureTests(unittest.TestCase):
         self.assertFalse(self.track.arm)
         self.assertFalse(self.track.clip_slots[0].has_clip)
         self.assertGreaterEqual(result["ticks"], 1)
+
+    def test_scene_launch_records_the_mix(self):
+        self.song.scenes = [FakeScene("intro", 0, self.song)]
+        result = self.adapter.call(
+            "mix.resample_capture",
+            {"track": "Unused", "scene": 0, "ms": 250, "dry_run": False},
+        )
+        self.assertEqual(result["scene"], 0)
+        self.assertTrue(result["recorded"])
+        self.assertTrue(result["routing"]["restored"])
+        self.assertTrue(result["restore"]["ok"])
+        self.assertFalse(self.song.is_playing)
+
+        planned = self.adapter.call("mix.resample_capture", {"track": "Unused", "scene": 0})
+        self.assertEqual(planned["will_record"]["scene"]["index"], 0)
 
     def test_failed_arm_is_refused_before_recording(self):
         stubborn = StubbornTrack(
@@ -160,6 +176,8 @@ class CaptureTests(unittest.TestCase):
             {"track": "Unused", "ms": True},
             {"track": "Unused", "slot": -1},
             {"track": "Unused", "slot": 9},
+            {"track": "Unused", "scene": -1},
+            {"track": "Unused", "scene": 9},
             {"track": 99},
             {"track": "Unused", "tempo": 120},
         ):
@@ -187,7 +205,7 @@ class CaptureTests(unittest.TestCase):
         self.assertEqual(tool.cmd, "mix.resample_capture")
         self.assertTrue(tool.writes)
         self.assertEqual(
-            set(tool.input["properties"]), {"track", "slot", "ms", "dry_run"}
+            set(tool.input["properties"]), {"track", "slot", "scene", "ms", "dry_run"}
         )
         self.assertGreaterEqual(tool.timeout_ms, 11000)
 

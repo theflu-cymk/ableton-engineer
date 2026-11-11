@@ -136,7 +136,7 @@ class FakeClipSlot:
             raise RuntimeError("no clip to duplicate")
         destination.clip = copy.deepcopy(self.clip)
 
-    def fire(self) -> None:
+    def fire(self, record_length=None, launch_quantization=None) -> None:
         """Live starts recording when an empty slot on an armed audio track is fired."""
         if self.clip is None:
             self.is_recording = True
@@ -159,6 +159,13 @@ class FakeRouting:
 @dataclass
 class FakeScene:
     name: str = ""
+    index: int = -1
+    song: Any = field(default=None, repr=False)
+
+    def fire(self) -> None:
+        """Launching a scene starts its clips; an armed empty slot records."""
+        if self.song is not None:
+            self.song.fire_scene(self.index)
 
 
 @dataclass
@@ -317,6 +324,18 @@ class FakeSong:
     browser: FakeBrowser = field(default_factory=FakeBrowser)
     #: The path a resample capture's finalized clip reports; tests point it at a real WAV.
     recorded_file: str = ""
+
+    def __post_init__(self) -> None:
+        for index, scene in enumerate(self.scenes):
+            scene.index = index
+            scene.song = self
+
+    def fire_scene(self, index: int) -> None:
+        self.is_playing = True
+        for track in self.tracks:
+            slots = list(getattr(track, "clip_slots", []) or [])
+            if index < len(slots) and getattr(track, "arm", False) and not slots[index].has_clip:
+                slots[index].is_recording = True
 
     def start_playing(self) -> None:
         self.is_playing = True

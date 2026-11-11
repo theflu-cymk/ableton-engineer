@@ -187,7 +187,7 @@ def _set_resampling(track, choice):
     return readback
 
 
-def _plan(song, index, track, name, slot_index, slot, ms):
+def _plan(song, index, track, name, slot_index, slot, ms, scene=None, scene_index=None):
     before_type = _attr(track, "input_routing_type", None)
     before_channel = _attr(track, "input_routing_channel", None)
     choice, choice_index = _resampling(track)
@@ -223,6 +223,13 @@ def _plan(song, index, track, name, slot_index, slot, ms):
             "track": name,
             "track_index": index,
             "slot": slot_index,
+            "scene": (
+                None if scene is None
+                else {
+                    "index": scene_index,
+                    "name": str(_attr(scene, "name", "") or ""),
+                }
+            ),
             "ms": ms,
         },
         "routing": {
@@ -253,6 +260,7 @@ def _report(state, song, clip, path, size, file_ready):
         "track": state["name"],
         "track_index": state["track_index"],
         "slot": state["slot_index"],
+        "scene": state["scene_index"],
         "ms": state["ms"],
         "ticks": state["ticks"],
         "routing": {
@@ -290,17 +298,40 @@ def _restore_route(track, attribute, options_attribute, stored, stored_index, la
     if stored is None:
         return True
     options = list(_attr(track, options_attribute, []) or [])
-    choice = None
-    try:
-        choice = _pick(options, _label(stored), label)
-    except ScriptError:
-        if isinstance(stored_index, int) and 0 <= stored_index < len(options):
-            candidate = options[stored_index]
-            if _same_route(candidate, stored):
-                choice = candidate
-    if choice is None:
-        problems.append("%s: the value before the capture is no longer offered" % (label,))
-        return False
+    wanted_label = _label(stored)
+    wanted_identifier = _identifier(stored)
+    candidates = []
+    if wanted_label is not None:
+        candidates = [option for option in options if _label(option) == wanted_label]
+        if wanted_identifier is not None:
+            exact = [
+                option for option in candidates
+                if _identifier(option) == wanted_identifier
+            ]
+            if exact:
+                candidates = exact
+    if not candidates and isinstance(stored_index, int) and 0 <= stored_index < len(options):
+        candidate = options[stored_index]
+        if _same_route(candidate, stored):
+            candidates = [candidate]
+    if not candidates:
+        # Live 12.2.5 can report a routing value that is absent from its own option vector
+        # (Ext. In after Resampling). Assigning the stored value directly is the only exact
+        # restore left; if the build refuses it, report that rather than leaving Resampling on.
+        try:
+            setattr(track, attribute, stored)
+        except Exception as exc:  # noqa: BLE001 - restore must keep going
+            problems.append("%s: %s" % (label, exc))
+            return False
+        if not _same_route(_attr(track, attribute, None), stored):
+            problems.append(
+                "%s: the value before the capture is no longer offered" % (label,)
+            )
+            return False
+        return True
+    # Duplicate labels are real (two Ext. In entries). Any member of that set restores the
+    # behaviour the track had; restoring the exact duplicate is not observable here.
+    choice = candidates[0]
     try:
         setattr(track, attribute, choice)
     except Exception as exc:  # noqa: BLE001 - restore must keep going
@@ -355,38 +386,92 @@ def _restore(state, song):
     return {"ok": not problems, "problems": problems, "clip_removed": removed}
 
 
+def _fire(target, label, quantization=False):
+    fire = _attr(target, "fire", None)
+    if not callable(fire):
+        raise ScriptError("UNSUPPORTED", "this Live build cannot fire a %s" % (label,))
+    try:
+        if quantization:
+            # A quantized launch can wait for the next bar, which made the first real capture
+            # check immediately and report that nothing had started. 0 is Live's "None".
+            try:
+                fire(launch_quantization=0)
+                return
+            except TypeError:
+                pass
+        fire()
+    except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
+        raise ScriptError("LIVE_ERROR", "Live refused to fire the %s: %s" % (label, exc))
+
+
+def _verify_recording(song, slot):
+    recording = _attr(slot, "is_recording", None)
+    if recording is True:
+        return
+    if recording is False:
+        raise ScriptError(
+            "LIVE_ERROR", "the slot reports it is not recording after it was fired"
+        )
+    if not bool(_attr(song, "is_playing", False)):
+        raise ScriptError(
+            "LIVE_ERROR",
+            "Live reports neither recording nor playback after the slot was fired",
+        )
+
+
 def _step(state, song):
     """One display tick of the capture; defers until the recording is long enough."""
     try:
-        if state["phase"] == "record":
-            started = state["started"]
-            if started is None:
-                state["started"] = _clock()
-                _set_resampling(state["track"], state["choice"])
-                _arm(state["track"], True)
-                fire = _attr(state["slot"], "fire", None)
-                if not callable(fire):
-                    raise ScriptError(
-                        "UNSUPPORTED", "this Live build cannot fire a clip slot"
-                    )
-                try:
-                    fire()
-                except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
-                    raise ScriptError(
-                        "LIVE_ERROR", "Live refused to start the recording: %s" % (exc,)
-                    )
-                state["recording"] = True
-                recording = _attr(state["slot"], "is_recording", None)
-                playing = bool(_attr(song, "is_playing", False))
-                if recording is False and not playing:
-                    raise ScriptError(
-                        "LIVE_ERROR",
-                        "the slot was fired but Live reports neither recording nor playback",
-                    )
-                return Deferred(lambda next_song: _step(state, next_song))
+        if state["phase"] == "arm":
+            state["setup_ticks"] += 1
+            if state["setup_ticks"] > _MAX_CLIP_TICKS:
+                raise ScriptError(
+                    "TIMEOUT",
+                    "capture could not arm within %d display ticks" % (_MAX_CLIP_TICKS,),
+                )
+            _set_resampling(state["track"], state["choice"])
+            _arm(state["track"], True)
+            if state["scene"] is not None:
+                _fire(state["scene"], "scene")
+            else:
+                _fire(state["slot"], "clip slot")
+            state["recording"] = True
+            state["phase"] = "confirm"
+            return Deferred(lambda next_song: _step(state, next_song))
 
+        if state["phase"] == "confirm":
+            state["setup_ticks"] += 1
+            if state["setup_ticks"] > _MAX_CLIP_TICKS:
+                raise ScriptError(
+                    "TIMEOUT",
+                    "capture could not confirm recording within %d display ticks"
+                    % (_MAX_CLIP_TICKS,),
+                )
+            recording = _attr(state["slot"], "is_recording", None)
+            playing = bool(_attr(song, "is_playing", False))
+            if recording is False and state["scene"] is not None and not state["slot_fired"]:
+                # A scene launch can start the mix without arming the empty slot for recording
+                # (Live's "Start Recording on Scene Launch" is off by default). Firing the slot
+                # now captures the mix that is already playing.
+                state["slot_fired"] = True
+                _fire(state["slot"], "clip slot", quantization=True)
+                return Deferred(lambda next_song: _step(state, next_song))
+            if recording is False and not playing:
+                # A quantized launch lands on the next bar, not on this display tick.
+                if state["setup_ticks"] < _MAX_CLIP_TICKS:
+                    return Deferred(lambda next_song: _step(state, next_song))
+                raise ScriptError(
+                    "LIVE_ERROR",
+                    "the slot was fired but Live reports neither recording nor playback",
+                )
+            _verify_recording(song, state["slot"])
+            state["started"] = _clock()
+            state["phase"] = "record"
+            return Deferred(lambda next_song: _step(state, next_song))
+
+        if state["phase"] == "record":
             state["ticks"] += 1
-            elapsed_ms = (_clock() - started) * 1000.0
+            elapsed_ms = (_clock() - state["started"]) * 1000.0
             if elapsed_ms < state["ms"]:
                 if state["ticks"] >= _MAX_TICKS:
                     raise ScriptError(
@@ -466,7 +551,7 @@ def _step(state, song):
 
 @command("mix.resample_capture")
 def resample_capture(args, song):
-    check_args(args, allowed=("track", "slot", "ms", "dry_run"))
+    check_args(args, allowed=("track", "slot", "ms", "scene", "dry_run"))
     dry_run = bool(args.get("dry_run", True))
     if "track" not in args:
         raise ScriptError("BAD_ARGS", "missing argument(s): track")
@@ -477,9 +562,23 @@ def resample_capture(args, song):
             "BAD_ARGS", "ms must be an integer from %d to %d" % (_MIN_MS, _MAX_MS)
         )
 
+    scene = None
+    scene_index = args.get("scene")
+    if scene_index is not None:
+        if isinstance(scene_index, bool) or not isinstance(scene_index, int) or scene_index < 0:
+            raise ScriptError("BAD_ARGS", "scene must be a non-negative integer")
+        scenes = list(_attr(song, "scenes", []) or [])
+        if scene_index >= len(scenes):
+            raise ScriptError(
+                "NOT_FOUND",
+                "no scene at index %d; the Set has %d scene(s)"
+                % (scene_index, len(scenes)),
+            )
+        scene = scenes[scene_index]
+
     index, track, name = _track(song, args["track"])
     slot_index, slot = _slot(track, args.get("slot"))
-    plan = _plan(song, index, track, name, slot_index, slot, ms)
+    plan = _plan(song, index, track, name, slot_index, slot, ms, scene, scene_index)
 
     if dry_run:
         return plan
@@ -492,10 +591,14 @@ def resample_capture(args, song):
         raise ScriptError("PRECONDITION_FAILED", "Live is not ready to record")
 
     state = {
-        "phase": "record",
+        "phase": "arm",
         "started": None,
         "ticks": 0,
+        "setup_ticks": 0,
         "clip_ticks": 0,
+        "slot_fired": False,
+        "scene": scene,
+        "scene_index": scene_index,
         "ms": ms,
         "track": track,
         "track_index": index,

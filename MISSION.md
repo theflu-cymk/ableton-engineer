@@ -721,24 +721,28 @@ restored to 372.0. Offline suite **462 passed, 42 subtests**. This is a client-s
 Script change, so no version bump or restart was needed. The master fader itself remains
 unavailable because the snapshot has no master fader; its meter is measured.
 
-### Resample capture (2026-11-11, `0.4.15`)
+### Resample capture (2026-11-11, `0.4.16`)
 
-**Implemented and installed; Unverified on Live — Live still loads `0.4.14` while this repo is
-`0.4.15`.** `mix_resample_capture` records the master through a scratch audio track whose input
-routing is `Resampling` into an empty Session slot on display ticks through `Deferred`, so the
-main thread never blocks. It is real time and audible, and dry-run by default. An apply refuses
-while the Set is playing, an occupied slot or a MIDI track; it sets the routing and reads it back
-**before** arming because an invalid arm is a silent no-op, fires the slot, stops after `ms`,
-resolves the recorded clip's `file_path`, restores the previous routing by resolving it from
-Live's current option vector, restores the arm state, deletes the temporary clip and keeps the
-WAV. The client reads the WAV with `audio_analysis.analyze_wave` and attaches sample peak, RMS
-and DC offset. Fake tests cover a successful capture, a deliberately stubborn routing setter
-(the failed-arm path), restore and analysis; the failed-arm path has no real-Live equivalent yet.
-Offline suite **471 passed, 42 subtests**. `setup --force` installed 20 files and removed 19 stale
-`.pyc` files; repo build is `4be9df47b888`, while `doctor` still reports script `0.4.14`, build
-`2d3a0a801a4d`, `stale`. Next gate: restart Live, confirm `doctor` reports `0.4.15` /
-`4be9df47b888`, dry-run on `SCRATCH fortnight`, then one short **audible** capture on `Unused`
-(index 26) and an analysis readback.
+**Implemented and reinstalled; the `0.4.16` gate is Unverified and needs one restart.** The first
+real-Live attempt on `0.4.15` found three things the fake could not. `Unused` (index 26) is a
+**group** track, not the audio track the preflight claimed; `8-Audio` (index 7) is the unused
+audio track. `slot.fire()` under Live's global quantization did not start recording on the same
+display tick, so the handler read a queued launch as a failure. The restore then could not resolve
+`Ext. In` because Live 12.2.5 omits the previous input type from
+`available_input_routing_types` once `Resampling` is selected, leaving `8-Audio` on `Resampling`;
+it was recovered by writing `No Input` (index 35) with `tracks_set_routing`, which created scratch
+backup `SCRATCH-fortnight-20261111T040032Z.als`. No WAV was created.
+
+`0.4.16` fixes all three: an optional `scene` launches a Session scene so the capture records an
+actual mix (scene launch does not arm empty slots unless "Start Recording on Scene Launch" is on,
+so the handler fires the slot after the scene starts when needed); the slot is fired with
+`launch_quantization=0` and the confirm phase waits across ticks for a queued launch; and restore
+falls back to assigning the stored routing value directly when Live no longer offers it, the only
+exact restore for `Ext. In` on this build. Offline suite **472 passed, 42 subtests**. `setup
+--force` installed 20 files and removed 20 stale `.pyc` files; repo build is `7bf3b14610fc`.
+`doctor` still reports script `0.4.15`, build `4be9df47b888`, `stale`. Next gate: restart Live,
+confirm `0.4.16` / `7bf3b14610fc`, dry-run `{"track": 7, "scene": 0}`, then one short **audible**
+capture on `8-Audio` and an analysis readback.
 
 ### Current-file acceptance read — `fortnight` (2026-11-10, `0.1.8`)
 
