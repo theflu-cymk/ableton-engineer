@@ -130,6 +130,10 @@ def main(argv: Optional[list] = None) -> int:
     serve = sub.add_parser("serve", help="run the MCP server", parents=[common])
     serve.add_argument("--mode", default=None)
 
+    sub.add_parser(
+        "menu", help="interactive menu (what a bare `enableton` opens)", parents=[common]
+    )
+
     args = parser.parse_args(argv)
 
     if args.command == "setup":
@@ -383,8 +387,22 @@ def main(argv: Optional[list] = None) -> int:
             parser.error(str(exc))
         return EXIT_OK
 
+    if args.command == "menu" or args.command is None:
+        return _menu(parser)
+
     parser.print_help()
     return EXIT_OK
+
+
+def _menu(parser: argparse.ArgumentParser) -> int:
+    """Open the interactive menu, or show usage when there is no terminal to draw in."""
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        print("enableton: the menu needs an interactive terminal; showing usage instead.\n")
+        parser.print_help()
+        return EXIT_OK
+    from .tui import run as run_menu
+
+    return run_menu(main)
 
 
 if __name__ == "__main__":
