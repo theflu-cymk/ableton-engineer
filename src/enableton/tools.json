@@ -1600,7 +1600,7 @@
       "name": "mix_routing_report",
       "domain": "mix",
       "summary": "Every track's input and output routing, with unreadable rows flagged.",
-      "description": "Reads input and output type and channel live, in Live's own display names with Live's identifiers beside them, the current option's index where it can be matched, and how many options each track offers. A nameless channel reports its index instead of an object repr. Routing is read here rather than in the snapshot so a plain read does not pay for it. A track whose routing cannot be read carries the reason in its row and is listed in flagged; an empty output is flagged too, never reported as a clean route.",
+      "description": "Reads input and output type and channel live, in Live's own display names with Live's identifiers beside them, the current option's index where it can be matched, and how many options each track offers. A nameless channel reports its index instead of an object repr. Routing is read here rather than in the snapshot so a plain read does not pay for it. A track whose routing cannot be read carries the reason in its row and is listed in flagged; an empty output is flagged too, never reported as a clean route. A nameless channel with zero selectable options is not flagged, because there is no choice to resolve.",
       "examples": ["show me my routing", "is anything routed nowhere", "what feeds the drum bus"],
       "input": {
         "type": "object",

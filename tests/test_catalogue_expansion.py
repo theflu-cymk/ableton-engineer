@@ -381,6 +381,19 @@ class TrackExpansionTests(unittest.TestCase):
         self.assertNotIn("output_routing_channel", row.get("reason", ""))
         self.assertNotIn(row["name"], result["flagged"])
 
+    def test_routing_report_does_not_flag_a_nameless_channel_with_no_options(self):
+        # Real 8-Audio exposes a nameless input channel and zero input-channel options.
+        track = self.adapter.song.tracks[0]
+        track.input_routing_channel = FakeRouting("", "")
+        track.available_input_routing_channels = []
+
+        result = self.adapter.call("mix.routing_report", {})
+        row = result["items"][0]
+        self.assertIsNone(row["input_channel"])
+        self.assertEqual(row["input_channels"], 0)
+        self.assertNotIn("reason", row)
+        self.assertNotIn(row["name"], result["flagged"])
+
     def test_duplicate_routing_names_require_an_identifier(self):
         track = self.adapter.song.tracks[0]
         track.available_output_routing_types = [

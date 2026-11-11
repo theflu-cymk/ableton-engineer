@@ -62,7 +62,10 @@ def _routing(track):
                 row[key + "_index"] = current_index
         except Exception:
             row[count_key] = None
-        if missing_label and key + "_index" not in row:
+        # With zero selectable options there is no channel to choose and no index to
+        # resolve; flagging the nameless current value would be a false positive on
+        # tracks whose input exposes no channels.
+        if missing_label and row.get(count_key) != 0 and key + "_index" not in row:
             problems.append(
                 "%s: no display name, identifier or resolvable index; use %s_index"
                 % (source, key)
