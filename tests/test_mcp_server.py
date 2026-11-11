@@ -8,6 +8,7 @@ import support
 
 from enableton.cli import EXIT_OK, main
 from enableton.live.fake import FakeAdapter
+from enableton.manifest import load_manifest
 from enableton.mcp.transport import create_server
 from enableton.modes import load_modes
 
@@ -71,8 +72,14 @@ class McpServerTests(unittest.TestCase):
         with redirect_stdout(output):
             self.assertEqual(main(["serve", "--mode", "list"]), EXIT_OK)
         payload = json.loads(output.getvalue())
-        sound = next(row for row in payload["modes"] if row["mode"] == "sound")
-        self.assertEqual(sound["tools"], 14)
+        # Counts come from modes.json, so read the same source rather than quoting a number
+        # that every catalogue change invalidates.
+        expected = {
+            name: len(mode.tools)
+            for name, mode in load_modes(load_manifest()).modes.items()
+        }
+        reported = {row["mode"]: row["tools"] for row in payload["modes"]}
+        self.assertEqual(reported, expected)
 
 
 if __name__ == "__main__":

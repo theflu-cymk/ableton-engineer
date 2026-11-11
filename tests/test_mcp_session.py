@@ -18,14 +18,20 @@ class McpSessionTests(unittest.TestCase):
         self.assertEqual(start.structured_content["screen"], "main")
         self.assertIn("Set status: unavailable", start.structured_content["text"])
 
+        # The scope line counts the loaded mode's catalogue tools; derive it instead of
+        # quoting a number that every catalogue change invalidates.
+        expected_tools = len(self.server.modes.get("sound").tools)
         screens = ("modes", "mode:sound", "prompt", "apply", "recipe", "settings")
         for screen in screens:
             result = self.call_tool("ableton_screen", {"screen": screen})
             self.assertFalse(result.is_error, screen)
             payload = result.structured_content
             self.assertEqual(payload["screen"], screen)
-            self.assertIn("Scope: sound (14 tools)", payload["text"])
-            self.assertIn("scope", payload["structured"])
+            self.assertIn(f"Scope: sound ({expected_tools} tools)", payload["text"])
+            self.assertEqual(
+                payload["structured"]["scope"],
+                {"mode": "sound", "tools": expected_tools},
+            )
 
     def test_choice_ids_and_aliases_navigate_and_keep_state(self):
         self.server.session.selection = {"track": 2}
