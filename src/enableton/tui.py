@@ -16,7 +16,7 @@ import re
 import shutil
 import sys
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 RESET = "\x1b[0m"
 BOLD = "\x1b[1m"
@@ -71,7 +71,7 @@ MENU: Tuple[Item, ...] = (
     Item("action", "\U0001fa7a  Inspect findings", "inspect"),
     Item("action", "\U0001f39b   Modes and per-mode findings", "modes"),
     Item("section", "Catalogue"),
-    Item("action", "\U0001f9f0  Browse tools", "tools"),
+    Item("action", "\U0001f9f0  Browse tools", "browse"),
     Item("action", "\U0001f4d6  Describe a tool", "describe"),
     Item("action", "\u25b6   Run a tool", "call"),
     Item("section", "Plans"),
@@ -201,6 +201,137 @@ def _collect(action: str) -> Optional[List[str]]:
     return None
 
 
+def _clip(text: str, limit: int) -> str:
+    text = " ".join(str(text).split())
+    if limit <= 1 or len(text) <= limit:
+        return text
+    return text[: limit - 1] + "\u2026"
+
+
+def filter_tools(query: str, catalogue: Optional[Dict[str, Any]] = None) -> List[str]:
+    """Names matching every word of the query, best first.
+
+    A hit in the name outranks a hit in the description, and a word that starts a name segment
+    (``meter`` in ``mix_meter_poll``) outranks one buried mid-word, so typing "meter" puts the
+    meter tools above anything that merely mentions meters. Terms are ANDed, so "mix met" works.
+    """
+    if catalogue is None:
+        from .manifest import load_manifest
+
+        catalogue = load_manifest()
+    terms = [term for term in query.lower().split() if term]
+    if not terms:
+        return list(catalogue)
+
+    scored = []
+    for name, tool in catalogue.items():
+        lowered = name.lower()
+        segments = lowered.split("_")
+        haystack = ("%s %s %s" % (tool.summary, tool.description, tool.domain)).lower()
+        score = 0
+        for term in terms:
+            if lowered == term:
+                score += 100
+            elif any(segment.startswith(term) for segment in segments):
+                score += 40
+            elif term in lowered:
+                score += 20
+            elif term in haystack:
+                score += 5
+            else:
+                score = -1
+                break
+        if score >= 0:
+            scored.append((-score, name))
+    return [name for _, name in sorted(scored)]
+
+
+def _render_browser(
+    query: str, matches: Sequence[str], selected: int, catalogue: Dict[str, Any]
+) -> None:
+    columns, rows = shutil.get_terminal_size((80, 24))
+    lines = [
+        "  " + ORANGE + BOLD + "ENABLETON" + RESET + GREY + "  tool browser" + RESET,
+        "",
+    ]
+    cursor = WHITE + "\u258c" + RESET if query else ""
+    prompt = (
+        "  " + ORANGE + "/ " + RESET + query + cursor
+        if query
+        else "  " + DIM + "/  type to filter \u2014 try meter, routing, recipe, notes" + RESET
+    )
+    lines.append(prompt)
+    lines.append(
+        "  "
+        + DIM
+        + "%d of %d tools" % (len(matches), len(catalogue))
+        + ("  \u00b7 no match: backspace to widen" if not matches else "")
+        + RESET
+    )
+    lines.append("")
+
+    visible = max(3, rows - len(lines) - 2)
+    start = max(0, min(selected - visible // 2, len(matches) - visible))
+    for index in range(start, min(len(matches), start + visible)):
+        name = matches[index]
+        tool = catalogue[name]
+        summary = _clip(tool.summary, max(10, columns - len(name) - 14))
+        flag = ORANGE + "  write" + RESET if tool.writes else ""
+        if index == selected:
+            lines.append(
+                " " + ORANGE + "\u276f" + RESET + " " + BOLD + name + RESET
+                + "  " + DIM + summary + RESET + flag
+            )
+        else:
+            lines.append("   " + name + "  " + DIM + summary + RESET + flag)
+
+    lines.append(
+        "  "
+        + DIM
+        + "type to filter \u00b7 \u2191\u2193 move \u00b7 enter describe \u00b7 esc back"
+        + RESET
+    )
+    sys.stdout.write("\x1b[H\x1b[2J" + "\n".join(lines) + "\n")
+    sys.stdout.flush()
+
+
+def browse_tools(cli_main: Callable[[Optional[Sequence[str]]], int]) -> None:
+    """A filterable catalogue: Enter hands the highlighted tool to ``describe``."""
+    from .manifest import load_manifest
+
+    catalogue = load_manifest()
+    query = ""
+    selected = 0
+    while True:
+        matches = filter_tools(query, catalogue)
+        if matches:
+            selected = max(0, min(selected, len(matches) - 1))
+        else:
+            selected = 0
+        _render_browser(query, matches, selected, catalogue)
+
+        key = _read_key()
+        if key in ("escape", "ctrl-c"):
+            return
+        if key == "up" and matches:
+            selected = (selected - 1) % len(matches)
+        elif key == "down" and matches:
+            selected = (selected + 1) % len(matches)
+        elif key == "backspace":
+            query = query[:-1]
+            selected = 0
+        elif key == "enter" and matches:
+            _clear()
+            try:
+                cli_main(["describe", matches[selected]])
+            except SystemExit:
+                pass
+            _pause()
+        elif len(key) == 1 and key.isprintable():
+            query += key
+            selected = 0
+
+
 def _render(selected: int, status: str, stale: str = "") -> None:
     columns, rows = shutil.get_terminal_size((80, 24))
     lines: List[str] = []
@@ -273,6 +404,8 @@ def _read_key() -> str:
             return "escape"
         if char == "\x03":
             return "ctrl-c"
+        if char in ("\x08", "\x7f"):
+            return "backspace"
         return char.lower()
 
     import select
@@ -297,6 +430,8 @@ def _read_key() -> str:
         return "enter"
     if char == "\x03":
         return "ctrl-c"
+    if char in ("\x08", "\x7f"):
+        return "backspace"
     return char.lower()
 
 
@@ -339,6 +474,10 @@ def run(cli_main: Callable[[Optional[Sequence[str]]], int]) -> int:
                 _clear()
                 cli_main(["--help"])
                 _pause()
+                continue
+
+            if action == "browse":
+                browse_tools(cli_main)
                 continue
 
             argv = _collect(action)

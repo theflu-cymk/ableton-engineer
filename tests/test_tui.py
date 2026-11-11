@@ -37,7 +37,7 @@ class MenuShapeTests(unittest.TestCase):
         self.assertEqual(tui.MENU[0].kind, "section")
         self.assertEqual(tui.MENU[-1].action, "exit")
         actions = [item.action for item in tui.MENU if item.kind == "action"]
-        for expected in ("doctor", "status", "inspect", "tools", "describe", "call"):
+        for expected in ("doctor", "status", "inspect", "browse", "describe", "call"):
             self.assertIn(expected, actions)
 
     def test_step_skips_sections_and_wraps(self):
@@ -58,6 +58,42 @@ class MenuShapeTests(unittest.TestCase):
         self.assertEqual(tui._collect("modes"), ["modes", "--findings"])
         self.assertEqual(tui._collect("setup"), ["setup", "--force"])
         self.assertIsNone(tui._collect("nonsense"))
+
+
+class ToolSearchTests(unittest.TestCase):
+    def test_an_empty_query_lists_the_whole_catalogue(self):
+        from enableton.manifest import load_manifest
+
+        catalogue = load_manifest()
+        self.assertEqual(tui.filter_tools("", catalogue), list(catalogue))
+
+    def test_a_name_hit_outranks_a_description_hit(self):
+        names = tui.filter_tools("meter")
+        self.assertIn("mix_meter_poll", names)
+        self.assertEqual(names[0], "mix_meter_poll")
+
+    def test_terms_are_anded(self):
+        names = tui.filter_tools("mix met")
+        self.assertIn("mix_meter_poll", names)
+        self.assertNotIn("tracks_set_volume", names)
+
+    def test_a_domain_word_finds_its_tools(self):
+        names = tui.filter_tools("routing")
+        self.assertIn("mix_routing_report", names)
+        self.assertIn("tracks_set_routing", names)
+
+    def test_no_match_returns_nothing_rather_than_everything(self):
+        self.assertEqual(tui.filter_tools("zzzznope"), [])
+
+    def test_browsing_is_a_menu_action(self):
+        actions = [item.action for item in tui.MENU if item.kind == "action"]
+        self.assertIn("browse", actions)
+
+    def test_clip_keeps_rows_inside_the_terminal(self):
+        self.assertEqual(tui._clip("a  b\n c", 40), "a b c")
+        clipped = tui._clip("x" * 50, 20)
+        self.assertEqual(len(clipped), 20)
+        self.assertTrue(clipped.endswith("\u2026"))
 
 
 class MenuVersionTests(unittest.TestCase):
