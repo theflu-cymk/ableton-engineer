@@ -1,8 +1,14 @@
-"""The CLI. Exit codes are part of the contract: 0 clean, 1 findings, 2 connection failure."""
+"""The CLI. Exit codes are part of the contract.
+
+0 clean, 1 findings or a request the script refused, 2 connection failure. A tool error is not a
+connection failure: only a dead socket or a timeout earns the connection code, so a caller can
+tell "nothing to do" from "nothing is listening".
+"""
 
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import sys
 from typing import Any, Dict, Optional
@@ -17,6 +23,9 @@ from .setup import InstallError, default_source, digest, install, instructions
 from .tools import run_tool
 
 EXIT_OK, EXIT_FINDINGS, EXIT_CONNECTION = 0, 1, 2
+
+#: LiveError codes that mean the socket is gone. Everything else is a refused request.
+TRANSPORT_ERRORS = frozenset({"DISCONNECTED", "TIMEOUT"})
 
 
 def doctor(host: str = "127.0.0.1", port: int = DEFAULT_PORT) -> Dict[str, Any]:
@@ -61,39 +70,64 @@ def main(argv: Optional[list] = None) -> int:
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--json", action="store_true", help="machine-readable output")
 
+    # Repeated on every subcommand so `enableton call x --port 9879` parses the same way as
+    # `enableton --port 9879 call x`. SUPPRESS keeps a flag given before the command from being
+    # reset by the subparser's own default.
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--host", default=argparse.SUPPRESS)
+    common.add_argument("--port", type=int, default=argparse.SUPPRESS)
+    common.add_argument("--json", action="store_true", default=argparse.SUPPRESS)
+
     sub = parser.add_subparsers(dest="command")
 
-    setup = sub.add_parser("setup", help="install the Remote Script into Live")
+    setup = sub.add_parser("setup", help="install the Remote Script into Live", parents=[common])
     setup.add_argument("--dir", default=None, help="target folder (default: User Library)")
     setup.add_argument("--force", action="store_true", help="replace an existing install")
     setup.add_argument("--dry-run", action="store_true", help="show what would be written")
 
-    sub.add_parser("doctor", help="environment, version and connection report")
-    sub.add_parser("status", help="connection and Set summary")
-    guide = sub.add_parser("guide", help="the command sheet for a mode")
+    sub.add_parser("doctor", help="environment, version and connection report", parents=[common])
+    sub.add_parser("status", help="connection and Set summary", parents=[common])
+    guide = sub.add_parser("guide", help="the command sheet for a mode", parents=[common])
     guide.add_argument("--mode", default=None)
-    call = sub.add_parser("call", help="run one tool by name")
+    call = sub.add_parser("call", help="run one tool by name", parents=[common])
     call.add_argument("tool")
     call.add_argument("--args", default="{}", help="JSON object of arguments")
 
-    inspect_parser = sub.add_parser("inspect", help="run a diagnostic tier")
+    tools_parser = sub.add_parser(
+        "tools", help="list the tool catalogue", parents=[common]
+    )
+    tools_parser.add_argument("--domain", default=None, help="only this domain, e.g. mix")
+    tools_parser.add_argument(
+        "--writes", action="store_true", help="only tools that change Live"
+    )
+
+    describe = sub.add_parser(
+        "describe", help="one tool's arguments, schema and examples", parents=[common]
+    )
+    describe.add_argument("tool")
+
+    inspect_parser = sub.add_parser("inspect", help="run a diagnostic tier", parents=[common])
     inspect_parser.add_argument("--tier", choices=("fast", "standard", "deep"), default="standard")
     inspect_parser.add_argument("--limit", type=int, default=50)
 
-    plan_parser = sub.add_parser("plan", help="compile and store a plan without applying it")
+    plan_parser = sub.add_parser(
+        "plan", help="compile and store a plan without applying it", parents=[common]
+    )
     plan_parser.add_argument("--intent", default="fix all safe findings")
     plan_parser.add_argument("--phase", action="append", choices=diagnostics.PHASES)
 
-    run_parser = sub.add_parser("run", help="apply a stored plan id")
+    run_parser = sub.add_parser("run", help="apply a stored plan id", parents=[common])
     run_parser.add_argument("plan_id")
 
-    modes_parser = sub.add_parser("modes", help="list modes, tool counts and finding counts")
+    modes_parser = sub.add_parser(
+        "modes", help="list modes, tool counts and finding counts", parents=[common]
+    )
     modes_parser.add_argument(
         "--findings", action="store_true",
         help="read Live and add per-mode finding counts; no connection leaves them unavailable",
     )
 
-    serve = sub.add_parser("serve", help="run the MCP server")
+    serve = sub.add_parser("serve", help="run the MCP server", parents=[common])
     serve.add_argument("--mode", default=None)
 
     args = parser.parse_args(argv)
@@ -239,19 +273,74 @@ def main(argv: Optional[list] = None) -> int:
             return EXIT_OK
         except LiveError as exc:
             print(str(exc), file=sys.stderr)
+            return EXIT_CONNECTION if exc.code in TRANSPORT_ERRORS else EXIT_FINDINGS
+        except OSError as exc:
+            print("cannot reach Live on %s:%d: %s" % (args.host, args.port, exc), file=sys.stderr)
             return EXIT_CONNECTION
         finally:
             client.close()
+
+    if args.command == "tools":
+        catalogue = load_manifest()
+        rows = [
+            {
+                "name": tool.name,
+                "domain": tool.domain,
+                "writes": tool.writes,
+                "timeout_ms": tool.timeout_ms,
+                "summary": tool.summary,
+            }
+            for tool in catalogue.values()
+            if (args.domain is None or tool.domain == args.domain)
+            and (not args.writes or tool.writes)
+        ]
+        _print({"count": len(rows), "domain": args.domain, "tools": rows})
+        return EXIT_OK
+
+    if args.command == "describe":
+        catalogue = load_manifest()
+        tool = catalogue.get(args.tool)
+        if tool is None:
+            near = difflib.get_close_matches(args.tool, list(catalogue), n=3)
+            hint = "; did you mean %s?" % ", ".join(near) if near else ""
+            print("no tool named %r%s" % (args.tool, hint), file=sys.stderr)
+            print("run `enableton tools` for the full catalogue", file=sys.stderr)
+            return EXIT_FINDINGS
+        _print(
+            {
+                "name": tool.name,
+                "domain": tool.domain,
+                "cmd": tool.cmd,
+                "summary": tool.summary,
+                "description": tool.description,
+                "writes": tool.writes,
+                "reversible": tool.reversible,
+                "timeout_ms": tool.timeout_ms,
+                "min_live": tool.min_live,
+                "needs": list(tool.needs),
+                "examples": list(tool.examples),
+                "input": tool.input,
+            }
+        )
+        return EXIT_OK
 
     if args.command == "call":
         try:
             payload = json.loads(args.args or "{}")
         except ValueError as exc:
             print("--args must be JSON: %s" % exc, file=sys.stderr)
-            return EXIT_CONNECTION
+            return EXIT_FINDINGS
         if not isinstance(payload, dict):
             print("--args must be a JSON object", file=sys.stderr)
-            return EXIT_CONNECTION
+            return EXIT_FINDINGS
+
+        catalogue = load_manifest()
+        if args.tool not in catalogue:
+            near = difflib.get_close_matches(args.tool, list(catalogue), n=3)
+            hint = "; did you mean %s?" % ", ".join(near) if near else ""
+            print("no tool named %r%s" % (args.tool, hint), file=sys.stderr)
+            print("run `enableton tools` for the full catalogue", file=sys.stderr)
+            return EXIT_FINDINGS
 
         client = LiveClient(host=args.host, port=args.port)
         try:
@@ -260,6 +349,9 @@ def main(argv: Optional[list] = None) -> int:
             return EXIT_OK
         except LiveError as exc:
             print(str(exc), file=sys.stderr)
+            return EXIT_CONNECTION if exc.code in TRANSPORT_ERRORS else EXIT_FINDINGS
+        except OSError as exc:
+            print("cannot reach Live on %s:%d: %s" % (args.host, args.port, exc), file=sys.stderr)
             return EXIT_CONNECTION
         finally:
             client.close()
