@@ -697,6 +697,19 @@ fader is reported unavailable because the snapshot carries only the master devic
 no faders above unity, 14 muted, 1 soloed, no silent tracks. Suite **131 passed**. No Remote Script
 change, no restart.
 
+### `mix_meter_poll` (2026-11-11, `0.4.14`)
+
+**Verified on real `0.4.14` against `SCRATCH fortnight`.** The Remote Script samples
+`output_meter_level` and the instantaneous left/right meters on later display ticks through
+`Deferred`, so the main thread never blocks. `doctor` reported script `0.4.14`, build
+`2d3a0a801a4d`, no `stale`, `errors 0`. A stopped poll (`ms: 200`) returned 35 rows (32 tracks,
+2 returns, master `Main`), all `available`, with honest zeros and an explicit not-playing note. A
+poll during playback from bar 9 (`ms: 600`) returned 7 samples over 625 ms: master peak `0.897554`
+(0.94 dB headroom), loudest track `REVocals` `0.966257`, 9 rows carrying signal. The transport was
+stopped and the playhead restored to 372.0. Offline suite **457 passed, 42 subtests**.
+`mix_headroom` still reports headroom as unmeasured; wiring measured peaks into it is a separate
+slice.
+
 ### Current-file acceptance read — `fortnight` (2026-11-10, `0.1.8`)
 
 The current Set is `fortnight*` (unsaved). Four reports — `inspect_structure`, `inspect_unused`,
