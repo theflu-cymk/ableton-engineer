@@ -992,12 +992,26 @@ def set_routing(args, song):
                     "UNSUPPORTED", "this Live build cannot set %s: %s" % (label, exc)
                 )
 
+    # Restore only the fields this call changed. A token that also carries an unchanged
+    # field can be refused by Live: on 12.2.5 a track's current input_type (Ext. In) is not
+    # always present in available_input_routing_types, so replaying it would fail even though
+    # nothing about the input changed.
+    changed_fields = {change["field"] for change in changes}
+    undo_entry = {"track_index": index}
+    for field, _attribute, _options, _label in _ROUTING_FIELDS:
+        if field not in changed_fields:
+            continue
+        undo_entry[field] = before[field]
+        identifier = before.get(field + "_identifier")
+        if identifier is not None:
+            undo_entry[field + "_identifier"] = identifier
+
     return {
         "dry_run": dry_run,
         "track": str(getattr(track, "name", "")),
         "track_index": index,
         "changes": changes,
-        "undo": [{"track_index": index, **before}],
+        "undo": [undo_entry],
     }
 
 

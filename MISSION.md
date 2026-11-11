@@ -484,14 +484,28 @@ restore token for the channel fields. This invalidates the `mix_routing_report` 
 `tracks_set_routing` rows until the handler carries identifiers (the LOM's `identifier` field)
 and resolves restore by them.
 
-**`0.4.9` routing identifiers (Unverified until restart).** The handler now reads `identifier`
-beside `display_name`, uses the identifier when a channel has no display name instead of an object
-repr, carries both label and identifier in the report and undo token, and resolves restore by
-identifier first. `mix_routing_report` also derives each track's kind when Live does not expose
-`track_type`. The fake suite is **399 passed, 7 subtests**; that proves handler consistency, not
-that Live accepts the change. `0.4.9` is installed as repo build `68c44768f8d8`; the loaded
-`0.4.8` build `dc6e1b4e6405` is `stale`, so no real routing read or write has run on this build.
-No Set was written.
+**`0.4.9` routing identifiers (real read Verified; write gate failed before writing).** The
+handler reads `identifier` beside `display_name`, uses the identifier when a channel has no display
+name instead of an object repr, carries both label and identifier in the report and undo token,
+and resolves restore by identifier first. `mix_routing_report` also derives each track's kind when
+Live does not expose `track_type`. The fake suite was **399 passed, 7 subtests**; that proves
+handler consistency only.
+
+After the 2026-11-11 restart, `doctor` reported script `0.4.9`, build `68c44768f8d8`, no `stale`.
+On `SCRATCH fortnight`, `mix_routing_report` returned 32 tracks and showed that Live 12.2.5 does
+**not** expose routing identifiers here: the available output types include two indistinguishable
+`Main` entries, the sole output-routing channel has neither name nor identifier (`?`), and every
+row was flagged for a null or nameless channel. A dry run of `tracks_set_routing` on `snare rush`
+(`REDRUMS` -> `Sends Only`) returned an undo token that also contained the unchanged
+`input_type: Ext. In`; a dry-run restore refused that field because Live does not list `Ext. In`
+in `available_input_routing_types`. No apply was made; the scratch `.als` mtime and size were
+unchanged.
+
+**`0.4.10` undo-token fix (Unverified until restart).** The token now carries only fields the call
+actually changes, so an unchanged input type cannot block restore. A regression test covers a
+current input type absent from the available list; the fake suite is **400 passed, 7 subtests**.
+`0.4.10` is installed as repo build `294c9c9c1043`; loaded `0.4.9` build `68c44768f8d8` is
+`stale`. The real routing gate must be rerun after the next restart.
 
 **Gain staging cannot write on this build.** A dry `tracks_gain_stage` over the whole Set returned
 `changes: 0` and `skipped: 32`; every real `Track.peak_db` read was `None`. The audit's

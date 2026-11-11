@@ -289,6 +289,25 @@ class TrackExpansionTests(unittest.TestCase):
         )
         self.assertEqual(track.output_routing_channel.identifier, "Output1")
 
+    def test_routing_undo_omits_fields_the_call_did_not_change(self):
+        # A real 12.2.5 gate found the old token carried the unchanged input type, which
+        # Live then refused because Ext. In is not in available_input_routing_types.
+        track = self.adapter.song.tracks[1]
+        track.input_routing_type = FakeRouting("Ext. In", "")
+        track.available_input_routing_types = [FakeRouting("All Ins", "AllIns")]
+
+        applied = self.adapter.call("tracks.set_routing", {
+            "track": "Bass layer", "output_type": "Sends Only", "dry_run": False,
+        })
+        self.assertIn("output_type", applied["undo"][0])
+        self.assertNotIn("input_type", applied["undo"][0])
+
+        restored = self.adapter.call(
+            "tracks.set_routing", {"restore": applied["undo"], "dry_run": False}
+        )
+        self.assertEqual(restored["missing"], [])
+        self.assertEqual(track.output_routing_type.display_name, "Master")
+
     def test_duplicate_routing_names_require_an_identifier(self):
         track = self.adapter.song.tracks[0]
         track.available_output_routing_types = [
