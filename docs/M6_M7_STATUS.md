@@ -18,6 +18,7 @@ this branch.
 | Recipe JSON store | offline-ready | Temporary-directory tests cover list/show/save/override/delete; default application config path is intentionally not selected, and storage is not registered as a tool. | Configuration owner selects/implements the supported user data directory; integrator registers recipe tools. | Planned `%APPDATA%\\Enableton` location is not implemented in the base; registration uses the candidate `tools.json`; integration remains parked. | Recipe schema edge cases that do not choose global paths. |
 | M6 meter polling, resample capture, routing verification, spectral/loudness analysis, master compare/device audition | Live-gated | No Live API probing or captured audio is available under this offline assignment; fake tests would not establish LOM semantics. | Approved scratch-Set probes with real Live readback, capture file verification, and explicit failed-arm exercise; Live operator. | Runtime catalogue plus Remote Script handler surfaces; the latter also contains concurrent M4 work. | Continue a separate offline, file-only analysis increment. |
 | `mix_meter_poll` runtime slice | **Verified** (read-only) on real `0.4.14` | Handler samples `output_meter_level` plus instantaneous `output_meter_left/right` across display ticks through `Deferred`; each row reports its latest level, highest observed peak, sample count, and `unavailable` with the reason when a meter cannot be read. 12 new fake tests cover peak-across-ticks, zero-vs-unavailable, selection, ambiguity and arguments. `SCRIPT_VERSION` is `0.4.14`; `setup --force` installed 19 files and removed 19 stale `.pyc` files; repo build is `2d3a0a801a4d`. On `SCRATCH fortnight` a stopped poll returned 35 rows (32 tracks, 2 returns, master `Main`), all `available`, and a playback poll returned master peak `0.897554` (0.94 dB headroom) with 7 samples in 625 ms. | Done. Wiring measured peaks into `mix_headroom` is a separate slice. | `tools.json`, `modes.json`, `tests/test_manifest.py` and the Remote Script, changed at the user's explicit direction while M4 acceptance is pending. | None for this tool. |
+| Resample-capture preflight probe | probe Verified; capture Unverified | Read-only probe on `SCRATCH fortnight` (`0.4.14`, build `2d3a0a801a4d`): `tracks_set_routing` dry-runs resolved `Resampling` at input index 0 on `REVocals` (index 0) and `Unused` (index 26), both currently `Ext. In`, with nothing written. `Unused` is an audio track with no clips and no devices; `Samples/Recorded` exists and holds 34 WAVs. `Song.record_mode`, the post-arm routing readback and the recorded clip's `file_path` are untested. | Build `master_loudness_capture` with a dry-run preflight and an apply that verifies the arm took before recording; run one short capture on `Unused` only after explicit approval. | Audible and creates a clip; the first recording needs the user's go-ahead. | Capture engine and tool registration. |
 | M7 generation audition/accept/discard and Browser-backed recipe build/learn | Live-gated | No Browser load, scratch-preview scene, audition, or real clip write has been exercised. | Approved scratch-Set probes with identity guards/readback and Browser-backed sample provenance; Live operator/integrator. | Catalogue/modes and Remote Script handler surfaces; do not collide with M4 changes. | Continue pure recipe data validation and offline sample-analysis utilities. |
 | M6/M7 runtime catalogue registration and mission reconciliation | reconciled, parked | M4 accounting base `bd023bf` is merged into this branch; the M4 owner confirmed the base and landed the accounting correction. MISSION/SPEC retain both M4 and M6/M7 content. Full offline suite: **445 passed, 42 subtests**; no M6/M7 runtime tools are registered. M4 accounting branch `7de7e66` is superseded; M5 `c57edc7` remains separate. | M4 acceptance; then integrate M5 and decide M6/M7 runtime. Runtime handlers still require their scratch-Set gates. | `tools.json`, modes, catalogue tests and Remote Script are parked for M6/M7 registration. | Continue pure offline M6/M7 work only; no shared-file edits. |
 
@@ -61,3 +62,19 @@ During a two-second playback probe from bar 9, a poll (`ms: 600`) returned 7 sam
 9 rows carrying signal. The transport was stopped and the playhead restored to 372.0. The held
 `level` can exceed the observed `peak` because of Live's one-second hold; the report exposes both
 rather than hiding the difference. No M4 acceptance is implied, and `main` was not touched.
+
+### 2026-11-11: resample-capture probe (read-only, Verified)
+
+The next M6 tier is resample capture (`SPEC.md` §11). Preconditions were probed read-only on
+`SCRATCH fortnight` on `0.4.14` / build `2d3a0a801a4d`:
+
+- `tracks.set_routing` dry-runs resolved `Resampling` at input index 0 on `REVocals` (index 0) and
+  `Unused` (index 26); both currently read `Ext. In`. Nothing was written.
+- `Unused` is an audio track with no clips and no devices, so it can host a capture without
+  creating a track.
+- `F:\ableton songs\Fortnight\fortnight Project\Samples\Recorded` exists and holds 34 WAVs.
+
+Not probed: `Song.record_mode`, the routing readback after an applied arm (the silent-no-op trap),
+the recorded clip's `file_path`, and cleanup. No capture has been run, no audio was recorded, and
+`master_loudness_capture` is not registered. The first recording is audible and needs explicit
+approval.

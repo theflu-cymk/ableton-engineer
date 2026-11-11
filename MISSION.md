@@ -897,6 +897,12 @@ lane/slot IDs; `RecipeStore` lists, shows, saves, and deletes validated recipes 
 precedence. None uses Live or claims actual capture, spectral/LUFS analysis, meter polling, routing
 verification, audition, or recipe building.
 
+**Resample-capture preconditions (Verified 2026-11-11, `0.4.14`, read-only).** On `SCRATCH
+fortnight`, `tracks_set_routing` dry-runs resolved `Resampling` at input index 0 on `REVocals`
+(index 0) and on the empty audio track `Unused` (index 26), currently `Ext. In`; nothing was
+written. The Set's `Samples/Recorded` folder exists (34 WAVs). `Song.record_mode`, the post-arm
+routing readback and the recorded clip's `file_path` remain untested; no capture has been run.
+
 **Unverified; later scratch-Set gates required:** real resample capture and WAV readback, failed-arm
 detection, Live meter/LOM behavior, spectral and loudness reports, device audition, generation
 preview/accept/discard, and Browser-backed recipe learning/building.
