@@ -8,6 +8,7 @@ a single function stops the MCP layer, the CLI and the tests drifting on what a 
 from __future__ import annotations
 
 import threading
+import time
 import weakref
 from typing import Any, Callable, Dict, Optional
 
@@ -74,10 +75,20 @@ def _with_analysis(result: Dict[str, Any]) -> Dict[str, Any]:
     path = result.get("file_path")
     if not result.get("recorded") or not path:
         return result
-    try:
-        result["analysis"] = analyze_wave(path)
-    except AudioAnalysisError as exc:
-        result["analysis"] = {"measured": False, "reason": str(exc)}
+    reason = None
+    for attempt in range(5):
+        try:
+            result["analysis"] = analyze_wave(path)
+            return result
+        except AudioAnalysisError as exc:
+            reason = str(exc)
+            # Live can still hold the recorded WAV when the capture returns. Retry the
+            # permission failure briefly instead of reporting a good file as unreadable.
+            if "Permission denied" in reason and attempt < 4:
+                time.sleep(0.5)
+                continue
+            break
+    result["analysis"] = {"measured": False, "reason": reason}
     return result
 
 

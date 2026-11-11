@@ -11,8 +11,11 @@ import struct
 import tempfile
 import unittest
 import wave
+from unittest import mock
 
 import support  # noqa: F401
+from enableton import tools
+from enableton.audio_analysis import AudioAnalysisError
 from enableton.live.fake import (
     FakeAdapter, FakeClip, FakeClipSlot, FakeRouting, FakeScene, FakeSong, FakeTrack,
 )
@@ -198,6 +201,17 @@ class CaptureTests(unittest.TestCase):
         self.assertEqual(result["analysis"]["sample_rate_hz"], 44100)
         self.assertAlmostEqual(result["analysis"]["sample_peak"], 0.5, places=3)
         self.assertAlmostEqual(result["analysis"]["headroom_db"], 6.02, places=1)
+
+    def test_analysis_retries_a_locked_wav(self):
+        locked = AudioAnalysisError(
+            "cannot read WAV file: [Errno 13] Permission denied: 'x.wav'"
+        )
+        with mock.patch.object(
+            tools, "analyze_wave", side_effect=[locked, {"measured": True}]
+        ), mock.patch.object(tools.time, "sleep") as sleep:
+            result = tools._with_analysis({"recorded": True, "file_path": "x.wav"})
+        self.assertTrue(result["analysis"]["measured"])
+        sleep.assert_called_once_with(0.5)
 
     def test_catalogue_and_modes_expose_the_capture(self):
         catalogue = load_manifest()

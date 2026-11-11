@@ -723,26 +723,28 @@ unavailable because the snapshot has no master fader; its meter is measured.
 
 ### Resample capture (2026-11-11, `0.4.16`)
 
-**Implemented and reinstalled; the `0.4.16` gate is Unverified and needs one restart.** The first
-real-Live attempt on `0.4.15` found three things the fake could not. `Unused` (index 26) is a
-**group** track, not the audio track the preflight claimed; `8-Audio` (index 7) is the unused
-audio track. `slot.fire()` under Live's global quantization did not start recording on the same
-display tick, so the handler read a queued launch as a failure. The restore then could not resolve
-`Ext. In` because Live 12.2.5 omits the previous input type from
-`available_input_routing_types` once `Resampling` is selected, leaving `8-Audio` on `Resampling`;
-it was recovered by writing `No Input` (index 35) with `tracks_set_routing`, which created scratch
-backup `SCRATCH-fortnight-20261111T040032Z.als`. No WAV was created.
+**Capture and analysis Verified; the routing restore failed.** `doctor` reported script `0.4.16`,
+build `7bf3b14610fc`, `errors 0`, `super_errors 0`. A dry run on `8-Audio` (index 7) with
+`scene: 0` resolved `Resampling` at input index 0 and planned slot 0. The applied 2 s capture was
+audible and produced
+`F:\ableton songs\Fortnight\fortnight Project\Samples\Recorded\8-Audio 0001 [2026-11-10 220442].wav`.
+The handler returned `file_bytes: 327680` before Live finished flushing; the finalized file is
+**556,112 bytes**, 2.101 s, stereo 24-bit. `analyze_wave` read it on retry: sample peak `0.538325`
+(`-5.38 dB`), RMS `0.121217` (`-18.33 dB`), DC offset `0.000163`, `silent: false`. Routing read
+back `Resampling` before arming, the report read `arm: true`, the temporary clip was removed, and
+the scene launch recorded actual mix audio rather than silence.
 
-`0.4.16` fixes all three: an optional `scene` launches a Session scene so the capture records an
-actual mix (scene launch does not arm empty slots unless "Start Recording on Scene Launch" is on,
-so the handler fires the slot after the scene starts when needed); the slot is fired with
-`launch_quantization=0` and the confirm phase waits across ticks for a queued launch; and restore
-falls back to assigning the stored routing value directly when Live no longer offers it, the only
-exact restore for `Ext. In` on this build. Offline suite **472 passed, 42 subtests**. `setup
---force` installed 20 files and removed 20 stale `.pyc` files; repo build is `7bf3b14610fc`.
-`doctor` still reports script `0.4.15`, build `4be9df47b888`, `stale`. Next gate: restart Live,
-confirm `0.4.16` / `7bf3b14610fc`, dry-run `{"track": 7, "scene": 0}`, then one short **audible**
-capture on `8-Audio` and an analysis readback.
+The restore did **not** succeed: Live 12.2.5 no longer offers `Ext. In` in
+`available_input_routing_types` after `Resampling`, and assigning the stored object directly
+raises `Invalid routing type`. `8-Audio` was left on `Resampling` and was put back to `No Input`
+(index 35) with `tracks_set_routing`, which created scratch backup
+`SCRATCH-fortnight-20261111T040646Z.als`. The result reported `restore.ok: false` with that
+problem. `file_bytes` is also incomplete because the handler does not yet wait for the file size
+to stabilize. The client now retries a `Permission denied` WAV lock for up to 2 s; suite **473
+passed, 42 subtests**. The failed-arm path remains fake-tested only: the real readback was verified
+on a successful arm, but no real build that silently ignores the setter was available. Next: a
+`0.4.17` restore fallback and size-stability wait, one restart and one more short capture;
+`mix_spectral_report` and `master_loudness_capture` remain.
 
 ### Current-file acceptance read — `fortnight` (2026-11-10, `0.1.8`)
 
