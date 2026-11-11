@@ -8,10 +8,12 @@ a single function stops the MCP layer, the CLI and the tests drifting on what a 
 from __future__ import annotations
 
 import threading
+import time
 import weakref
 from typing import Any, Callable, Dict, Optional
 
 from . import diagnostics, escalation
+from .audio_analysis import AudioAnalysisError, analyze_wave
 from .manifest import load_manifest
 from .modes import ModeError, guide as build_guide
 from .plans import PlanStore, PlanStoreError, TransactionStore, undo_transaction
@@ -68,6 +70,28 @@ def _clear_applied_slots(adapter: Any) -> None:
         _APPLIED_SLOTS.pop(adapter, None)
 
 
+def _with_analysis(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Attach the local PCM analysis to a capture result, or the reason it could not run."""
+    path = result.get("file_path")
+    if not result.get("recorded") or not path:
+        return result
+    reason = None
+    for attempt in range(5):
+        try:
+            result["analysis"] = analyze_wave(path)
+            return result
+        except AudioAnalysisError as exc:
+            reason = str(exc)
+            # Live can still hold the recorded WAV when the capture returns. Retry the
+            # permission failure briefly instead of reporting a good file as unreadable.
+            if "Permission denied" in reason and attempt < 4:
+                time.sleep(0.5)
+                continue
+            break
+    result["analysis"] = {"measured": False, "reason": reason}
+    return result
+
+
 def run_tool(
     name: str,
     args: Optional[Dict[str, Any]] = None,
@@ -108,8 +132,29 @@ def run_tool(
         )
         return result
 
+    if name == "mix_resample_capture":
+        # A capture is not a replayable write: the M2 preflight/apply trace comparison cannot
+        # apply to a recording that happens once. The handler owns its own restore, so it runs
+        # directly and the local analyzer reads the WAV it produced.
+        result = adapter.call(tool.cmd, args, timeout_ms=tool.timeout_ms)
+        if not args.get("dry_run", True):
+            cache.invalidate()
+        return _with_analysis(result)
+
     if tool.local:
         try:
+            if name == "mix_headroom":
+                # Faders come from the snapshot; peaks need one live meter window. Joining them
+                # here keeps the report a pure function of its inputs and out of the script.
+                snapshot = cache.get()
+                meters = None
+                if args.get("measure", True):
+                    meters = adapter.call(
+                        "mix.meter_poll",
+                        {"ms": args.get("ms", 200)},
+                        timeout_ms=3000,
+                    )
+                return mix_headroom(snapshot, args, meters=meters)
             if name == "inspect_autofix":
                 return diagnostics.autofix(
                     adapter, cache, args, catalogue, backup_root=backup_root

@@ -17,19 +17,31 @@ FIXTURE = Path(__file__).with_name("fixtures") / "fortnight_snapshot.json"
 
 
 class FixtureAdapter:
-    """Serve the captured snapshot and count how often it is read."""
+    """Serve the captured snapshot and a stopped meter poll; count each read."""
 
     features = frozenset({"levels", "snapshot"})
 
     def __init__(self, data):
         self.data = data
-        self.calls = 0
+        self.calls = []
+        self.snapshot_calls = 0
 
     def call(self, cmd, args=None, timeout_ms=None):
-        self.calls += 1
-        if cmd != "snapshot.get":
-            raise AssertionError("acceptance fixture only serves snapshot.get, not %r" % (cmd,))
-        return self.data
+        self.calls.append(cmd)
+        if cmd == "snapshot.get":
+            self.snapshot_calls += 1
+            return self.data
+        if cmd == "mix.meter_poll":
+            return {
+                "ms": (args or {}).get("ms", 200),
+                "samples": 2,
+                "sampled_ms": 210.0,
+                "playing": False,
+                "items": [],
+                "summary": {},
+                "notes": [],
+            }
+        raise AssertionError("acceptance fixture does not serve %r" % (cmd,))
 
 
 class AcceptanceReadPathTests(unittest.TestCase):
@@ -55,14 +67,17 @@ class AcceptanceReadPathTests(unittest.TestCase):
         self.assertEqual(unused["empty_session_slots"], 239)
         self.assertEqual(unused["total"], 8)
 
-        # Mix: every fader readable, but peak headroom remains explicitly unmeasured.
+        # Mix: every fader readable; the stopped meter window is reported as unmeasured
+        # rather than as a quiet mix.
         self.assertEqual(headroom["summary"]["tracks"], 34)
         self.assertEqual(headroom["summary"]["faders_measured"], 34)
         self.assertEqual(headroom["summary"]["fader_span_db"], {"min": -16.8, "max": 4.0})
         self.assertEqual(len(headroom["summary"]["muted"]), 20)
         self.assertEqual(headroom["summary"]["soloed"], [])
         self.assertFalse(headroom["headroom"]["measured"])
-        self.assertEqual(headroom["headroom"]["requires"], "mix_meter_poll")
+        self.assertEqual(headroom["headroom"]["source"], "mix_meter_poll")
+        self.assertFalse(headroom["headroom"]["playing"])
+        self.assertIn("not playing", headroom["headroom"]["reason"])
 
         # Warp: 58 audio clips and 487 markers, no flags.
         self.assertEqual(warp["summary"]["audio_clips"], 58)
@@ -72,8 +87,10 @@ class AcceptanceReadPathTests(unittest.TestCase):
         self.assertEqual(warp["summary"]["modes"], {"beats": 56, "complex": 1, "complex_pro": 1})
         self.assertEqual(warp["summary"]["flagged"], 0)
 
-        # The whole point of the cache: one read for four answers.
-        self.assertEqual(adapter.calls, 1)
+        # The whole point of the cache: one snapshot read for four answers; the meter poll is
+        # a separate live read and must not refetch the snapshot.
+        self.assertEqual(adapter.snapshot_calls, 1)
+        self.assertEqual(adapter.calls.count("mix.meter_poll"), 1)
         self.assertEqual(len(cache.trace), 1)
         self.assertEqual(cache.trace[0]["tracks"], 32)
         self.assertEqual(cache.trace[0]["clips"], 250)

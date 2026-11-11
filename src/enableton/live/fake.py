@@ -73,6 +73,7 @@ class FakeClip:
     loop_end: float = 4.0
     looping: bool = True
     notes: List[FakeNote] = field(default_factory=list)
+    file_path: str = ""
     _next_note_id: int = field(default=1, init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -124,6 +125,7 @@ class FakeClip:
 @dataclass
 class FakeClipSlot:
     clip: Optional[FakeClip] = None
+    is_recording: bool = False
 
     @property
     def has_clip(self) -> bool:
@@ -133,6 +135,11 @@ class FakeClipSlot:
         if self.clip is None:
             raise RuntimeError("no clip to duplicate")
         destination.clip = copy.deepcopy(self.clip)
+
+    def fire(self, record_length=None, launch_quantization=None) -> None:
+        """Live starts recording when an empty slot on an armed audio track is fired."""
+        if self.clip is None:
+            self.is_recording = True
 
     def delete_clip(self) -> None:
         self.clip = None
@@ -152,6 +159,13 @@ class FakeRouting:
 @dataclass
 class FakeScene:
     name: str = ""
+    index: int = -1
+    song: Any = field(default=None, repr=False)
+
+    def fire(self) -> None:
+        """Launching a scene starts its clips; an armed empty slot records."""
+        if self.song is not None:
+            self.song.fire_scene(self.index)
 
 
 @dataclass
@@ -167,6 +181,10 @@ class FakeTrack:
     pan: float = 0.0
     color: int = 0
     peak_db: Optional[float] = None
+    #: Live's output meters: peak-hold level plus instantaneous left/right, all 0.0-1.0.
+    output_meter_level: float = 0.0
+    output_meter_left: float = 0.0
+    output_meter_right: float = 0.0
     is_midi: bool = False
     mute: bool = False
     solo: bool = False
@@ -304,12 +322,31 @@ class FakeSong:
     scenes: List[FakeScene] = field(default_factory=list)
     locators: List[FakeLocator] = field(default_factory=list)
     browser: FakeBrowser = field(default_factory=FakeBrowser)
+    #: The path a resample capture's finalized clip reports; tests point it at a real WAV.
+    recorded_file: str = ""
+
+    def __post_init__(self) -> None:
+        for index, scene in enumerate(self.scenes):
+            scene.index = index
+            scene.song = self
+
+    def fire_scene(self, index: int) -> None:
+        self.is_playing = True
+        for track in self.tracks:
+            slots = list(getattr(track, "clip_slots", []) or [])
+            if index < len(slots) and getattr(track, "arm", False) and not slots[index].has_clip:
+                slots[index].is_recording = True
 
     def start_playing(self) -> None:
         self.is_playing = True
 
     def stop_playing(self) -> None:
         self.is_playing = False
+        for track in self.tracks:
+            for slot in list(getattr(track, "clip_slots", []) or []):
+                if getattr(slot, "is_recording", False):
+                    slot.is_recording = False
+                    slot.clip = FakeClip("Recording", file_path=self.recorded_file)
 
     def tick(self) -> None:
         """A display tick: the pending playhead becomes the one cue writes use."""
@@ -433,14 +470,38 @@ def build_song() -> FakeSong:
 
 
 def _run_with_ticks(cmd: str, args: Dict[str, Any], song: FakeSong) -> Dict[str, Any]:
-    """Run a command the way the bridge does: a Deferred step resumes after one tick."""
-    result = _dispatch.call(cmd, args, song)
-    for _ in range(1000):
-        if not isinstance(result, Deferred):
-            return result
-        song.tick()
-        result = result.run(song)
-    raise RuntimeError("%s deferred more than 1000 times" % (cmd,))
+    """Run a command the way the bridge does: a Deferred step resumes after one tick.
+
+    The fake's ticks are instant, so a poll that measures a real time window would spin until
+    the wall clock caught up. Advance the meter clock with the ticks instead: 25 ms per display
+    tick, so a 200 ms window completes after a fixed number of samples, deterministically.
+    """
+    from Enableton.handlers import capture as _capture_handler
+    from Enableton.handlers import mix as _meter_handler
+
+    originals = (
+        (_meter_handler, _meter_handler._clock),
+        (_capture_handler, _capture_handler._clock),
+    )
+    ticks = [0]
+
+    def clock():
+        ticks[0] += 1
+        return ticks[0] * 0.025
+
+    for module, _original in originals:
+        module._clock = clock
+    try:
+        result = _dispatch.call(cmd, args, song)
+        for _ in range(1000):
+            if not isinstance(result, Deferred):
+                return result
+            song.tick()
+            result = result.run(song)
+        raise RuntimeError("%s deferred more than 1000 times" % (cmd,))
+    finally:
+        for module, original in originals:
+            module._clock = original
 
 
 class FakeAdapter:

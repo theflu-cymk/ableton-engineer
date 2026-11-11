@@ -477,6 +477,12 @@ Three tiers, in the order of cost:
 `mix_spectral_report` and `master_loudness_capture` are tier 3 and always flagged as audible.
 Any claim about the master that can't be measured is reported as `unknown`, not estimated.
 
+**Verified offline foundation (synthetic tests only; not a Live capability):**
+`audio_analysis.analyze_wave(path)` reads 8-, 16-, 24-, and 32-bit PCM WAV files accepted by
+Python's `wave` reader without modifying them. It reports duration, sample rate, channels, sample
+peak, RMS, peak-derived WAV headroom, and per-channel DC offset. This WAV headroom is not track or
+master headroom. It does not report integrated LUFS, spectral analysis, or Live meter values.
+
 ---
 
 ## 12. Generation and recipes
@@ -544,6 +550,27 @@ Sixteen steps per bar, one character each: `x` hit, `X` accent, `o` ghost, `.` r
 A pattern written this way is legible in a chat message, editable by hand, and diffable in git. The
 model can author one directly ("more of a drill pattern: kick on 1, snare on 3, rolling hats") and
 the user can correct a single character without touching anything else.
+
+**Verified offline foundation (pattern tests only):** `recipe_patterns.parse_step_pattern` validates
+the documented symbols and splits complete 16-step bars, with or without `|` separators. It does not
+infer loop counts, schedule notes, or write to Live.
+
+**Verified offline foundation (synthetic tests only):** `recipe_validation.validate_recipe` checks
+the required version-1 recipe fields, documented `hit`/`layer` slot modes, that each lane's pattern
+length divides the recipe bar length, and unique lane/slot identifiers. It is not a recipe store,
+builder, or Live writer.
+
+**Integration status (2026-11-11):** this branch was reconciled with the M4 accounting base
+`bd023bfd2611ba6c043426f5d98fbaa7150b52b2`; the M4 routing/report and Remote Script changes are
+present alongside these offline M6/M7 foundations. The shared `MISSION.md`, `SPEC.md`, catalogue,
+mode files and Remote Script are now merged; no M6/M7 runtime tools are registered or Live-verified
+yet. Keep the remaining runtime work behind its scratch-Set gates.
+
+**Verified offline foundation (temporary-directory tests only):** `RecipeStore` lists and shows
+validated JSON recipes by stable ID, lets a user recipe override a shipped recipe with the same ID,
+atomically saves a validated user recipe, and deletes from the user directory only. Its shipped and
+user directories are injected; it does not choose or create the planned `%APPDATA%\Enableton`
+configuration path, register `recipe_*` MCP tools, or edit Live.
 
 ### 12.4 Learning a recipe from audio
 

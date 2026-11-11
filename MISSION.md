@@ -697,6 +697,55 @@ fader is reported unavailable because the snapshot carries only the master devic
 no faders above unity, 14 muted, 1 soloed, no silent tracks. Suite **131 passed**. No Remote Script
 change, no restart.
 
+### `mix_meter_poll` (2026-11-11, `0.4.14`)
+
+**Verified on real `0.4.14` against `SCRATCH fortnight`.** The Remote Script samples
+`output_meter_level` and the instantaneous left/right meters on later display ticks through
+`Deferred`, so the main thread never blocks. `doctor` reported script `0.4.14`, build
+`2d3a0a801a4d`, no `stale`, `errors 0`. A stopped poll (`ms: 200`) returned 35 rows (32 tracks,
+2 returns, master `Main`), all `available`, with honest zeros and an explicit not-playing note. A
+poll during playback from bar 9 (`ms: 600`) returned 7 samples over 625 ms: master peak `0.897554`
+(0.94 dB headroom), loudest track `REVocals` `0.966257`, 9 rows carrying signal. The transport was
+stopped and the playhead restored to 372.0. Offline suite **457 passed, 42 subtests**.
+`mix_headroom` now consumes this meter window; its measured peaks are recorded below.
+
+### `mix_headroom` measured peaks (2026-11-11, `0.4.14`)
+
+`mix_headroom` now runs one `mix.meter_poll` window and joins the meter rows to the snapshot faders
+by track index; `measure: false` keeps the fader-only answer. **Verified on real `0.4.14` against
+`SCRATCH fortnight`:** while stopped the report returned `measured: false`, `source: mix_meter_poll`,
+34 peaks at 0.0 and the explicit not-playing reason; during playback from bar 9 (`ms: 600`) it
+returned 7 samples over 625 ms, master peak `0.901003` (`-0.91 dB`, 0.91 dB headroom), and
+`REVocals` `0.968695` (`-0.28 dB`) as the loudest row. The transport was stopped and the playhead
+restored to 372.0. Offline suite **462 passed, 42 subtests**. This is a client-side join: no Remote
+Script change, so no version bump or restart was needed. The master fader itself remains
+unavailable because the snapshot has no master fader; its meter is measured.
+
+### Resample capture (2026-11-11, `0.4.16`)
+
+**Capture and analysis Verified; the routing restore failed.** `doctor` reported script `0.4.16`,
+build `7bf3b14610fc`, `errors 0`, `super_errors 0`. A dry run on `8-Audio` (index 7) with
+`scene: 0` resolved `Resampling` at input index 0 and planned slot 0. The applied 2 s capture was
+audible and produced
+`F:\ableton songs\Fortnight\fortnight Project\Samples\Recorded\8-Audio 0001 [2026-11-10 220442].wav`.
+The handler returned `file_bytes: 327680` before Live finished flushing; the finalized file is
+**556,112 bytes**, 2.101 s, stereo 24-bit. `analyze_wave` read it on retry: sample peak `0.538325`
+(`-5.38 dB`), RMS `0.121217` (`-18.33 dB`), DC offset `0.000163`, `silent: false`. Routing read
+back `Resampling` before arming, the report read `arm: true`, the temporary clip was removed, and
+the scene launch recorded actual mix audio rather than silence.
+
+The restore did **not** succeed: Live 12.2.5 no longer offers `Ext. In` in
+`available_input_routing_types` after `Resampling`, and assigning the stored object directly
+raises `Invalid routing type`. `8-Audio` was left on `Resampling` and was put back to `No Input`
+(index 35) with `tracks_set_routing`, which created scratch backup
+`SCRATCH-fortnight-20261111T040646Z.als`. The result reported `restore.ok: false` with that
+problem. `file_bytes` is also incomplete because the handler does not yet wait for the file size
+to stabilize. The client now retries a `Permission denied` WAV lock for up to 2 s; suite **473
+passed, 42 subtests**. The failed-arm path remains fake-tested only: the real readback was verified
+on a successful arm, but no real build that silently ignores the setter was available. Next: a
+`0.4.17` restore fallback and size-stability wait, one restart and one more short capture;
+`mix_spectral_report` and `master_loudness_capture` remain.
+
 ### Current-file acceptance read — `fortnight` (2026-11-10, `0.1.8`)
 
 The current Set is `fortnight*` (unsaved). Four reports — `inspect_structure`, `inspect_unused`,
@@ -876,6 +925,23 @@ One milestone per mission; a mission ends when its acceptance test passes as a *
 | 6 | M5 | UX | every screen renders as text with working `ableton_choose` ids; scope chip matches the loaded tool set; a full flow completes with Apps disabled |
 | 7 | M6 | audio tiers | capture produces a WAV, analysis reads it, routing verification catches a failed arm |
 | 8 | M7 | library, build, recipes | the user's own sentence — "create a dubstep drum beat using loops from my riddim one shots folder" — builds a playable 2-bar pattern whose every sample came from that folder; `recipe_learn` recovers tempo and half-time feel with per-lane confidence and refuses below 0.6 |
+
+**Verified offline foundation (synthetic unit tests only; does not satisfy M6 or M7 acceptance):**
+the PCM WAV analyzer measures file-level sample peak, RMS, duration, and DC offset; the recipe
+pattern/validator utilities parse 16-step bars, enforce the version-1 shape, and reject duplicate
+lane/slot IDs; `RecipeStore` lists, shows, saves, and deletes validated recipes with shipped/user
+precedence. None uses Live or claims actual capture, spectral/LUFS analysis, meter polling, routing
+verification, audition, or recipe building.
+
+**Resample-capture preconditions (Verified 2026-11-11, `0.4.14`, read-only).** On `SCRATCH
+fortnight`, `tracks_set_routing` dry-runs resolved `Resampling` at input index 0 on `REVocals`
+(index 0) and on the empty audio track `Unused` (index 26), currently `Ext. In`; nothing was
+written. The Set's `Samples/Recorded` folder exists (34 WAVs). `Song.record_mode`, the post-arm
+routing readback and the recorded clip's `file_path` remain untested; no capture has been run.
+
+**Unverified; later scratch-Set gates required:** real resample capture and WAV readback, failed-arm
+detection, Live meter/LOM behavior, spectral and loudness reports, device audition, generation
+preview/accept/discard, and Browser-backed recipe learning/building.
 
 Missions 2 and 3 are complete. Mission 4 is in progress; everything after is catalogue breadth on a
 proven frame. **Do not start Mission 5 before Mission 4 is green.**

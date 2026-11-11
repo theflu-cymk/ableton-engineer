@@ -182,23 +182,71 @@
     {
       "name": "mix_headroom",
       "domain": "mix",
-      "summary": "Fader trim, and the headroom that still needs meter data.",
-      "description": "Reports each track's fader in Live's own dB display, with flags for fader trim above unity, at unity, below unity, silent, muted and soloed. It does not derive a headroom number from faders: peak data is not in the snapshot, so true headroom is reported as unmeasured and mix_meter_poll is named as the missing capability. The master fader is likewise reported unavailable because the snapshot carries only the master device chain.",
-      "examples": ["how much headroom do I have", "check my mix headroom", "which faders are above unity"],
+      "summary": "Fader trim, plus measured peak headroom while Live plays.",
+      "description": "Reports each track's fader in Live's own dB display, with flags for fader trim above unity, at unity, below unity, silent, muted and soloed. While Live is playing it runs one meter poll and joins the peaks to each track by index, so the master and every track carry measured headroom; when Live is stopped the meter window proves nothing and headroom is reported unmeasured with that reason instead of as a quiet mix. The master fader itself stays unavailable because the snapshot carries only the master device chain, but the master meter is measured. Peaks are sampled instantaneous readings, not true-peak measurements.",
+      "examples": ["how much headroom do I have", "check my mix headroom", "is the master clipping"],
       "input": {
         "type": "object",
         "properties": {
           "offset": {"type": "integer", "minimum": 0, "default": 0},
-          "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50}
+          "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50},
+          "measure": {"type": "boolean", "default": true, "description": "Run one meter poll so peaks and headroom are real; false reads faders only."},
+          "ms": {"type": "integer", "minimum": 0, "maximum": 2000, "default": 200}
         },
         "additionalProperties": false
       },
-      "timeout_ms": 2000,
+      "timeout_ms": 4000,
       "writes": false,
       "reversible": true,
       "needs": [],
       "min_live": null,
       "cmd": null
+    },
+    {
+      "name": "mix_meter_poll",
+      "domain": "mix",
+      "summary": "Real meter readings, sampled across display ticks.",
+      "description": "Samples Live's own output meters for each track, return track and the master over a short window, and reports the latest peak-hold level, the instantaneous left and right readings, and the highest instantaneous value actually observed. Sampling runs across display ticks without blocking Live, and a track whose meter cannot be read is reported unavailable with the reason instead of a zero that would look like silence. It does not capture audio or estimate levels from faders, and an observed peak is not a true-peak measurement.",
+      "examples": ["how hot is my mix", "show me the meters", "is the master clipping"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "tracks": {"type": "array", "items": {"type": ["string", "integer"]}, "minItems": 1, "maxItems": 200},
+          "ms": {"type": "integer", "minimum": 0, "maximum": 5000, "default": 100}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 7000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "mix.meter_poll"
+    },
+    {
+      "name": "mix_resample_capture",
+      "domain": "mix",
+      "summary": "Record the master through a Resampling track, then measure the WAV.",
+      "description": "Captures the master output in real time through a scratch audio track routed to Resampling, then reports the WAV path, its size and a PCM analysis of sample peak, RMS and DC offset. This is audible and lasts as long as the capture. Dry-run by default: the plan names the track, the empty slot, the scene and the routing change without playing anything. Pass scene to launch a Session scene so the capture records an actual mix; without it only the slot is fired and the master may be silent. An apply refuses while Live is playing, refuses an occupied slot and a MIDI track, sets the input routing and verifies Live actually took it before arming and firing because an invalid arm is a silent no-op, confirms the empty slot is recording (firing it if the scene launch did not), stops after ms, restores the previous routing and arm state when Live still offers the prior value (12.2.5 can drop Ext. In after Resampling, in which case the result reports the failed restore and the track must be put back manually), deletes the temporary clip and keeps the WAV. It does not report LUFS, and a WAV sample peak is not master headroom.",
+      "examples": ["capture the master for two seconds", "record my mix to a wav", "measure the master output"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": ["string", "integer"], "description": "Scratch audio track by name or zero-based index; it needs an empty Session slot."},
+          "slot": {"type": "integer", "minimum": 0, "description": "Session clip slot to record into; defaults to the first empty slot."},
+          "scene": {"type": "integer", "minimum": 0, "description": "Zero-based Session scene to launch so the capture records the mix. Without it only the empty slot is fired, which can record silence."},
+          "ms": {"type": "integer", "minimum": 250, "maximum": 10000, "default": 2000},
+          "dry_run": {"type": "boolean", "default": true}
+        },
+        "required": ["track"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 20000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "mix.resample_capture"
     },
     {
       "name": "notes_overlaps",
