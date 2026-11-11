@@ -7,7 +7,9 @@ Two failures make this worth a handler instead of three loose calls. An invalid 
 is a *silent no-op* on Live 12.2.5, so the setter is verified by reading the routing back before the
 track is armed. And a recording left running, or a track left armed on Resampling, changes the Set
 after the request has already returned; every failure path restores the routing, the arm state and
-stops the transport before raising.
+stops the transport before raising. When Live no longer offers the routing the track had, the
+restore falls back to ``No Input`` and reports that as degraded instead of leaving ``Resampling``
+armed on a track the caller believes it cleaned up.
 
 The handler samples time on display ticks through ``Deferred``, the same way ``mix.meter_poll``
 does, so Live's main thread never blocks. It deletes the temporary clip it created but keeps the
@@ -269,6 +271,8 @@ def _report(state, song, clip, path, size, file_ready):
             "requested_index": state["choice_index"],
             "readback": _ref(readback),
             "restored": None,
+            "degraded": None,
+            "applied": None,
         },
         "arm": {
             "before": state["before_arm"],
@@ -288,15 +292,45 @@ def _report(state, song, clip, path, size, file_ready):
     }
 
 
-def _restore_route(track, attribute, options_attribute, stored, stored_index, label, problems):
+def _apply_route(track, attribute, choice, wanted, label, problems):
+    """Assign one routing value and verify Live took it."""
+    try:
+        setattr(track, attribute, choice)
+    except Exception as exc:  # noqa: BLE001 - restore must keep going
+        problems.append("%s: %s" % (label, exc))
+        return False
+    if not _same_route(_attr(track, attribute, None), wanted):
+        problems.append("%s readback does not match the value before the capture" % (label,))
+        return False
+    return True
+
+
+def _option_named(track, options_attribute, name):
+    for option in list(_attr(track, options_attribute, []) or []):
+        if _label(option) == name:
+            return option
+    return None
+
+
+def _restore_route(
+    track, attribute, options_attribute, stored, stored_index, label, problems, fallback=None
+):
     """Put one routing field back, resolving it from the current option vector first.
 
     A Live proxy captured before the change can be stale afterwards; the value is the same, the
     object may not be. Resolve by name, then by the old index only when that entry still carries
     the same signature.
+
+    Some values cannot be restored at all: choosing ``Resampling`` on Live 12.2.5 replaces the
+    input menu with resampling sources, so ``Ext. In`` is gone and assigning the stored proxy
+    raises ``Invalid routing type``. Raising there left the track on Resampling with its arm
+    state unreported, so the restore now falls back to ``fallback`` (``No Input``), says the
+    restore was degraded and why, and keeps going. Degraded is not success: ``ok`` stays False so
+    no caller is told the Set was put back exactly.
     """
     if stored is None:
-        return True
+        return {"ok": True, "degraded": False, "applied": None, "reason": None}
+
     options = list(_attr(track, options_attribute, []) or [])
     wanted_label = _label(stored)
     wanted_identifier = _identifier(stored)
@@ -314,38 +348,55 @@ def _restore_route(track, attribute, options_attribute, stored, stored_index, la
         candidate = options[stored_index]
         if _same_route(candidate, stored):
             candidates = [candidate]
-    if not candidates:
-        # Live 12.2.5 can report a routing value that is absent from its own option vector
-        # (Ext. In after Resampling). Assigning the stored value directly is the only exact
-        # restore left; if the build refuses it, report that rather than leaving Resampling on.
-        try:
-            setattr(track, attribute, stored)
-        except Exception as exc:  # noqa: BLE001 - restore must keep going
-            problems.append("%s: %s" % (label, exc))
-            return False
-        if not _same_route(_attr(track, attribute, None), stored):
-            problems.append(
-                "%s: the value before the capture is no longer offered" % (label,)
-            )
-            return False
-        return True
-    # Duplicate labels are real (two Ext. In entries). Any member of that set restores the
-    # behaviour the track had; restoring the exact duplicate is not observable here.
-    choice = candidates[0]
+
+    if candidates:
+        # Duplicate labels are real (two Ext. In entries). Any member of that set restores the
+        # behaviour the track had; restoring the exact duplicate is not observable here.
+        choice = candidates[0]
+        if _apply_route(track, attribute, choice, stored, label, problems):
+            return {
+                "ok": True, "degraded": False,
+                "applied": _label(choice), "reason": None,
+            }
+        return {"ok": False, "degraded": False, "applied": None,
+                "reason": "; ".join(problems)}
+
     try:
-        setattr(track, attribute, choice)
-    except Exception as exc:  # noqa: BLE001 - restore must keep going
-        problems.append("%s: %s" % (label, exc))
-        return False
-    if not _same_route(_attr(track, attribute, None), stored):
-        problems.append("%s readback does not match the value before the capture" % (label,))
-        return False
-    return True
+        setattr(track, attribute, stored)
+    except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
+        reason = str(exc)
+    else:
+        if _same_route(_attr(track, attribute, None), stored):
+            return {"ok": True, "degraded": False, "applied": wanted_label, "reason": None}
+        reason = "the value before the capture is no longer offered"
+
+    if fallback is None:
+        problems.append("%s: %s" % (label, reason))
+        return {"ok": False, "degraded": False, "applied": None, "reason": reason}
+
+    replacement = _option_named(track, options_attribute, fallback)
+    if replacement is None:
+        problems.append(
+            "%s: %s; fallback %r is not offered either" % (label, reason, fallback)
+        )
+        return {"ok": False, "degraded": False, "applied": None, "reason": reason}
+
+    quiet = []
+    if not _apply_route(track, attribute, replacement, replacement, label, quiet):
+        problems.extend(quiet)
+        return {"ok": False, "degraded": False, "applied": None, "reason": reason}
+    return {
+        "ok": False,
+        "degraded": True,
+        "applied": _label(replacement),
+        "reason": "%s: %s; fell back to %r" % (label, reason, fallback),
+    }
 
 
 def _restore(state, song):
     """Put back everything this capture changed. Never raises: the result is the report."""
     problems = []
+    degraded = []
     if state.get("recording"):
         try:
             song.stop_playing()
@@ -354,20 +405,32 @@ def _restore(state, song):
         state["recording"] = False
 
     track = state["track"]
-    type_ok = _restore_route(
+    type_result = _restore_route(
         track, "input_routing_type", "available_input_routing_types",
         state["before_type"], state["before_type_index"], "input type", problems,
+        fallback="No Input",
     )
-    if type_ok:
+    if type_result["degraded"]:
+        degraded.append(
+            {
+                "field": "input type",
+                "wanted": _label(state["before_type"]),
+                "applied": type_result["applied"],
+                "reason": type_result["reason"],
+            }
+        )
+    elif type_result["ok"]:
         # The channel list belongs to the selected type, so restore it only after the type.
         _restore_route(
             track, "input_routing_channel", "available_input_routing_channels",
             state["before_channel"], state["before_channel_index"], "input channel", problems,
         )
 
+    arm_ok = True
     try:
         _arm(track, state["before_arm"])
     except ScriptError as exc:
+        arm_ok = False
         problems.append("arm: %s" % (exc,))
 
     removed = False
@@ -383,7 +446,18 @@ def _restore(state, song):
     except Exception as exc:  # noqa: BLE001 - restore must keep going
         problems.append("clip: %s" % (exc,))
 
-    return {"ok": not problems, "problems": problems, "clip_removed": removed}
+    return {
+        "ok": not problems and not degraded,
+        "problems": problems,
+        "degraded": degraded,
+        "clip_removed": removed,
+        "routing": {
+            "restored": bool(type_result["ok"]),
+            "degraded": bool(type_result["degraded"]),
+            "applied": type_result["applied"],
+        },
+        "arm": {"restored": arm_ok},
+    }
 
 
 def _fire(target, label, quantization=False):
@@ -505,6 +579,20 @@ def _step(state, song):
             except OSError:
                 size = None
 
+        stable = False
+        if file_ready:
+            # Live reports the clip's file_path before it has finished writing the WAV: the first
+            # real capture returned 327680 bytes for a file that ended at 556112. Two equal reads
+            # in a row mean the write settled, and the report carries that size.
+            if size == state["last_size"]:
+                state["stable_ticks"] += 1
+            else:
+                state["stable_ticks"] = 0
+            state["last_size"] = size
+            stable = state["stable_ticks"] >= 1
+            if not stable and state["clip_ticks"] < _MAX_CLIP_TICKS:
+                return Deferred(lambda next_song: _step(state, next_song))
+
         if not file_ready and state["clip_ticks"] < _MAX_CLIP_TICKS:
             if clip is None or path is None or not os.path.exists(path):
                 return Deferred(lambda next_song: _step(state, next_song))
@@ -516,6 +604,7 @@ def _step(state, song):
             )
 
         result = _report(state, song, clip, path, size, file_ready)
+        result["file_bytes_stable"] = stable
         if path is None:
             result["file_reason"] = "the recorded clip reports no file_path"
         elif not file_ready:
@@ -523,11 +612,17 @@ def _step(state, song):
                 "the WAV at %s is missing or shorter than a WAV header" % (path,)
             )
         restore = _restore(state, song)
-        result["routing"]["restored"] = restore["ok"]
-        result["arm"]["restored"] = restore["ok"]
+        result["routing"]["restored"] = restore["routing"]["restored"]
+        result["routing"]["degraded"] = restore["routing"]["degraded"]
+        result["routing"]["applied"] = restore["routing"]["applied"]
+        result["arm"]["restored"] = restore["arm"]["restored"]
         result["clip_removed"] = restore["clip_removed"]
         result["restore"] = restore
-        if not restore["ok"]:
+        for entry in restore["degraded"]:
+            result["notes"].append(
+                "Routing could not be restored exactly: %s" % (entry["reason"],)
+            )
+        if restore["problems"]:
             result["notes"].append(
                 "Restore reported problems: %s" % "; ".join(restore["problems"])
             )
@@ -596,6 +691,8 @@ def resample_capture(args, song):
         "ticks": 0,
         "setup_ticks": 0,
         "clip_ticks": 0,
+        "last_size": None,
+        "stable_ticks": 0,
         "slot_fired": False,
         "scene": scene,
         "scene_index": scene_index,

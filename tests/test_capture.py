@@ -24,6 +24,7 @@ from enableton.modes import load_modes
 from enableton.tools import run_tool
 
 from Enableton.errors import ScriptError
+from Enableton.handlers import capture as capture_handler
 
 
 def write_wav(path, amplitude=16384, frames=4410, rate=44100):
@@ -70,6 +71,51 @@ class StubbornTrack(FakeTrack):
     @input_routing_type.setter
     def input_routing_type(self, value):
         pass
+
+
+class Live125RoutingTrack:
+    """A fake track whose input routing behaves like Live 12.2.5 after Resampling.
+
+    Two facts came out of the real gate: choosing Resampling replaces the input menu with
+    resampling sources, so Ext. In disappears from ``available_input_routing_types``, and
+    assigning the proxy captured beforehand raises ``Invalid routing type`` rather than restoring
+    it. The fake enforces both so a restore that only works on the fake fails here.
+    """
+
+    def __init__(self, inner, offer_no_input=True):
+        object.__setattr__(self, "_inner", inner)
+        object.__setattr__(self, "_offer_no_input", offer_no_input)
+        object.__setattr__(self, "_type", FakeRouting("Ext. In", "ExtIn"))
+        options = [FakeRouting("Ext. In", "ExtIn"), FakeRouting("Resampling", "Resampling")]
+        if offer_no_input:
+            options.append(FakeRouting("No Input", "NoInput"))
+        object.__setattr__(self, "_available", options)
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+    def __setattr__(self, name, value):
+        if name != "input_routing_type":
+            setattr(self._inner, name, value)
+            return
+        label = getattr(value, "display_name", str(value))
+        labels = [option.display_name for option in self._available]
+        if label not in labels:
+            raise ValueError("Invalid routing type")
+        object.__setattr__(self, "_type", self._available[labels.index(label)])
+        if label == "Resampling":
+            after = [FakeRouting("Resampling", "Resampling")]
+            if self._offer_no_input:
+                after.append(FakeRouting("No Input", "NoInput"))
+            object.__setattr__(self, "_available", after)
+
+    @property
+    def input_routing_type(self):
+        return self._type
+
+    @property
+    def available_input_routing_types(self):
+        return self._available
 
 
 class CaptureTests(unittest.TestCase):
@@ -225,6 +271,59 @@ class CaptureTests(unittest.TestCase):
 
         modes = load_modes(catalogue)
         self.assertIn("mix_resample_capture", modes.get("mix").tools)
+
+    def _degraded_song(self, offer_no_input=True):
+        inner = FakeTrack("Scratch", clip_slots=[FakeClipSlot()])
+        track = Live125RoutingTrack(inner, offer_no_input=offer_no_input)
+        song = FakeSong(tracks=[track])
+        song.recorded_file = self.path
+        return song, track, inner
+
+    def test_restore_degrades_to_no_input_when_live_drops_the_type(self):
+        song, track, inner = self._degraded_song()
+        result = FakeAdapter(song).call(
+            "mix.resample_capture", {"track": "Scratch", "ms": 250, "dry_run": False}
+        )
+        self.assertTrue(result["recorded"])
+        self.assertFalse(result["routing"]["restored"])
+        self.assertTrue(result["routing"]["degraded"])
+        self.assertEqual(result["routing"]["applied"], "No Input")
+        # readback is what Live reported while the capture was armed; the fallback the restore
+        # actually landed on is carried by "applied" and by the degraded entry.
+        self.assertEqual(result["routing"]["readback"]["name"], "Resampling")
+        self.assertEqual(result["restore"]["problems"], [])
+        self.assertEqual(result["restore"]["degraded"][0]["field"], "input type")
+        self.assertIn("Invalid routing type", result["restore"]["degraded"][0]["reason"])
+        self.assertTrue(result["arm"]["restored"])
+        self.assertFalse(inner.arm)
+        self.assertEqual(track.input_routing_type.display_name, "No Input")
+        self.assertTrue(
+            any("could not be restored exactly" in note for note in result["notes"])
+        )
+
+    def test_arm_is_restored_when_no_routing_fallback_exists(self):
+        song, track, inner = self._degraded_song(offer_no_input=False)
+        result = FakeAdapter(song).call(
+            "mix.resample_capture", {"track": "Scratch", "ms": 250, "dry_run": False}
+        )
+        self.assertTrue(result["recorded"])
+        self.assertFalse(result["routing"]["restored"])
+        self.assertFalse(result["routing"]["degraded"])
+        self.assertTrue(result["restore"]["problems"])
+        self.assertTrue(result["arm"]["restored"])
+        self.assertFalse(inner.arm)
+
+    def test_file_bytes_waits_for_the_size_to_stabilise(self):
+        sizes = [327680, 393216, 556112, 556112, 556112]
+        with mock.patch.object(
+            capture_handler.os.path, "getsize", side_effect=sizes + [556112] * 40
+        ):
+            result = FakeAdapter(self.song).call(
+                "mix.resample_capture", {"track": "Unused", "ms": 250, "dry_run": False}
+            )
+        self.assertTrue(result["file_ready"])
+        self.assertTrue(result["file_bytes_stable"])
+        self.assertEqual(result["file_bytes"], 556112)
 
 
 if __name__ == "__main__":
