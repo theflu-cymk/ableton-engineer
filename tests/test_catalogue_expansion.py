@@ -261,6 +261,8 @@ class TrackExpansionTests(unittest.TestCase):
         self.assertEqual(
             self.adapter.song.tracks[1].output_routing_type.display_name, "Sends Only"
         )
+        self.assertEqual(applied["track_index"], 1)
+        self.assertEqual(applied["undo"][0]["track_index"], 1)
         self.assertEqual(applied["changes"][0]["from"], "Master")
 
         self.adapter.call(

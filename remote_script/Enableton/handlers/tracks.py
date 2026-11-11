@@ -900,7 +900,7 @@ def set_routing(args, song):
     field_names = [field for field, _attribute, _options, _label in _ROUTING_FIELDS]
     if not any(field in args or field + "_index" in args for field in field_names):
         raise ScriptError("BAD_ARGS", "give at least one routing change")
-    index, track = _one_track(song, track_name)
+    track_index, track = _one_track(song, track_name)
 
     before, changes, targets = {}, [], []
     for field, attribute, options_attribute, label in _ROUTING_FIELDS:
@@ -952,7 +952,7 @@ def set_routing(args, song):
     # always present in available_input_routing_types, so replaying it would fail even though
     # nothing about the input changed.
     changed_fields = {change["field"] for change in changes}
-    undo_entry = {"track_index": index}
+    undo_entry = {"track_index": track_index}
     for field, _attribute, _options, _label in _ROUTING_FIELDS:
         if field not in changed_fields:
             continue
@@ -960,9 +960,9 @@ def set_routing(args, song):
         identifier = before.get(field + "_identifier")
         if identifier is not None:
             undo_entry[field + "_identifier"] = identifier
-        index = before.get(field + "_index")
-        if index is not None:
-            undo_entry[field + "_index"] = index
+        prior_index = before.get(field + "_index")
+        if prior_index is not None:
+            undo_entry[field + "_index"] = prior_index
 
     if not dry_run:
         for field, _attribute, _options, _label in _ROUTING_FIELDS:
@@ -992,7 +992,7 @@ def set_routing(args, song):
     return {
         "dry_run": dry_run,
         "track": str(getattr(track, "name", "")),
-        "track_index": index,
+        "track_index": track_index,
         "changes": changes,
         "undo": [undo_entry],
     }
