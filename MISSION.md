@@ -501,11 +501,19 @@ row was flagged for a null or nameless channel. A dry run of `tracks_set_routing
 in `available_input_routing_types`. No apply was made; the scratch `.als` mtime and size were
 unchanged.
 
-**`0.4.10` undo-token fix (Unverified until restart).** The token now carries only fields the call
-actually changes, so an unchanged input type cannot block restore. A regression test covers a
-current input type absent from the available list; the fake suite is **400 passed, 7 subtests**.
-`0.4.10` is installed as repo build `294c9c9c1043`; loaded `0.4.9` build `68c44768f8d8` is
-`stale`. The real routing gate must be rerun after the next restart.
+**`0.4.10` routing gate (Verified for an unambiguous route).** The token now carries only fields
+the call actually changes, so an unchanged input type cannot block restore. A regression test
+covers a current input type absent from the available list; the fake suite is **400 passed, 7
+subtests**. After the second restart, `doctor` reported script `0.4.10`, build `294c9c9c1043`, no
+`stale`, `ran 13`, `errors 0`, `super_errors 0`; `status` reported `SCRATCH fortnight` with 32
+tracks, 2 returns and 11 scenes. A dry run of `snare rush` `REDRUMS` -> `Sends Only` returned only
+`output_type` in the undo token, and its dry-run restore reported `missing: []`. The apply changed
+the route, a fresh `mix_routing_report` read `Sends Only`, and the restore read `REDRUMS` again in
+the final report. Scratch copies were made at `SCRATCH-fortnight-20261111T010807Z.als` and
+`SCRATCH-fortnight-20261111T010809Z.als`; the staging `.als` mtime and size were unchanged. This
+verifies the unambiguous route only: Live exposes two indistinguishable `Main` output types and a
+nameless sole output channel, so those remain unaddressable by this build; `mix_routing_report`
+still flags all 32 rows for null channels.
 
 **Gain staging cannot write on this build.** A dry `tracks_gain_stage` over the whole Set returned
 `changes: 0` and `skipped: 32`; every real `Track.peak_db` read was `None`. The audit's
