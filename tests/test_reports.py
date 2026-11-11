@@ -544,6 +544,7 @@ class ToolRouterTests(unittest.TestCase):
 
         self.assertEqual(result["summary"]["tracks"], 3)
         self.assertFalse(result["headroom"]["measured"])
+        self.assertEqual(result["headroom"]["source"], "mix_meter_poll")
 
     def test_warp_check_runs_from_the_snapshot(self):
         from enableton.tools import run_tool

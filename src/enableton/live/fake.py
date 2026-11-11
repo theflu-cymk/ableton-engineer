@@ -437,14 +437,32 @@ def build_song() -> FakeSong:
 
 
 def _run_with_ticks(cmd: str, args: Dict[str, Any], song: FakeSong) -> Dict[str, Any]:
-    """Run a command the way the bridge does: a Deferred step resumes after one tick."""
-    result = _dispatch.call(cmd, args, song)
-    for _ in range(1000):
-        if not isinstance(result, Deferred):
-            return result
-        song.tick()
-        result = result.run(song)
-    raise RuntimeError("%s deferred more than 1000 times" % (cmd,))
+    """Run a command the way the bridge does: a Deferred step resumes after one tick.
+
+    The fake's ticks are instant, so a poll that measures a real time window would spin until
+    the wall clock caught up. Advance the meter clock with the ticks instead: 25 ms per display
+    tick, so a 200 ms window completes after a fixed number of samples, deterministically.
+    """
+    from Enableton.handlers import mix as _meter_handler
+
+    original_clock = _meter_handler._clock
+    ticks = [0]
+
+    def clock():
+        ticks[0] += 1
+        return ticks[0] * 0.025
+
+    _meter_handler._clock = clock
+    try:
+        result = _dispatch.call(cmd, args, song)
+        for _ in range(1000):
+            if not isinstance(result, Deferred):
+                return result
+            song.tick()
+            result = result.run(song)
+        raise RuntimeError("%s deferred more than 1000 times" % (cmd,))
+    finally:
+        _meter_handler._clock = original_clock
 
 
 class FakeAdapter:

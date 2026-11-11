@@ -707,8 +707,19 @@ change, no restart.
 poll during playback from bar 9 (`ms: 600`) returned 7 samples over 625 ms: master peak `0.897554`
 (0.94 dB headroom), loudest track `REVocals` `0.966257`, 9 rows carrying signal. The transport was
 stopped and the playhead restored to 372.0. Offline suite **457 passed, 42 subtests**.
-`mix_headroom` still reports headroom as unmeasured; wiring measured peaks into it is a separate
-slice.
+`mix_headroom` now consumes this meter window; its measured peaks are recorded below.
+
+### `mix_headroom` measured peaks (2026-11-11, `0.4.14`)
+
+`mix_headroom` now runs one `mix.meter_poll` window and joins the meter rows to the snapshot faders
+by track index; `measure: false` keeps the fader-only answer. **Verified on real `0.4.14` against
+`SCRATCH fortnight`:** while stopped the report returned `measured: false`, `source: mix_meter_poll`,
+34 peaks at 0.0 and the explicit not-playing reason; during playback from bar 9 (`ms: 600`) it
+returned 7 samples over 625 ms, master peak `0.901003` (`-0.91 dB`, 0.91 dB headroom), and
+`REVocals` `0.968695` (`-0.28 dB`) as the loudest row. The transport was stopped and the playhead
+restored to 372.0. Offline suite **462 passed, 42 subtests**. This is a client-side join: no Remote
+Script change, so no version bump or restart was needed. The master fader itself remains
+unavailable because the snapshot has no master fader; its meter is measured.
 
 ### Current-file acceptance read — `fortnight` (2026-11-10, `0.1.8`)
 

@@ -6,7 +6,6 @@ on this build; that gate is a real `mix_meter_poll` call on `SCRATCH fortnight`.
 """
 
 import unittest
-from unittest import mock
 
 import support  # noqa: F401
 from enableton.live.fake import FakeAdapter, FakeSong, FakeTrack
@@ -15,17 +14,16 @@ from enableton.modes import load_modes
 
 from Enableton import dispatch
 from Enableton.errors import ScriptError
-from Enableton.handlers import mix as mix_handler
 
 
-class TickingSong(FakeSong):
-    """A Set whose instantaneous meters keep rising between display ticks."""
+class SpikeSong(FakeSong):
+    """A Set whose instantaneous meters spike, then fall away after the first sample."""
 
     def tick(self):
         super().tick()
         for track in list(self.tracks) + list(self.return_tracks):
-            track.output_meter_left = min(1.0, track.output_meter_left + 0.1)
-            track.output_meter_right = min(1.0, track.output_meter_right + 0.05)
+            track.output_meter_left = 0.1
+            track.output_meter_right = 0.1
 
 
 class NoMeters:
@@ -84,16 +82,14 @@ class MeterPollTests(unittest.TestCase):
         self.assertEqual(result["samples"], 2)  # always at least two display ticks
 
     def test_peak_is_the_highest_observed_not_the_latest(self):
-        song = TickingSong(tracks=[FakeTrack("Riser", output_meter_left=0.2,
-                                             output_meter_right=0.2)])
-        ticks = iter([0.0, 0.05, 0.1])
-        with mock.patch.object(mix_handler, "_clock", lambda: next(ticks)):
-            result = FakeAdapter(song).call("mix.meter_poll", {"tracks": [0], "ms": 100})
+        song = SpikeSong(tracks=[FakeTrack("Riser", output_meter_left=0.9,
+                                           output_meter_right=0.9)])
+        result = FakeAdapter(song).call("mix.meter_poll", {"tracks": [0], "ms": 100})
         item = result["items"][0]
-        self.assertEqual(item["samples"], 3)
-        self.assertEqual(item["peak"], 0.4)
-        self.assertEqual(item["left"], 0.4)
-        self.assertEqual(result["sampled_ms"], 100.0)
+        self.assertGreaterEqual(item["samples"], 3)
+        self.assertEqual(item["peak"], 0.9)
+        self.assertEqual(item["left"], 0.1)
+        self.assertGreaterEqual(result["sampled_ms"], 100.0)
 
     def test_zero_readings_are_measured_not_unavailable(self):
         song = FakeSong(tracks=[FakeTrack("Silent")])

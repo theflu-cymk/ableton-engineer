@@ -553,72 +553,178 @@ def _fader_db(row: Dict[str, Any]) -> Optional[float]:
     return float(match.group(1)) if match else None
 
 
-def mix_headroom(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Fader trim, and the headroom that cannot be measured from this snapshot.
+def _meter_join(
+    meters: Optional[Dict[str, Any]],
+) -> Dict[Tuple[Any, Any], Dict[str, Any]]:
+    rows = {}
+    for item in (meters or {}).get("items") or []:
+        rows[(item.get("kind"), item.get("index"))] = item
+    return rows
+
+
+def _peak_db(peak: Optional[float]) -> Optional[float]:
+    if peak is None or peak <= 0:
+        return None
+    return round(20.0 * math.log10(peak), 2)
+
+
+def mix_headroom(
+    data: Dict[str, Any],
+    args: Optional[Dict[str, Any]] = None,
+    meters: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Fader trim, plus measured peak headroom when a meter poll is supplied.
 
     A fader's dB value is a trim, not a signal level: two tracks at the same position can peak
-    12 dB apart. True headroom needs peaks, which the snapshot does not contain, so this report
-    never derives a headroom number from faders. It reports what is observable and names what
-    is missing rather than estimating it.
+    12 dB apart. The snapshot has no peaks, so without ``meters`` this report still refuses to
+    derive headroom from faders. With a ``mix.meter_poll`` payload it joins the two by track
+    index, reports each row's observed peak, and gives the master's measured headroom. A meter
+    window taken while Live is stopped proves nothing, so it is reported as unmeasured with the
+    reason, never as a quiet mix.
     """
     args = dict(args or {})
-    _only(args, ("offset", "limit"))
+    _only(args, ("offset", "limit", "measure", "ms"))
     offset, limit = _paging(args)
 
+    measure = args.get("measure", True)
+    if not isinstance(measure, bool):
+        raise ReportError("measure must be true or false")
+    ms = args.get("ms", 200)
+    if isinstance(ms, bool) or not isinstance(ms, int) or ms < 0 or ms > 2000:
+        raise ReportError("ms must be an integer from 0 to 2000")
+
     tracks = data.get("tracks") or []
+    meter_rows = _meter_join(meters) if meters is not None else None
+    main_count = int((data.get("counts") or {}).get("tracks") or 0)
+    playing = bool(meters.get("playing")) if meters is not None else None
     rows = []  # type: List[Dict[str, Any]]
     for track in tracks:
-        rows.append(
-            {
-                "index": track.get("index"),
-                "name": track.get("name"),
-                "kind": track.get("kind"),
-                "volume": track.get("volume"),
-                "volume_str": track.get("volume_str"),
-                "fader_db": _fader_db(track),
-                "mute": bool(track.get("mute")),
-                "solo": bool(track.get("solo")),
-            }
-        )
+        index = track.get("index")
+        kind = track.get("kind")
+        row = {
+            "index": index,
+            "name": track.get("name"),
+            "kind": kind,
+            "volume": track.get("volume"),
+            "volume_str": track.get("volume_str"),
+            "fader_db": _fader_db(track),
+            "mute": bool(track.get("mute")),
+            "solo": bool(track.get("solo")),
+        }
+        if meter_rows is not None:
+            key = ("return", index - main_count) if kind == "return" else ("track", index)
+            meter = meter_rows.get(key) or {}
+            peak = meter.get("peak")
+            row["peak"] = peak
+            row["peak_db"] = _peak_db(peak)
+            row["peak_available"] = bool(meter.get("available"))
+            if meter.get("reason"):
+                row["peak_reason"] = meter["reason"]
+        rows.append(row)
 
     dbs = [row["fader_db"] for row in rows if row["fader_db"] is not None]
+    peaks = [row for row in rows if row.get("peak") is not None]
 
     def named(predicate) -> List[Any]:
         return [row["name"] for row in rows if predicate(row)]
 
     page = _page(rows, offset, limit)
+    summary = {
+        "tracks": len(rows),
+        "faders_measured": len(dbs),
+        "faders_unmeasured": len(rows) - len(dbs),
+        "at_unity": named(_at_unity),
+        "above_unity": named(
+            lambda row: row["fader_db"] is not None and row["fader_db"] > 0
+        ),
+        "below_unity": named(
+            lambda row: row["fader_db"] is not None and row["fader_db"] < 0
+        ),
+        "silent": named(
+            lambda row: row["volume"] is not None and row["volume"] <= 0.001
+        ),
+        "muted": named(lambda row: row["mute"]),
+        "soloed": named(lambda row: row["solo"]),
+        "fader_span_db": {"min": min(dbs), "max": max(dbs)} if dbs else None,
+    }
+    if meter_rows is not None:
+        loudest = max(peaks, key=lambda row: row["peak"]) if peaks else None
+        summary["peaks_measured"] = len(peaks)
+        summary["at_or_over_0db"] = [
+            row["name"] for row in peaks if row["peak"] >= 1.0
+        ]
+        summary["loudest"] = (
+            {"name": loudest["name"], "peak": loudest["peak"]}
+            if loudest is not None else None
+        )
+
+    if meters is None:
+        headroom = {
+            "measured": False,
+            "reason": "No meter data was supplied, so headroom cannot be measured.",
+            "requires": "mix_meter_poll",
+            "note": "Fader dB is trim, not level; do not read it as peak headroom.",
+        }
+    else:
+        master_peak = ((meter_rows or {}).get(("master", None)) or {}).get("peak")
+        master_db = _peak_db(master_peak)
+        measured = bool(playing) and bool(peaks)
+        headroom = {
+            "measured": measured,
+            "source": "mix_meter_poll",
+            "playing": bool(playing),
+            "window_ms": meters.get("ms"),
+            "sampled_ms": meters.get("sampled_ms"),
+            "samples": meters.get("samples"),
+            "master_peak": master_peak,
+            "master_peak_db": master_db,
+            "master_headroom_db": (
+                round(-master_db, 2) if master_db is not None else None
+            ),
+            "note": (
+                "peak is the highest instantaneous output_meter_left/right reading in the "
+                "window, not a true-peak measurement."
+            ),
+        }
+        if not measured:
+            if not playing:
+                headroom["reason"] = (
+                    "Live was not playing during the meter window; a zero reading is not "
+                    "silence. Play the Set and call again to measure headroom."
+                )
+            else:
+                headroom["reason"] = "No track meter could be read during the meter window."
+
+    master = {
+        "available": False,
+        "reason": "The snapshot carries the master device chain, not its fader.",
+    }
+    if meters is not None:
+        master_meter = (meter_rows or {}).get(("master", None))
+        if master_meter is not None and master_meter.get("available"):
+            master_peak_db = _peak_db(master_meter.get("peak"))
+            master["meter"] = {
+                "available": True,
+                "peak": master_meter.get("peak"),
+                "peak_db": master_peak_db,
+                "headroom_db": (
+                    round(-master_peak_db, 2) if master_peak_db is not None else None
+                ),
+            }
+        else:
+            master["meter"] = {
+                "available": False,
+                "reason": (master_meter or {}).get("reason")
+                or "the meter poll returned no master row",
+            }
+
     return {
         "items": page["items"],
         "total": page["total"],
         "next_offset": page["next_offset"],
-        "summary": {
-            "tracks": len(rows),
-            "faders_measured": len(dbs),
-            "faders_unmeasured": len(rows) - len(dbs),
-            "at_unity": named(_at_unity),
-            "above_unity": named(
-                lambda row: row["fader_db"] is not None and row["fader_db"] > 0
-            ),
-            "below_unity": named(
-                lambda row: row["fader_db"] is not None and row["fader_db"] < 0
-            ),
-            "silent": named(
-                lambda row: row["volume"] is not None and row["volume"] <= 0.001
-            ),
-            "muted": named(lambda row: row["mute"]),
-            "soloed": named(lambda row: row["solo"]),
-            "fader_span_db": {"min": min(dbs), "max": max(dbs)} if dbs else None,
-        },
-        "headroom": {
-            "measured": False,
-            "reason": "The snapshot has fader positions but no signal peaks, so headroom cannot be measured.",
-            "requires": "mix_meter_poll",
-            "note": "Fader dB is trim, not level; do not read it as peak headroom.",
-        },
-        "master": {
-            "available": False,
-            "reason": "The snapshot carries the master device chain, not its fader.",
-        },
+        "summary": summary,
+        "headroom": headroom,
+        "master": master,
     }
 
 

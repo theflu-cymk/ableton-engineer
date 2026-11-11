@@ -110,6 +110,18 @@ def run_tool(
 
     if tool.local:
         try:
+            if name == "mix_headroom":
+                # Faders come from the snapshot; peaks need one live meter window. Joining them
+                # here keeps the report a pure function of its inputs and out of the script.
+                snapshot = cache.get()
+                meters = None
+                if args.get("measure", True):
+                    meters = adapter.call(
+                        "mix.meter_poll",
+                        {"ms": args.get("ms", 200)},
+                        timeout_ms=3000,
+                    )
+                return mix_headroom(snapshot, args, meters=meters)
             if name == "inspect_autofix":
                 return diagnostics.autofix(
                     adapter, cache, args, catalogue, backup_root=backup_root
