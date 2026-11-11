@@ -532,11 +532,17 @@ the token returned it to index 1. The nameless channel selected and restored at 
 track's real index 7, because the token-building loop reused the variable. The undo token held 7,
 so restore worked. No Set was written; the scratch `.als` mtime and size stayed unchanged.
 
-**`0.4.12` track-index fix (Unverified until restart).** The track index is now distinct from the
+**`0.4.12` track-index fix (Verified on real `0.4.12`).** The track index is distinct from the
 option index, and a regression test asserts both the response and the undo token carry the real
-track index. The fake suite is **403 passed, 7 subtests**. `0.4.12` is installed as repo build
-`255792c12695`; loaded `0.4.11` build `590bc944d820` is `stale`. The final real gate is pending the
-next restart.
+track index. The fake suite is **403 passed, 7 subtests**. `doctor` before and after the gate
+reported script `0.4.12`, build `255792c12695`, no `stale`, `ran 22`, `errors 0`, `super_errors 0`;
+`status` reported `SCRATCH fortnight` with 32 tracks. On `8-Audio` (track index 7), the two `Main`
+output types resolved at indexes 1 and 19. The dry run and apply both reported `track_index` 7;
+the undo token carried 7, `output_type` `Main` and index 1. Applying index 19 changed the report to
+index 19; restoring the token returned it to index 1. The nameless output channel applied and
+restored at index 0 with `missing: []`. Four scratch copies were made under the Enableton backup
+folder; the staging `.als` mtime and size were unchanged. This verifies the index path and the
+corrected response metadata.
 
 **Gain staging cannot write on this build.** A dry `tracks_gain_stage` over the whole Set returned
 `changes: 0` and `skipped: 32`; every real `Track.peak_db` read was `None`. The audit's
@@ -546,8 +552,11 @@ token), not a measured-peak normalization. Real 12.2.5 exposes meters (`output_m
 claimed.
 
 **Verdict.** Bundle B is **not green**. Volume, pan, ambiguity, duplicate idempotency and duplicate
-cleanup are Verified on real Live (`0.4.7` writes, `0.4.8` cleanup); `tracks_set_routing`,
-`mix_routing_report` and `tracks_gain_stage` remain blockers. No user Set was written.
+cleanup are Verified on real Live (`0.4.7` writes, `0.4.8` cleanup); routing indexes are Verified
+on real `0.4.12`, including duplicate `Main` 1/19 and nameless channel 0. `mix_routing_report`
+still flags 19 audio input channels that have no selectable input channel; that is a remaining
+report-quality issue, not a routing-write blocker. `tracks_gain_stage` remains a blocker. No user
+Set was written.
 
 ### Tracks sends and name/colour (2026-11-10, `0.2.12`)
 
