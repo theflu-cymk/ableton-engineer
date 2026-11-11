@@ -359,8 +359,8 @@ with a real result:
 - clips: `clips_duplicate_range` (0.2.3), `clips_rename` (0.2.7), `clips_set_warp_mode` (0.2.14),
   `clips_fix_loop_points` (0.2.16), `clips_warp_check`.
 - tracks: `tracks_list`, `tracks_set_sends` and `tracks_name_and_color` (0.2.12),
-  `tracks_set_volume` (M3 autofix), `tracks_gain_stage` (0.2.1), `tracks_set_pan` (0.2.7, again
-  on 0.4.6), `tracks_delete` and `tracks_clean_empty` (0.4.4).
+  `tracks_set_volume` (M3 autofix), `tracks_set_pan` (0.2.7, again on 0.4.6), `tracks_delete` and
+  `tracks_clean_empty` (0.4.4), `tracks_duplicate` (apply and retry on 0.4.7, cleanup on 0.4.8).
 - devices: `devices_read_chain`, `devices_read_parameters`, `devices_browse_presets`,
   `devices_set_parameter` (0.3.4), `devices_set_macro` (0.3.6, again on 0.3.9), `devices_move`
   (0.3.9), `devices_delete` (0.3.6).
@@ -376,9 +376,10 @@ with a real result:
 `ableton_guide` is the one tool with no Live call to gate: it builds the command sheet locally and
 its MCP surface is covered by the suite.
 
-**Caveat on the three bulk track writes.** `tracks_set_volume`, `tracks_gain_stage` and
-`tracks_set_pan` are Verified only for uniquely named tracks. Their name resolution writes every
-match (defect below), so they must be re-gated after the ambiguity fix rather than counted as safe.
+**Caveat on the three bulk track writes.** The duplicate-name guard is **Verified on real `0.4.7`**
+for all three tools. `tracks_set_volume` and `tracks_set_pan` are Verified for a uniquely named
+track with exact undo; `tracks_gain_stage` still has no measured write and remains in the no-gate
+table. The old "writes every match" defect is fixed, not merely re-gated.
 
 **No real-Live gate yet — 13 tools.**
 
@@ -388,7 +389,7 @@ match (defect below), so they must be re-gated after the ambiguity fix rather th
 | `clips_copy` | edit, arrange | 0.3.0 handler | Session→Session and Arrangement→Arrangement copies; Session↔Arrangement refusal; exact undo |
 | `clips_transpose` | edit, arrange | 0.3.0 handler | a real MIDI transpose and exact note restore |
 | `clips_clear` | edit | 0.3.0 handler | a real MIDI clear and exact restore; audio refusal |
-| `tracks_duplicate` | prep | one real apply in the 0.4.4 gate | double apply through `run_tool` is a no-op; exact cleanup |
+| `tracks_gain_stage` | prep | restore path on 0.2.1; no measured write | a real measured peak and exact volume undo |
 | `tracks_set_routing` | prep, mix | 0.3.0 handler | real input/output names, type before channel, exact restore |
 | `mix_routing_report` | inspect, mix | 0.3.0 handler | a real routing table |
 | `library_folders` | sound | 0.3.0 handler | real browser roots and paging |
@@ -437,6 +438,133 @@ its claims (61 tools, `sections_move` unimplemented, `tracks_delete` deferred) a
 evidence above. Merging it would regress the ledger; close or supersede it rather than merge.
 `m5-serve` is independent (8 files, +814 lines) and should merge only when M5 starts, which §3
 forbids before M4 is green.
+
+### Bundle B gate on `0.4.7` (2026-11-10)
+
+**Verified loaded build.** `doctor` reported script `0.4.7`, build `0606e8763f6e`, no `stale`,
+Live 12.2.5, `super_errors 0`. The Set was `SCRATCH fortnight`,
+`F:\ableton songs\Fortnight\fortnight Project\SCRATCH fortnight.als`: 32 tracks, 2 returns, 11
+scenes, 1 locator, 137 arrangement / 113 Session clips, 114 devices, playhead 372.0. Baseline
+duplicate names were `BASS | Operator sub` at 17/25 and `BASS | Factory chops [muted]` at 27/31.
+The Set file mtime stayed `2026-11-10 04:19:41`, size 1,555,091 bytes; the Set was not saved.
+
+**Verified on real Live.**
+
+- **Ambiguity guard.** All six dry calls (`tracks_set_volume`, `tracks_set_pan` and
+  `tracks_gain_stage` against both duplicate names) returned `AMBIGUOUS_REF` before any change;
+  every duplicate row kept its index, volume and pan.
+- **`tracks_set_volume`.** `8-Audio` moved `0.8500000238418579 -> 0.70`, a fresh read returned
+  `0.7`, and `ableton_undo` restored `0.8500000238418579` exactly. A scratch copy was made first.
+- **`tracks_set_pan`.** `8-Audio` moved `0.0 -> 0.2`, a fresh read returned `0.2`, and
+  `ableton_undo` restored `0.0` exactly.
+- **Duplicate idempotency.** The first applied `tracks_duplicate` created one copy at index 8
+  (Live named it `9-Audio`), taking the Set to 33 tracks. An identical second `run_tool` call in
+  the same process left the count at 33, returned the same `created` plan, and carried no second
+  `scratch_copy`. The retry did not duplicate again.
+
+**Duplicate cleanup failed, then was recovered.** The applied undo token was
+`{"track_index": 8, "name": ""}` because Live had not assigned `9-Audio` when the handler read
+`new_track.name`; restore refused with "the track at that index has a different name". A restore
+with `{"track_index": 8}` alone deleted `9-Audio`, returned the Set to 32 tracks, and put
+`8-Audio`/`REDRUMS` back at 7/8. `0.4.8` omits an empty name from the token and has a test that
+renames the copy after the apply. This is a real defect the fake could not show. `0.4.8` is loaded as build `dc6e1b4e6405` with **396 passed, 7 subtests**. On the re-gate, the token
+was `{"track_index": 8}` with no empty name; the first apply made 33 tracks, the identical retry
+stayed at 33 with no second `scratch_copy`, and the tool's own restore deleted `9-Audio` and returned
+the Set to 32 tracks with `8-Audio`/`REDRUMS` at 7/8 and baseline volume/pan. The Set mtime stayed
+`2026-11-10 04:19:41`; `doctor` after reported `0.4.8`, build `dc6e1b4e6405`, `ran 13`, `errors 0`,
+`super_errors 0`, no `stale`.
+
+**Routing is not gateable on this build.** `mix_routing_report` returned real output-type names,
+but all 32 rows had `input_channel` and `output_channel` as `<Track.RoutingChannel object at
+0x...>` and an empty `type`. A dry `tracks_set_routing` on `snare rush` predicted
+`REDRUMS -> Sends Only`, but its undo token also carried the two channel object reprs; the output
+channel list has one entry with no display name, and the output-type list contains two
+indistinguishable `Main` entries. No routing write was applied: the tool cannot build an exact
+restore token for the channel fields. This invalidates the `mix_routing_report` and
+`tracks_set_routing` rows until the handler carries identifiers (the LOM's `identifier` field)
+and resolves restore by them.
+
+**`0.4.9` routing identifiers (real read Verified; write gate failed before writing).** The
+handler reads `identifier` beside `display_name`, uses the identifier when a channel has no display
+name instead of an object repr, carries both label and identifier in the report and undo token,
+and resolves restore by identifier first. `mix_routing_report` also derives each track's kind when
+Live does not expose `track_type`. The fake suite was **399 passed, 7 subtests**; that proves
+handler consistency only.
+
+After the 2026-11-11 restart, `doctor` reported script `0.4.9`, build `68c44768f8d8`, no `stale`.
+On `SCRATCH fortnight`, `mix_routing_report` returned 32 tracks and showed that Live 12.2.5 does
+**not** expose routing identifiers here: the available output types include two indistinguishable
+`Main` entries, the sole output-routing channel has neither name nor identifier (`?`), and every
+row was flagged for a null or nameless channel. A dry run of `tracks_set_routing` on `snare rush`
+(`REDRUMS` -> `Sends Only`) returned an undo token that also contained the unchanged
+`input_type: Ext. In`; a dry-run restore refused that field because Live does not list `Ext. In`
+in `available_input_routing_types`. No apply was made; the scratch `.als` mtime and size were
+unchanged.
+
+**`0.4.10` routing gate (Verified for an unambiguous route).** The token now carries only fields
+the call actually changes, so an unchanged input type cannot block restore. A regression test
+covers a current input type absent from the available list; the fake suite is **400 passed, 7
+subtests**. After the second restart, `doctor` reported script `0.4.10`, build `294c9c9c1043`, no
+`stale`, `ran 13`, `errors 0`, `super_errors 0`; `status` reported `SCRATCH fortnight` with 32
+tracks, 2 returns and 11 scenes. A dry run of `snare rush` `REDRUMS` -> `Sends Only` returned only
+`output_type` in the undo token, and its dry-run restore reported `missing: []`. The apply changed
+the route, a fresh `mix_routing_report` read `Sends Only`, and the restore read `REDRUMS` again in
+the final report. Scratch copies were made at `SCRATCH-fortnight-20261111T010807Z.als` and
+`SCRATCH-fortnight-20261111T010809Z.als`; the staging `.als` mtime and size were unchanged. This
+verifies the unambiguous route only: Live exposes two indistinguishable `Main` output types and a
+nameless sole output channel, so those remain unaddressable by this build; `mix_routing_report`
+still flags all 32 rows for null channels.
+
+**`0.4.11` index-based routing (index behavior Verified; response metadata defect found).** A
+shared `routing.py` derives a signature from label, identifier, `category`, `attached_object` and
+`layout`, then matches the current value to its option index. Both the report and the writer expose
+`*_index`; `tracks_set_routing` accepts a name or an index for each field, refuses both at once,
+and stores the previous index in the undo token. Restore selects by index first and verifies the
+label/identifier still match, so two `Main` options cannot silently swap. The report no longer
+flags a null channel, and a nameless channel with a resolved index is addressable rather than
+unreadable. The fake suite was **403 passed, 7 subtests**, including duplicate `Main` and
+nameless-channel apply/restore.
+
+On real `0.4.11`, `8-Audio` resolved its two `Main` output types at indexes **1** and **19**, and
+its nameless output channel at **0**. Selecting index 19 changed the report to index 19; restoring
+the token returned it to index 1. The nameless channel selected and restored at index 0 with
+`missing: []`. The gate found one defect: the response reported `track_index: 1` instead of the
+track's real index 7, because the token-building loop reused the variable. The undo token held 7,
+so restore worked. No Set was written; the scratch `.als` mtime and size stayed unchanged.
+
+**`0.4.12` track-index fix (Verified on real `0.4.12`).** The track index is distinct from the
+option index, and a regression test asserts both the response and the undo token carry the real
+track index. The fake suite is **403 passed, 7 subtests**. `doctor` before and after the gate
+reported script `0.4.12`, build `255792c12695`, no `stale`, `ran 22`, `errors 0`, `super_errors 0`;
+`status` reported `SCRATCH fortnight` with 32 tracks. On `8-Audio` (track index 7), the two `Main`
+output types resolved at indexes 1 and 19. The dry run and apply both reported `track_index` 7;
+the undo token carried 7, `output_type` `Main` and index 1. Applying index 19 changed the report to
+index 19; restoring the token returned it to index 1. The nameless output channel applied and
+restored at index 0 with `missing: []`. Four scratch copies were made under the Enableton backup
+folder; the staging `.als` mtime and size were unchanged. This verifies the index path and the
+corrected response metadata.
+
+**`0.4.13` zero-option report fix (Verified on real `0.4.13`).** A nameless current routing value
+is now flagged only when that field has at least one selectable option. On `SCRATCH fortnight`,
+`mix_routing_report` returned 32 rows; 19 rows had `input_channels: 0`, and none carried an
+`input_routing_channel` reason. The report's `flagged` list was empty. `8-Audio` (track index 7)
+still read `input_channel: null`, `input_channels: 0`, output type `Main` at index 1 and the
+nameless output channel at index 0, with no reason. `doctor` before and after reported script
+`0.4.13`, build `e9fb28eabb94`, no `stale`, `ran 2`, `errors 0`, `super_errors 0`. The fake suite
+is **404 passed, 7 subtests**; the staging `.als` mtime and size were unchanged.
+
+**Gain staging cannot write on this build.** A dry `tracks_gain_stage` over the whole Set returned
+`changes: 0` and `skipped: 32`; every real `Track.peak_db` read was `None`. The audit's
+"`tracks_gain_stage` (0.2.1)" evidence was only the restore path (`0.85 -> 0.5` through a restore
+token), not a measured-peak normalization. Real 12.2.5 exposes meters (`output_meter_level`,
+0..1) rather than `peak_db`; a measured write needs that fallback and playback before it can be
+claimed.
+
+**Verdict.** Bundle B is **not green**. Volume, pan, ambiguity, duplicate idempotency and duplicate
+cleanup are Verified on real Live (`0.4.7` writes, `0.4.8` cleanup); routing indexes are Verified
+on real `0.4.12`, including duplicate `Main` 1/19 and nameless channel 0. `mix_routing_report` no
+longer flags zero-option input channels: 19 such real rows are clean and `flagged` is empty.
+`tracks_gain_stage` remains a blocker. No user Set was written.
 
 ### Tracks sends and name/colour (2026-11-10, `0.2.12`)
 
@@ -735,8 +863,10 @@ One milestone per mission; a mission ends when its acceptance test passes as a *
 
 **Verified offline foundation (synthetic unit tests only; does not satisfy M6 or M7 acceptance):**
 the PCM WAV analyzer measures file-level sample peak, RMS, duration, and DC offset; the recipe
-pattern utility validates and splits 16-step bars. Neither uses Live or claims actual capture,
-spectral/LUFS analysis, meter polling, routing verification, audition, or recipe building.
+pattern/validator utilities parse 16-step bars, enforce the version-1 shape, and reject duplicate
+lane/slot IDs; `RecipeStore` lists, shows, saves, and deletes validated recipes with shipped/user
+precedence. None uses Live or claims actual capture, spectral/LUFS analysis, meter polling, routing
+verification, audition, or recipe building.
 
 **Unverified; later scratch-Set gates required:** real resample capture and WAV readback, failed-arm
 detection, Live meter/LOM behavior, spectral and loudness reports, device audition, generation

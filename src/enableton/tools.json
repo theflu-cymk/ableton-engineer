@@ -1461,7 +1461,7 @@
       "name": "tracks_duplicate",
       "domain": "tracks",
       "summary": "Duplicate a track, with dry-run and exact restore.",
-      "description": "Duplicates one track in place, count times, and returns the dry run's plan as the applied result so the transaction's preflight trace still matches; Live's own names for the copies stay in the undo tokens because Live renumbers them. The copy carries Live's own content: clips, devices and mixer state. Dry-run by default; restore deletes exactly the created tracks, verifying each name first.",
+      "description": "Duplicates one track in place, count times, and returns the dry run's plan as the applied result so the transaction's preflight trace still matches; the name Live has assigned to a copy stays in the undo token, and an empty name is omitted because Live can return the new track before naming it. The copy carries Live's own content: clips, devices and mixer state. Dry-run by default; restore deletes the created tracks by index in descending order, checking the name when one was recorded.",
       "examples": ["duplicate the drum bus", "make three copies of this track"],
       "input": {
         "type": "object",
@@ -1497,16 +1497,20 @@
       "name": "tracks_set_routing",
       "domain": "tracks",
       "summary": "Set a track's input or output routing, with dry-run and exact restore.",
-      "description": "Changes one track's input type, input channel, output type or output channel by Live's own display name, resolving each against the options the track reports. A name that does not match is refused with the available names. Live builds the channel list from the selected type, so when changing both, set the type first in a separate call. Dry-run by default; applying returns the previous names as an undo token.",
+      "description": "Changes one track's input type, input channel, output type or output channel by Live's own display name or by the zero-based index in the option list Live reports. Use an index when a name is duplicated or a channel has no display name; the error lists every option with its index. Live builds the channel list from the selected type, so when changing both, set the type first in a separate call. Dry-run by default; applying returns the previous names, identifiers and indexes as an undo token, and restore resolves by index first so duplicate entries stay exact.",
       "examples": ["route this track to the master", "send the bass to the drum bus", "change the input to Ext. In"],
       "input": {
         "type": "object",
         "properties": {
           "track": {"type": "string"},
           "input_type": {"type": "string"},
+          "input_type_index": {"type": "integer", "minimum": 0},
           "input_channel": {"type": "string"},
+          "input_channel_index": {"type": "integer", "minimum": 0},
           "output_type": {"type": "string"},
+          "output_type_index": {"type": "integer", "minimum": 0},
           "output_channel": {"type": "string"},
+          "output_channel_index": {"type": "integer", "minimum": 0},
           "dry_run": {"type": "boolean", "default": true},
           "restore": {
             "type": "array",
@@ -1516,9 +1520,17 @@
               "properties": {
                 "track_index": {"type": "integer", "minimum": 0},
                 "input_type": {"type": ["string", "null"]},
+                "input_type_identifier": {"type": ["string", "null"]},
+                "input_type_index": {"type": ["integer", "null"]},
                 "input_channel": {"type": ["string", "null"]},
+                "input_channel_identifier": {"type": ["string", "null"]},
+                "input_channel_index": {"type": ["integer", "null"]},
                 "output_type": {"type": ["string", "null"]},
-                "output_channel": {"type": ["string", "null"]}
+                "output_type_identifier": {"type": ["string", "null"]},
+                "output_type_index": {"type": ["integer", "null"]},
+                "output_channel": {"type": ["string", "null"]},
+                "output_channel_identifier": {"type": ["string", "null"]},
+                "output_channel_index": {"type": ["integer", "null"]}
               },
               "required": ["track_index"],
               "additionalProperties": false
@@ -1588,7 +1600,7 @@
       "name": "mix_routing_report",
       "domain": "mix",
       "summary": "Every track's input and output routing, with unreadable rows flagged.",
-      "description": "Reads input and output type and channel live, in Live's own display names, plus how many options each track offers. Routing is read here rather than in the snapshot so a plain read does not pay for it. A track whose routing cannot be read carries the reason in its row and is listed in flagged; an empty output is flagged too, never reported as a clean route.",
+      "description": "Reads input and output type and channel live, in Live's own display names with Live's identifiers beside them, the current option's index where it can be matched, and how many options each track offers. A nameless channel reports its index instead of an object repr. Routing is read here rather than in the snapshot so a plain read does not pay for it. A track whose routing cannot be read carries the reason in its row and is listed in flagged; an empty output is flagged too, never reported as a clean route. A nameless channel with zero selectable options is not flagged, because there is no choice to resolve.",
       "examples": ["show me my routing", "is anything routed nowhere", "what feeds the drum bus"],
       "input": {
         "type": "object",

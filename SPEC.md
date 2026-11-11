@@ -556,17 +556,15 @@ the documented symbols and splits complete 16-step bars, with or without `|` sep
 infer loop counts, schedule notes, or write to Live.
 
 **Verified offline foundation (synthetic tests only):** `recipe_validation.validate_recipe` checks
-the required version-1 recipe fields, documented `hit`/`layer` slot modes, and that each lane's
-pattern length divides the recipe bar length. It is not a recipe store, builder, or Live writer.
+the required version-1 recipe fields, documented `hit`/`layer` slot modes, that each lane's pattern
+length divides the recipe bar length, and unique lane/slot identifiers. It is not a recipe store,
+builder, or Live writer.
 
-**Observed parallel-work blocker (2026-11-10):** this isolated worktree is based on
-`5761472b6c77a9e4360a004daee832bca3102677`; authoritative `main` had advanced to
-`ce3132f4c85c1be0e14222d480c8dfed49e60d8c` at the latest check. Since the isolated base, M4 work
-changes `MISSION.md`, `src/enableton/tools.json`, `tests/test_catalogue_expansion.py`, and two Remote
-Script files. This branch's `MISSION.md` therefore needs evidence reconciliation before integration.
-The analyzer, pattern parser, and recipe validator remain standalone offline foundations: no M6/M7
-runtime tools are registered, and no catalog or Remote Script changes were made here. Keep this
-branch isolated until an explicit integration pass can preserve the concurrent M4 changes.
+**Integration status (2026-11-11):** this branch was reconciled with current `main`
+`a4d9681f3d07482f7e232c7c76f5133cbf508f63`; the M4 routing/report and Remote Script changes are
+present alongside these offline M6/M7 foundations. The shared `MISSION.md`, `SPEC.md`, catalogue,
+mode files and Remote Script are now merged; no M6/M7 runtime tools are registered or Live-verified
+yet. Keep the remaining runtime work behind its scratch-Set gates.
 
 **Verified offline foundation (temporary-directory tests only):** `RecipeStore` lists and shows
 validated JSON recipes by stable ID, lets a user recipe override a shipped recipe with the same ID,

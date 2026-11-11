@@ -140,9 +140,13 @@ class FakeClipSlot:
 
 @dataclass
 class FakeRouting:
-    """A routing type or channel, as Live exposes it with ``display_name``."""
+    """A routing type or channel, with the fields Live uses to distinguish duplicates."""
 
     display_name: str
+    identifier: str = ""
+    category: Any = None
+    attached_object: Any = None
+    layout: Any = None
 
 
 @dataclass
@@ -173,21 +177,35 @@ class FakeTrack:
     sends: List[FakeSend] = field(default_factory=list)
     clip_slots: List[FakeClipSlot] = field(default_factory=list)
     arrangement_clips: List[FakeClip] = field(default_factory=list)
-    input_routing_type: FakeRouting = field(default_factory=lambda: FakeRouting("All Ins"))
-    input_routing_channel: FakeRouting = field(default_factory=lambda: FakeRouting("All Channels"))
-    output_routing_type: FakeRouting = field(default_factory=lambda: FakeRouting("Master"))
-    output_routing_channel: FakeRouting = field(default_factory=lambda: FakeRouting("Track In"))
+    input_routing_type: FakeRouting = field(
+        default_factory=lambda: FakeRouting("All Ins", "AllIns"))
+    input_routing_channel: FakeRouting = field(
+        default_factory=lambda: FakeRouting("All Channels", "AllChannels"))
+    output_routing_type: FakeRouting = field(
+        default_factory=lambda: FakeRouting("Master", "Master"))
+    output_routing_channel: FakeRouting = field(
+        default_factory=lambda: FakeRouting("Track In", "TrackIn"))
     available_input_routing_types: List[FakeRouting] = field(
-        default_factory=lambda: [FakeRouting("All Ins"), FakeRouting("Ext. In")]
+        default_factory=lambda: [
+            FakeRouting("All Ins", "AllIns"), FakeRouting("Ext. In", "ExtIn")
+        ]
     )
     available_input_routing_channels: List[FakeRouting] = field(
-        default_factory=lambda: [FakeRouting("All Channels"), FakeRouting("1"), FakeRouting("2")]
+        default_factory=lambda: [
+            FakeRouting("All Channels", "AllChannels"),
+            FakeRouting("1", "Input1"),
+            FakeRouting("2", "Input2"),
+        ]
     )
     available_output_routing_types: List[FakeRouting] = field(
-        default_factory=lambda: [FakeRouting("Master"), FakeRouting("Sends Only")]
+        default_factory=lambda: [
+            FakeRouting("Master", "Master"), FakeRouting("Sends Only", "SendsOnly")
+        ]
     )
     available_output_routing_channels: List[FakeRouting] = field(
-        default_factory=lambda: [FakeRouting("Track In"), FakeRouting("1")]
+        default_factory=lambda: [
+            FakeRouting("Track In", "TrackIn"), FakeRouting("1", "Output1")
+        ]
     )
 
     @property

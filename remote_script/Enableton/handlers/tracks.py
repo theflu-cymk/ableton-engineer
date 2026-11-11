@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from ..dispatch import check_args, command
 from ..errors import ScriptError
+from ..routing import (
+    identifier as _routing_identifier,
+    index_of as _routing_index,
+    label as _routing_label,
+    pick as _pick_routing,
+    ref as _routing_ref,
+)
 
 
 def _param(track, name, fallback):
@@ -609,11 +616,18 @@ def duplicate(args, song):
                 new_index = position
                 break
         name = str(getattr(new_track, "name", "") or "")
-        undo.append({"track_index": new_index, "name": name})
+        # Live can return the new proxy before it assigns the default name (8-Audio becomes
+        # 9-Audio). An empty name in the token made restore refuse the track it had just created,
+        # so omit it: the index is authoritative for an immediate restore, and a real name is
+        # still checked when Live has assigned one.
+        entry = {"track_index": new_index}
+        if name:
+            entry["name"] = name
+        undo.append(entry)
 
     # The applied payload must match the dry run exactly. PlanExecutor compares the two traces
-    # after stripping only dry_run and undo, so the actual names stay in undo and the plan is the
-    # result; a copied name cannot be predicted because Live renumbers it (8-Audio became 9-Audio).
+    # after stripping only dry_run and undo, so names Live has assigned stay in undo and the plan
+    # is the result; a copied name cannot be predicted because Live renumbers it.
     return {"dry_run": False, "created": created, "undo": undo}
 
 
@@ -839,17 +853,6 @@ def clean_empty(args, song):
     }
 
 
-def _routing_name(obj):
-    if obj is None:
-        return None
-    for name in ("display_name", "name"):
-        value = getattr(obj, name, None)
-        if isinstance(value, str) and value:
-            return value
-    text = str(obj)
-    return text or None
-
-
 def _routing_options(track, attribute, label):
     try:
         options = list(getattr(track, attribute) or [])
@@ -863,25 +866,6 @@ def _routing_options(track, attribute, label):
     return options
 
 
-def _pick_routing(options, wanted, label):
-    matches = [option for option in options if _routing_name(option) == wanted]
-    if not matches:
-        matches = [
-            option for option in options
-            if str(_routing_name(option) or "").casefold() == str(wanted).casefold()
-        ]
-    if not matches:
-        raise ScriptError(
-            "NOT_FOUND", "no %s named %r; available: %s"
-            % (label, wanted, ", ".join(sorted(str(_routing_name(o)) for o in options))),
-        )
-    if len(matches) > 1:
-        raise ScriptError(
-            "AMBIGUOUS_REF", "%d %s options are named %r" % (len(matches), label, wanted)
-        )
-    return matches[0]
-
-
 _ROUTING_FIELDS = (
     ("input_type", "input_routing_type", "available_input_routing_types", "input type"),
     ("input_channel", "input_routing_channel", "available_input_routing_channels", "input channel"),
@@ -893,14 +877,19 @@ _ROUTING_FIELDS = (
 @command("tracks.set_routing")
 def set_routing(args, song):
     check_args(args, allowed=(
-        "track", "input_type", "input_channel", "output_type", "output_channel",
+        "track", "input_type", "input_type_index", "input_channel", "input_channel_index",
+        "output_type", "output_type_index", "output_channel", "output_channel_index",
         "dry_run", "restore",
     ))
     dry_run = bool(args.get("dry_run", True))
     if args.get("restore") is not None:
         if any(
             key in args
-            for key in ("track", "input_type", "input_channel", "output_type", "output_channel")
+            for key in (
+                "track", "input_type", "input_type_index", "input_channel",
+                "input_channel_index", "output_type", "output_type_index",
+                "output_channel", "output_channel_index",
+            )
         ):
             raise ScriptError("BAD_ARGS", "restore cannot be combined with routing changes")
         return _restore_routing(args, song, dry_run)
@@ -908,28 +897,91 @@ def set_routing(args, song):
     track_name = args.get("track")
     if not isinstance(track_name, str) or not track_name:
         raise ScriptError("BAD_ARGS", "track must be a non-empty string")
-    if not any(key in args for key in ("input_type", "input_channel", "output_type", "output_channel")):
+    field_names = [field for field, _attribute, _options, _label in _ROUTING_FIELDS]
+    if not any(field in args or field + "_index" in args for field in field_names):
         raise ScriptError("BAD_ARGS", "give at least one routing change")
-    index, track = _one_track(song, track_name)
+    track_index, track = _one_track(song, track_name)
 
-    before = {field: _routing_name(getattr(track, attribute, None))
-              for field, attribute, _options, _label in _ROUTING_FIELDS}
-    changes = []
+    before, changes, targets = {}, [], []
     for field, attribute, options_attribute, label in _ROUTING_FIELDS:
-        wanted = args.get(field)
-        if wanted is None:
+        name_given = field in args
+        index_given = field + "_index" in args
+        if not name_given and not index_given:
             continue
-        if not isinstance(wanted, str) or not wanted:
+        if name_given and index_given:
+            raise ScriptError(
+                "BAD_ARGS", "give exactly one of %s or %s_index" % (field, field)
+            )
+
+        wanted = args.get(field) if name_given else None
+        if name_given and (not isinstance(wanted, str) or not wanted):
             raise ScriptError("BAD_ARGS", "%s must be a non-empty string" % (field,))
-        choice = _pick_routing(
-            _routing_options(track, options_attribute, label), wanted, label
+        wanted_index = args.get(field + "_index") if index_given else None
+
+        current_value = getattr(track, attribute, None)
+        options = _routing_options(track, options_attribute, label)
+        current = _routing_ref(current_value)
+        choice = _pick_routing(options, wanted, label, index=wanted_index)
+        target = _routing_ref(choice)
+        current_index = _routing_index(options, current_value)
+        target_index = next(
+            (position for position, option in enumerate(options) if option is choice), None
         )
+        if target_index is None:
+            raise ScriptError("INTERNAL", "resolved %s is not in the option vector" % (label,))
+
+        before[field] = current["name"]
+        if current["identifier"] is not None:
+            before[field + "_identifier"] = current["identifier"]
+        if current_index is not None:
+            before[field + "_index"] = current_index
+
+        targets.append((field, attribute, label, choice))
         changes.append({
             "field": field,
-            "from": _routing_name(getattr(track, attribute, None)),
-            "to": _routing_name(choice),
+            "from": current["name"],
+            "from_identifier": current["identifier"],
+            "from_index": current_index,
+            "to": target["name"],
+            "to_identifier": target["identifier"],
+            "to_index": target_index,
         })
-        if not dry_run:
+
+    # Restore only the fields this call changed. A token that also carries an unchanged
+    # field can be refused by Live: on 12.2.5 a track's current input_type (Ext. In) is not
+    # always present in available_input_routing_types, so replaying it would fail even though
+    # nothing about the input changed.
+    changed_fields = {change["field"] for change in changes}
+    undo_entry = {"track_index": track_index}
+    for field, _attribute, _options, _label in _ROUTING_FIELDS:
+        if field not in changed_fields:
+            continue
+        undo_entry[field] = before[field]
+        identifier = before.get(field + "_identifier")
+        if identifier is not None:
+            undo_entry[field + "_identifier"] = identifier
+        prior_index = before.get(field + "_index")
+        if prior_index is not None:
+            undo_entry[field + "_index"] = prior_index
+
+    if not dry_run:
+        for field, _attribute, _options, _label in _ROUTING_FIELDS:
+            if field not in changed_fields:
+                continue
+            if before.get(field) is None and field + "_index" not in before:
+                raise ScriptError(
+                    "PRECONDITION_FAILED",
+                    "cannot restore %s: it has no current value to put back" % (field,),
+                )
+        preview = _restore_routing({"restore": [undo_entry]}, song, True)
+        if preview["missing"]:
+            raise ScriptError(
+                "PRECONDITION_FAILED",
+                "cannot build an exact restore for %r: %s"
+                % (track.name, preview["missing"][0]["reason"]),
+                {"missing": preview["missing"]},
+            )
+        for field, attribute, label, choice in targets:
             try:
                 setattr(track, attribute, choice)
             except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
@@ -940,9 +992,9 @@ def set_routing(args, song):
     return {
         "dry_run": dry_run,
         "track": str(getattr(track, "name", "")),
-        "track_index": index,
+        "track_index": track_index,
         "changes": changes,
-        "undo": [{"track_index": index, **before}],
+        "undo": [undo_entry],
     }
 
 
@@ -963,13 +1015,32 @@ def _restore_routing(args, song, dry_run):
         track = song.tracks[index]
         restored = {}
         for field, attribute, options_attribute, label in _ROUTING_FIELDS:
-            wanted = entry.get(field)
-            if wanted is None:
+            identifier = entry.get(field + "_identifier")
+            index_value = entry.get(field + "_index")
+            wanted = identifier if identifier is not None else entry.get(field)
+            if index_value is None and wanted is None:
                 continue
             try:
+                options = _routing_options(track, options_attribute, label)
                 choice = _pick_routing(
-                    _routing_options(track, options_attribute, label), str(wanted), label
+                    options,
+                    str(wanted) if wanted is not None else None,
+                    label,
+                    index=index_value,
                 )
+                if index_value is not None:
+                    if identifier is not None and _routing_identifier(choice) != str(identifier):
+                        raise ScriptError(
+                            "PRECONDITION_FAILED",
+                            "%s index %s no longer points at identifier %r"
+                            % (label, index_value, identifier),
+                        )
+                    if identifier is None and wanted is not None and _routing_label(choice) != str(wanted):
+                        raise ScriptError(
+                            "PRECONDITION_FAILED",
+                            "%s index %s no longer points at %r"
+                            % (label, index_value, wanted),
+                        )
             except ScriptError as exc:
                 missing.append({"track_index": index, "field": field, "reason": str(exc)})
                 continue
@@ -980,7 +1051,11 @@ def _restore_routing(args, song, dry_run):
                     raise ScriptError(
                         "UNSUPPORTED", "this Live build cannot set %s: %s" % (label, exc)
                     )
-            restored[field] = str(wanted)
+            restored[field] = _routing_label(choice)
+            if identifier is not None:
+                restored[field + "_identifier"] = identifier
+            if index_value is not None:
+                restored[field + "_index"] = index_value
         if restored:
             changes.append({
                 "track": str(getattr(track, "name", "")),
