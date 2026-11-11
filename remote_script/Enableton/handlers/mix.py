@@ -9,34 +9,12 @@ from __future__ import annotations
 
 from ..dispatch import check_args, command
 from ..errors import ScriptError
-
-
-def _attr(obj, name, default=None):
-    try:
-        return getattr(obj, name)
-    except Exception:
-        return default
-
-
-def _identifier(value):
-    if value is None:
-        return None
-    identifier = _attr(value, "identifier", None)
-    if isinstance(identifier, str) and identifier:
-        return identifier
-    if identifier is not None and not isinstance(identifier, (dict, list)):
-        return str(identifier)
-    return None
-
-
-def _label(value):
-    if value is None:
-        return None
-    for name in ("display_name", "name"):
-        text = _attr(value, name, None)
-        if isinstance(text, str) and text:
-            return text
-    return _identifier(value)
+from ..routing import (
+    attr as _attr,
+    identifier as _identifier,
+    index_of as _routing_index,
+    label as _label,
+)
 
 
 def _track_kind(song, track):
@@ -57,33 +35,38 @@ def _track_kind(song, track):
 
 def _routing(track):
     row, problems = {}, []
-    for key, source in (
-        ("input_type", "input_routing_type"),
-        ("input_channel", "input_routing_channel"),
-        ("output_type", "output_routing_type"),
-        ("output_channel", "output_routing_channel"),
+    for key, source, options_attribute, count_key in (
+        ("input_type", "input_routing_type", "available_input_routing_types", "input_types"),
+        ("input_channel", "input_routing_channel", "available_input_routing_channels", "input_channels"),
+        ("output_type", "output_routing_type", "available_output_routing_types", "output_types"),
+        ("output_channel", "output_routing_channel", "available_output_routing_channels", "output_channels"),
     ):
+        value = None
+        missing_label = False
         try:
             value = getattr(track, source)
             row[key] = _label(value)
             identifier = _identifier(value)
             if identifier is not None:
                 row[key + "_identifier"] = identifier
-            if row[key] is None:
-                problems.append("%s: no display name or identifier" % source)
+            if value is not None and row[key] is None:
+                missing_label = True
         except Exception as exc:  # noqa: BLE001 - the reason is the answer
             row[key] = None
             problems.append("%s: %s" % (source, exc))
-    for key, attribute in (
-        ("input_types", "available_input_routing_types"),
-        ("input_channels", "available_input_routing_channels"),
-        ("output_types", "available_output_routing_types"),
-        ("output_channels", "available_output_routing_channels"),
-    ):
         try:
-            row[key] = len(list(getattr(track, attribute) or []))
+            options = list(getattr(track, options_attribute) or [])
+            row[count_key] = len(options)
+            current_index = _routing_index(options, value)
+            if current_index is not None:
+                row[key + "_index"] = current_index
         except Exception:
-            row[key] = None
+            row[count_key] = None
+        if missing_label and key + "_index" not in row:
+            problems.append(
+                "%s: no display name, identifier or resolvable index; use %s_index"
+                % (source, key)
+            )
     if problems:
         row["reason"] = "; ".join(problems)
     return row

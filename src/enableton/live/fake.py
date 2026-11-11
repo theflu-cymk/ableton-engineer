@@ -140,10 +140,13 @@ class FakeClipSlot:
 
 @dataclass
 class FakeRouting:
-    """A routing type or channel, as Live exposes it with ``display_name`` and ``identifier``."""
+    """A routing type or channel, with the fields Live uses to distinguish duplicates."""
 
     display_name: str
     identifier: str = ""
+    category: Any = None
+    attached_object: Any = None
+    layout: Any = None
 
 
 @dataclass

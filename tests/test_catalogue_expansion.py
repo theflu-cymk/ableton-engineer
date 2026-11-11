@@ -308,6 +308,77 @@ class TrackExpansionTests(unittest.TestCase):
         self.assertEqual(restored["missing"], [])
         self.assertEqual(track.output_routing_type.display_name, "Master")
 
+    def test_routing_index_selects_duplicate_main_and_restores_exact_index(self):
+        track = self.adapter.song.tracks[0]
+        track.available_output_routing_types = [
+            FakeRouting("Main", "", category="master"),
+            FakeRouting("Main", "", category="track"),
+        ]
+        track.output_routing_type = FakeRouting("Main", "", category="master")
+
+        row = self.adapter.call("mix.routing_report", {})["items"][0]
+        self.assertEqual(row["output_type_index"], 0)
+
+        with self.assertRaises(ScriptError) as ctx:
+            self.adapter.call(
+                "tracks.set_routing", {"track": "Drums", "output_type": "Main"}
+            )
+        self.assertEqual(ctx.exception.code, "AMBIGUOUS_REF")
+        self.assertIn("Main [1]", str(ctx.exception))
+
+        applied = self.adapter.call("tracks.set_routing", {
+            "track": "Drums", "output_type_index": 1, "dry_run": False,
+        })
+        self.assertEqual(track.output_routing_type.category, "track")
+        self.assertEqual(applied["changes"][0]["from_index"], 0)
+        self.assertEqual(applied["changes"][0]["to_index"], 1)
+        self.assertEqual(applied["undo"][0]["output_type_index"], 0)
+
+        restored = self.adapter.call(
+            "tracks.set_routing", {"restore": applied["undo"], "dry_run": False}
+        )
+        self.assertEqual(restored["missing"], [])
+        self.assertEqual(track.output_routing_type.category, "master")
+
+    def test_routing_index_selects_a_nameless_channel_and_restores(self):
+        track = self.adapter.song.tracks[0]
+        track.available_output_routing_channels = [
+            FakeRouting("Track In", "TrackIn"),
+            FakeRouting("", "", layout="stereo"),
+        ]
+        track.output_routing_channel = FakeRouting("Track In", "TrackIn")
+
+        applied = self.adapter.call("tracks.set_routing", {
+            "track": "Drums", "output_channel_index": 1, "dry_run": False,
+        })
+        self.assertEqual(track.output_routing_channel.display_name, "")
+        self.assertEqual(track.output_routing_channel.layout, "stereo")
+        self.assertIsNone(applied["changes"][0]["to"])
+        self.assertEqual(applied["changes"][0]["to_index"], 1)
+        self.assertEqual(applied["undo"][0]["output_channel_index"], 0)
+
+        report = self.adapter.call("mix.routing_report", {})
+        row = report["items"][0]
+        self.assertIsNone(row["output_channel"])
+        self.assertEqual(row["output_channel_index"], 1)
+        self.assertNotIn(row["name"], report["flagged"])
+
+        restored = self.adapter.call(
+            "tracks.set_routing", {"restore": applied["undo"], "dry_run": False}
+        )
+        self.assertEqual(restored["missing"], [])
+        self.assertEqual(track.output_routing_channel.display_name, "Track In")
+
+    def test_routing_report_does_not_flag_a_null_channel(self):
+        track = self.adapter.song.tracks[0]
+        track.output_routing_channel = None
+
+        result = self.adapter.call("mix.routing_report", {})
+        row = result["items"][0]
+        self.assertIsNone(row["output_channel"])
+        self.assertNotIn("output_routing_channel", row.get("reason", ""))
+        self.assertNotIn(row["name"], result["flagged"])
+
     def test_duplicate_routing_names_require_an_identifier(self):
         track = self.adapter.song.tracks[0]
         track.available_output_routing_types = [

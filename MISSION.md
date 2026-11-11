@@ -515,6 +515,17 @@ verifies the unambiguous route only: Live exposes two indistinguishable `Main` o
 nameless sole output channel, so those remain unaddressable by this build; `mix_routing_report`
 still flags all 32 rows for null channels.
 
+**`0.4.11` index-based routing (Unverified until restart).** A shared `routing.py` derives a
+signature from label, identifier, `category`, `attached_object` and `layout`, then matches the
+current value to its option index. Both the report and the writer expose `*_index`;
+`tracks_set_routing` accepts a name or an index for each field, refuses both at once, and stores
+the previous index in the undo token. Restore selects by index first and verifies the
+label/identifier still match, so two `Main` options cannot silently swap. The report no longer
+flags a null channel, and a nameless channel with a resolved index is addressable rather than
+unreadable. The fake suite is **403 passed, 7 subtests**, including duplicate `Main` and
+nameless-channel apply/restore. `0.4.11` is installed as repo build `590bc944d820`; loaded `0.4.10`
+build `294c9c9c1043` is `stale`. The real gate is pending the next restart.
+
 **Gain staging cannot write on this build.** A dry `tracks_gain_stage` over the whole Set returned
 `changes: 0` and `skipped: 32`; every real `Track.peak_db` read was `None`. The audit's
 "`tracks_gain_stage` (0.2.1)" evidence was only the restore path (`0.85 -> 0.5` through a restore
