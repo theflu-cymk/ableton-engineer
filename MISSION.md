@@ -332,9 +332,10 @@ baseline held one locator.
   in `prep` and `arrange`. The fake tests prove internal consistency only; the gate below is the
   first real-Live proof.
 
-**Next:** the M4 catalogue accounting still needs its wrong rows corrected (`tracks_delete`,
-`tracks_clean_empty`, `ableton_undo` are implementable; `sections_move` is feasible via delete and
-create; `devices_insert` is confirmed, not Verified).
+**Accounting:** the previously wrong rows are corrected in the current table below.
+`tracks_delete`, `tracks_clean_empty`, `ableton_undo` and `sections_move` are implemented and
+covered by their gates; of the seven-row bounded audit, only `devices_insert`, `devices_bypass` and
+`devices_load_preset` remain absent.
 
 ### M4 catalogue audit (2026-11-10)
 
@@ -433,11 +434,26 @@ build `f844ded966e5`, `devices_set_macro` moved `Low Gain` `63.35280227661133 �
 Live is now on `0.4.6`; re-running `0.3.6` would mean downgrading the installed script for an
 already-passed gate, so the current read-only `doctor`/`status` output is the correct evidence.
 
-**Branches.** `m4-offline-accounting-5317737` edits only `MISSION.md` and is based before `0.4.6`;
-its claims (61 tools, `sections_move` unimplemented, `tracks_delete` deferred) are superseded by the
-evidence above. Merging it would regress the ledger; close or supersede it rather than merge.
-`m5-serve` is independent (8 files, +814 lines) and should merge only when M5 starts, which §3
-forbids before M4 is green.
+**Branches.** `m4-offline-accounting-5317737` at `7de7e66` is superseded by the accounting section
+below. It is based before `0.4.6`; its 61-tool counts and deferred rows would regress the current
+ledger. Do not merge it. `m5-serve` is independent (8 files, +814 lines) and should merge only when
+M5 starts, which §3 forbids before M4 is green.
+
+### Unavailable-capability accounting (2026-11-11, current)
+
+**Unavailable** means the capability does not exist on this Live build; **deferred** means it is
+implementable or feasible but deliberately not shipped. At `a4d9681`, `tools.json` has 65 unique
+tools. The seven-row bounded audit is now closed for `sections_move`, `tracks_delete`,
+`tracks_clean_empty` and `ableton_undo`; all four are implemented and covered by their gates. The
+three rows below remain absent; the other 24 catalogue gaps are outside this bounded accounting.
+
+| SPEC capability | Disposition and evidence |
+|---|---|
+| `devices_insert` | **Unavailable, Verified** from SPEC §2's LOM version gate: `Track.insert_device` requires Live 12.3+, so it is unavailable on Live 12.2.5. No real insert attempt was made. |
+| `devices_bypass` | **Unavailable, Verified** on real Live 12.2.5 for `PluginDevice` and `Eq8Device`; `Device.is_active` has no setter. Future-build support remains **Unverified**. |
+| `devices_load_preset` | **Unavailable, Assumed**: the known browser load path appears to target the current selection, not a resolved device, but this was never probed. A settable `song.view.hotswap_target` may permit a resolved-device load, so this needs a probe. |
+
+This accounting is documentation-only; no runtime reporting or Live capability changed.
 
 ### Bundle B gate on `0.4.7` (2026-11-10)
 
