@@ -265,7 +265,30 @@ def main(argv: Optional[list] = None) -> int:
             client.close()
 
     if args.command == "serve":
-        print("enableton serve arrives in M5; the protocol and catalogue are ready.", file=sys.stderr)
+        if args.mode == "list":
+            catalogue = load_manifest()
+            modes = load_modes(catalogue)
+            _print(
+                {
+                    "default": modes.default,
+                    "cap": modes.max_tools,
+                    "modes": [
+                        {
+                            "mode": name,
+                            "tools": len(modes.get(name).tools),
+                            "summary": modes.get(name).summary,
+                        }
+                        for name in modes.names()
+                    ],
+                }
+            )
+            return EXIT_OK
+        try:
+            from .mcp.transport import run_stdio
+
+            run_stdio(mode=args.mode, host=args.host, port=args.port)
+        except ModeError as exc:
+            parser.error(str(exc))
         return EXIT_OK
 
     parser.print_help()
