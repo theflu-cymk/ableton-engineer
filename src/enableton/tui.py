@@ -258,7 +258,7 @@ def _render_browser(
     prompt = (
         "  " + ORANGE + "/ " + RESET + query + cursor
         if query
-        else "  " + DIM + "/  type to filter \u2014 try meter, routing, recipe, notes" + RESET
+        else "  " + DIM + "/  type to filter \u2014 try meter, routing, fader, notes" + RESET
     )
     lines.append(prompt)
     lines.append(
