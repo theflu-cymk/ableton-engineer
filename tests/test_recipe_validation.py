@@ -18,6 +18,12 @@ def example_recipe():
             {"slot": "kick", "pattern": "x.......x.......", "velocity": 1.0, "swing": 0.0},
             {"slot": "snare", "pattern": "....x.......x...", "humanize": 0.04},
         ],
+        "source": {
+            "kind": "learned",
+            "file": "riddim/refs/dubstep_140.wav",
+            "window_s": [0, 8],
+            "confidence": 0.81,
+        },
         "slots": [
             {
                 "slot": "kick",
@@ -109,6 +115,40 @@ class RecipeValidationTests(unittest.TestCase):
 
         with self.assertRaisesRegex(RecipeValidationError, "duplicates slot definition"):
             validate_recipe(recipe)
+
+    def test_source_metadata_is_optional_and_accepts_the_documented_shape(self):
+        without_source = example_recipe()
+        del without_source["source"]
+        self.assertIsNone(validate_recipe(without_source))
+
+        without_window = example_recipe()
+        del without_window["source"]["window_s"]
+        del without_window["source"]["confidence"]
+        self.assertIsNone(validate_recipe(without_window))
+
+    def test_rejects_invalid_source_shape_and_required_fields(self):
+        for source in ([], {}, {"kind": "learned"}, {"file": "refs/x.wav"}):
+            with self.subTest(source=source):
+                recipe = example_recipe()
+                recipe["source"] = source
+                with self.assertRaisesRegex(RecipeValidationError, "source"):
+                    validate_recipe(recipe)
+
+    def test_rejects_invalid_source_window(self):
+        for window in ([0], [0, 0], [-0.1, 8], [8, 0], [0, float("nan")], [0, "8"]):
+            with self.subTest(window=window):
+                recipe = example_recipe()
+                recipe["source"]["window_s"] = window
+                with self.assertRaisesRegex(RecipeValidationError, "source.window_s"):
+                    validate_recipe(recipe)
+
+    def test_rejects_invalid_source_confidence(self):
+        for confidence in (-0.01, 1.01, True, "0.5", float("nan")):
+            with self.subTest(confidence=confidence):
+                recipe = example_recipe()
+                recipe["source"]["confidence"] = confidence
+                with self.assertRaisesRegex(RecipeValidationError, "source.confidence"):
+                    validate_recipe(recipe)
 
 
 if __name__ == "__main__":

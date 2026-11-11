@@ -41,8 +41,32 @@ def _finite_number(value: object, path: str, *, minimum: float | None = None) ->
     return number
 
 
+def _source_metadata(source: object) -> None:
+    data = _object(source, "recipe.source")
+    _text(data.get("kind"), "recipe.source.kind")
+    _text(data.get("file"), "recipe.source.file")
+    window = data.get("window_s")
+    if window is not None:
+        if not isinstance(window, (list, tuple)) or len(window) != 2:
+            raise RecipeValidationError(
+                "recipe.source.window_s must be a [start, end] pair"
+            )
+        start = _finite_number(window[0], "recipe.source.window_s[0]", minimum=0.0)
+        end = _finite_number(window[1], "recipe.source.window_s[1]")
+        if end <= start:
+            raise RecipeValidationError(
+                "recipe.source.window_s must start before it ends"
+            )
+    if "confidence" in data:
+        confidence = _finite_number(data["confidence"], "recipe.source.confidence")
+        if not 0.0 <= confidence <= 1.0:
+            raise RecipeValidationError(
+                "recipe.source.confidence must be between 0 and 1"
+            )
+
+
 def validate_recipe(recipe: object) -> None:
-    """Validate required version-1 fields, including unique lane/slot identifiers."""
+    """Validate version-1 fields, unique identifiers, and optional source metadata."""
     data = _object(recipe, "recipe")
     for field in ("id", "name", "kind", "status"):
         _text(data.get(field), f"recipe.{field}")
@@ -57,6 +81,10 @@ def validate_recipe(recipe: object) -> None:
     _finite_number(tempo.get("bpm"), "recipe.tempo.bpm", minimum=0.001)
     _text(tempo.get("feel"), "recipe.tempo.feel")
     _text(tempo.get("grid"), "recipe.tempo.grid")
+
+    source = data.get("source")
+    if source is not None:
+        _source_metadata(source)
 
     length_bars = _positive_integer(data.get("length_bars"), "recipe.length_bars")
     lanes = data.get("lanes")
