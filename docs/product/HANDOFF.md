@@ -65,7 +65,7 @@ stdio serve. `MISSION.md` still narrates an earlier tool count and milestone sta
 | Live | Ableton Live 12.2.5 |
 | Remote Script | `0.4.26`, build `a7fcd016f88d`, installed and loaded |
 | Bridge | TCP `127.0.0.1:9878`, length-prefixed JSON |
-| Open Set | scratch copy `SCRATCH fortnight - panel acceptance`, 120 BPM, 32 main tracks + 2 returns, 122 bars |
+| Open Set | none; the scratch acceptance Set was closed without saving |
 | Catalogue | 87 tools, 9 modes, `produce` 19 |
 | Producer evidence | brief + WAV read + panel mute and take apply/A-B/undo; take dry-run |
 | Save/export | no product save tool; native Live only |
@@ -116,8 +116,8 @@ clean.
 
 ## First meaningful task: prove a take on a scratch Set
 
-The open Set is the scratch copy used for the panel and take acceptance. The take gate has passed on
-it; make a fresh scratch copy before another write if you need to preserve its current state.
+The scratch Set used for panel and take acceptance was closed without saving. The take gate is
+recorded, but Live now has no Set open; make a fresh backed-up scratch copy before another write.
 
 1. Choose a real song and make a **scratch copy**; do not edit the working `.als`.
 2. Open the scratch copy in Live.
@@ -287,8 +287,8 @@ See [ROADMAP.md](ROADMAP.md) for the order.
 - **Capture restore is defective on this build.** Resampling can remove `Ext. In`; the current
   remediation is `No Input`. Do not claim exact restore. See `docs/M6_M7_STATUS.md`.
 - **`tracks_gain_stage` did not have a real measured-peak write** in the M4 audit; do not claim it.
-- **The open Set is a scratch copy.** It can validate a reversible write, but it is not a working
-  song and must not be treated as one.
+- **No Set is open now.** The acceptance scratch was closed without saving; open a fresh backed-up
+  copy before a write, and never use a working song as scratch.
 - **External docs use a different architecture:** 242 tools, port 9877, package versions and a
   generated bridge. Do not import those into this repo.
 - **Current docs drift:** `AGENTS` serve-stub bullet, `MISSION` counts, `docs/mcp.md` counts/versions.

@@ -34,8 +34,8 @@ larger tool menu and not a standalone DAW.
   `a473577`, with the panel implementation committed.
 - **[Verified]** Live 12.2.5, Remote Script `0.4.26`, build `a7fcd016f88d`, connected, `errors 0`,
   not stale at the 2026-11-13 check.
-- **[Verified]** The currently open Live Set is the scratch copy `SCRATCH fortnight - panel
-  acceptance`: 120 BPM, 32 tracks, 122 bars. The original working Set was not opened or written.
+- **[Verified]** No Live Set is currently open. The `SCRATCH fortnight - panel acceptance` Set used
+  for the gate was closed without saving. The original working Set was not opened or written.
 - **[Verified]** Catalogue: 87 tools in 9 modes. `produce` is one of them and contains 19 resolved
   tools. The three producer headline tools are `session_brief`, `reference_analyze` and
   `takes_create`.
@@ -97,6 +97,6 @@ The three external workflows remain the **release proof set**; the producer verb
 
 ## First action
 
-Read [HANDOFF.md](HANDOFF.md), then run the baseline checks in its “First 30 minutes” section. The
-open Set is the panel-acceptance scratch copy, not a working song. For the take gate, make a fresh
-backed-up scratch copy of a real song; never apply to the working Set.
+Read [HANDOFF.md](HANDOFF.md), then run the baseline checks in its “First 30 minutes” section. No Set
+is open now. For another write gate, make a fresh backed-up scratch copy of a real song; never apply
+to the working Set.

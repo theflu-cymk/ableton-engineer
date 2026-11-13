@@ -11,7 +11,7 @@
 | Package | `Enableton 0.1.0`, Python `>=3.11`; local runtime 3.11.17 via `uv` | [Verified] `pyproject.toml`, `uv run python -V` |
 | Git | branch `main`, baseline `a473577`; panel implementation committed | [Verified] `git status`, `git log` |
 | Live | 12.2.5; connected; Remote Script `0.4.26`; build `a7fcd016f88d`; `errors 0`; not stale | [Verified] `uv run enableton doctor` after restart, 2026-11-13 |
-| Open Set | scratch copy `SCRATCH fortnight - panel acceptance`, 120 BPM, 32 main tracks + 2 returns, 122 bars | [Verified] panel `/api/session`, 2026-11-13 |
+| Open Set | none; the `SCRATCH fortnight - panel acceptance` Set was closed without saving after the take gate | [Verified] user report and panel 503, 2026-11-13 |
 | Catalogue | 87 tools; 9 modes; `produce` has 19 resolved tools | [Verified] `tools.json`, `modes.json`, `enableton modes` |
 | Producer tools | `session_brief`, `reference_analyze`, `takes_create` | [Verified] manifest and source |
 | Producer evidence | brief read real Live; panel mute and take apply/A-B/undo; real take dry-run; WAV reference measured | [Verified] real calls on 2026-11-12 and 2026-11-13 |
