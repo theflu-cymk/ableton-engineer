@@ -1,7 +1,7 @@
 # Producer layer
 
-This is the first vertical slice of the producer-facing Enableton experience. It is not the full
-in-Live panel; it is the backend vocabulary and evidence those screens will use.
+This is the first vertical slice of the producer-facing Enableton experience: the backend
+vocabulary plus the additive local panel documented in [panel.md](panel.md).
 
 ## Product thesis
 
@@ -30,6 +30,10 @@ the track count changed while Live was open, and the brief reflected the new cou
 cached value. `takes_create` dry-run planned two takes of `1-MIDI` and wrote nothing. The current
 open Set was blank, so the 25-track REZZ Set was not available for this read.
 
+**[Verified on real Live 2026-11-13]** On a backed-up scratch Set, the panel applied two takes of
+`snare rush`, fader A/B switched between them, and the returned undo removed both copies and
+restored the source. The scratch `.als` hash was unchanged; the working Set was not opened.
+
 **[Verified on a real captured WAV 2026-11-12]** `reference_analyze` measured the 2.101 s,
 44.1 kHz, stereo 24-bit capture `8-Audio 0001 [2026-11-10 220442].wav`: peak `-5.38 dBFS`, RMS
 `-18.33 dBFS`, crest `12.95 dB`, LUFS `-16.97`, spectral centroid `1638.3 Hz`, stereo correlation
@@ -46,18 +50,17 @@ The fake suite proves internal consistency only. The real gate above is the sepa
   copy into a real alternative.
 - A/B is fader-based (`0.0` is treated as off). It is reversible, but it is not a dedicated mute
   command.
-- There is no in-Live panel yet. The current interface is MCP/CLI.
+- The local panel exists, but it is deliberately narrow: read-only take groups, no
+  `takes_select`/`takes_discard`, no one-click undo, and no audible check.
 - No automatic save/export. The existing save limitation is unchanged.
 
 ## Next phases
 
 ### 1. Real-Live acceptance
 
-- Run `session_brief` on the current Set and compare its sections against `sections_map`.
-- Run `reference_analyze` on a known captured WAV and verify the basic profile.
-- Run `takes_create` dry-run on a unique track; no write.
-- Only after an explicit scratch-Set decision, apply and inspect a take set; do not touch the
-  working track without a backup.
+- `session_brief`, `reference_analyze`, the take dry-run and a two-take apply/A-B/undo are now
+  verified on real Live; the take run used a backed-up scratch Set.
+- Re-run the take gate on a fresh scratch copy after any take/executor change.
 
 ### 2. Take variations
 
@@ -82,9 +85,11 @@ The fake suite proves internal consistency only. The real gate above is the sepa
 
 ### 5. Producer panel
 
-- Put the three verbs in an in-Live or companion panel: **Analyze**, **Suggest**, **Create take**.
-- Hide tool names, modes and dry-run JSON behind producer language.
-- Show a readable plan, a measured comparison and an A/B switch before applying.
+- The local panel exists with status, session brief, tracks, safe row actions and a dry-run/apply
+  composer; takes are read-only.
+- Next: expose select/discard only after those tools exist, add a clear undo affordance, and keep
+  the dry-run plan readable.
+- Do not turn the panel into a separate product shape or hide a write behind one click.
 
 ## Acceptance for a sellable slice
 

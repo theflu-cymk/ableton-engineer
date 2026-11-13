@@ -31,7 +31,7 @@ larger tool menu and not a standalone DAW.
 ## Current snapshot
 
 - **[Verified]** Repository: `Enableton`, package version `0.1.0`, branch `main`; baseline
-  `bd15174`, with the panel implementation committed in this pass.
+  `a473577`, with the panel implementation committed.
 - **[Verified]** Live 12.2.5, Remote Script `0.4.26`, build `a7fcd016f88d`, connected, `errors 0`,
   not stale at the 2026-11-13 check.
 - **[Verified]** The currently open Live Set is the scratch copy `SCRATCH fortnight - panel
@@ -41,9 +41,9 @@ larger tool menu and not a standalone DAW.
   `takes_create`.
 - **[Verified]** The fake suite was green before this documentation pass. A green fake suite is
   **not** real-Live proof.
-- **[Verified]** The producer slice has real evidence for a read-only brief, a take **dry-run**, a
-  real WAV reference measurement and a panel mute apply/undo on the scratch Set. No take was applied
-  to a working Set. No audible test was run.
+- **[Verified]** The producer slice has real evidence for a read-only brief, a take dry-run, a
+  two-take panel apply with fader A/B and undo, a real WAV reference measurement and a panel mute
+  apply/undo on the scratch Set. No take was applied to a working Set. No audible test was run.
 - **[Verified]** The local panel exists at `enableton panel`; there is no persistent session memory
   and no take select/discard/variation tool yet.
 - **[Verified]** The tree has no `LICENSE`, EULA, privacy policy, refund policy, support contact or

@@ -9,13 +9,13 @@
 | Area | Current state | Evidence |
 |---|---|---|
 | Package | `Enableton 0.1.0`, Python `>=3.11`; local runtime 3.11.17 via `uv` | [Verified] `pyproject.toml`, `uv run python -V` |
-| Git | branch `main`, baseline `bd15174`; the panel implementation is committed in this baseline | [Verified] `git status`, `git log` |
+| Git | branch `main`, baseline `a473577`; panel implementation committed | [Verified] `git status`, `git log` |
 | Live | 12.2.5; connected; Remote Script `0.4.26`; build `a7fcd016f88d`; `errors 0`; not stale | [Verified] `uv run enableton doctor` after restart, 2026-11-13 |
-| Open Set | scratch copy `SCRATCH fortnight - panel acceptance`, 120 BPM, 32 tracks, 122 bars | [Verified] panel `/api/session`, 2026-11-13 |
+| Open Set | scratch copy `SCRATCH fortnight - panel acceptance`, 120 BPM, 32 main tracks + 2 returns, 122 bars | [Verified] panel `/api/session`, 2026-11-13 |
 | Catalogue | 87 tools; 9 modes; `produce` has 19 resolved tools | [Verified] `tools.json`, `modes.json`, `enableton modes` |
 | Producer tools | `session_brief`, `reference_analyze`, `takes_create` | [Verified] manifest and source |
-| Producer evidence | brief read real Live; panel real mute apply/undo; take **dry-run** only; WAV reference measured | [Verified] real calls on 2026-11-12 and 2026-11-13 |
-| Writes | One reversible mute applied and undone on the scratch Set; no `.als` saved or changed | [Verified] panel apply/undo and SHA-256 check, 2026-11-13 |
+| Producer evidence | brief read real Live; panel mute and take apply/A-B/undo; real take dry-run; WAV reference measured | [Verified] real calls on 2026-11-12 and 2026-11-13 |
+| Writes | A mute and a two-take set were applied and undone on the scratch Set; no `.als` saved or changed | [Verified] panel/CLI apply, undo and SHA-256 check, 2026-11-13 |
 | Tests | fake suite green before this docs pass; not a substitute for Live | [Verified] `pytest -q` |
 | UI / memory | Local web panel implemented; no persistent producer memory | [Verified] source, live panel, and tests |
 
@@ -67,16 +67,18 @@ are design-era names, not the current file map.
 
 ## Panel acceptance: what is real
 
-- **[Verified]** The panel rendered the live blank Set, then reconnected after Live was restarted
-  with the current `a7fcd016f88d` build; its header showed `Live connected`, the session brief,
-  six track rows (four tracks plus two returns) and the take list.
+- **[Verified]** The panel rendered the live scratch Set after Live was restarted with the current
+  `a7fcd016f88d` build; its header showed `Live connected`, the session brief, the track rows and
+  the read-only take list.
 - **[Verified]** A real panel dry run previewed a single mute field, applied it on the scratch Set,
   read the field back as `true`, and returned the exact prior value as an undo token.
 - **[Verified]** Applying the undo token restored the field to `false`; the scratch `.als` SHA-256
   was unchanged before and after, so Live did not save it.
-- **[Unverified]** A real take apply from the panel, a manual click-through of every UI control, and
-  panel support for take select/discard. The fake suite covers the plan/apply flow and the
-  executor-level mute apply, but a green suite is not Live proof.
+- **[Verified]** The panel planned and applied a two-take set on `snare rush` (indices 10 and 11),
+  with take 1 at `0.85`, take 2 and the source at `0.0`. A/B moved take 1 to `0.0` and take 2 to
+  `0.85`; undo removed both copies and restored the source. The scratch `.als` hash stayed unchanged.
+- **[Unverified]** A manual click-through of every UI control, panel support for take select/discard,
+  and audible verification. The fake suite covers the plan/apply flow but is not Live proof.
 
 ## Producer slice: what is real
 
@@ -102,8 +104,9 @@ are design-era names, not the current file map.
 
 - **[Verified]** Real dry-run on `1-MIDI` planned take indices 1 and 2, source volume `0.85`, with
   no track created.
-- **[Verified]** Fake apply verifies duplicate, rename, fader isolation and rollback.
-- **[Unverified]** Real apply of a take set, real A/B selection and real undo of all take changes.
+- **[Verified]** Real panel apply on `snare rush` created two named take tracks; a CLI fader change
+  switched A/B, and the returned undo tokens removed both copies and restored the source.
+- **[Unverified]** Panel-driven select/discard and any audible check.
 - **[Verified]** Takes are identical copies at creation; they are not generated variations.
 
 ## Existing engine breadth
@@ -139,15 +142,13 @@ The following is historical evidence, not a claim that the current build repeats
 
 ### Product gaps
 
-1. **No real apply-of-takes evidence.** The workflow that makes the product feel like a co-producer
-   is still dry-run-only on real Live.
-2. **No `takes_select` / `takes_discard`.** A/B requires `tracks_set_volume`; cleanup is manual.
-3. **No take variation.** Take 2 is an identical copy.
-4. **No producer memory.** The brief is stateless; there is no “where did we leave off”.
-5. **Panel v1 is deliberately narrow.** Takes are read-only; take select/discard and destructive
+1. **No `takes_select` / `takes_discard`.** A/B requires `tracks_set_volume`; cleanup is manual.
+2. **No take variation.** Take 2 is an identical copy.
+3. **No producer memory.** The brief is stateless; there is no “where did we leave off”.
+4. **Panel v1 is deliberately narrow.** Takes are read-only; take select/discard and destructive
    operations are not exposed.
-6. **No reference capture orchestration.** Analysis works on a file; capture → compare is manual.
-7. **No audible verification.** Measurement is not listening.
+5. **No reference capture orchestration.** Analysis works on a file; capture → compare is manual.
+6. **No audible verification.** Measurement is not listening.
 
 ### Release gaps
 
@@ -203,9 +204,10 @@ The following is historical evidence, not a claim that the current build repeats
 
 ## What not to do next
 
-- Do not apply a take to the open Set just to make a demo.
+- Do not apply a take to a working Set just to make a demo.
 - Do not call `takes_create` a variation generator.
-- Do not claim a real take apply, take variation or panel select/discard exists.
+- Do not claim take variation, panel select/discard or audible verification exists. Real take apply,
+  fader A/B and undo are verified on a scratch Set; select/discard are not.
 - Do not copy external tool counts or setup steps.
 - Do not bump the Remote Script unless you are changing `remote_script/`; the producer tools are
   client-side.

@@ -15,7 +15,7 @@ needs owner), Open (needs information), Blocked (external input required).
 | D-03 | MVP shape is a technical MCP server with a producer-facing `produce` mode; the local panel is an additive loopback surface, not a replacement engine. | **Proposed** | Product owner | The stdio server remains the engine. The panel is implemented and covered by D-18. |
 | D-04 | Producer experience uses three verbs: Analyze, Suggest, Create take. The 87-tool catalogue is engine vocabulary, not the primary menu. | **Proposed** | Product owner | `produce` mode exists; `session_brief`, `reference_analyze`, `takes_create` are the current slice. |
 | D-05 | “Suggest” means evidence-backed next actions and measured deltas, not autonomous generation or a hidden LLM. | **Accepted direction** | Product/engineering | `session_brief.next_actions` and reference deltas are current examples. |
-| D-06 | `takes_create` v0 uses real duplicate tracks and fader-based A/B; takes are identical until edited. | **Accepted for slice** | Engineering | Real dry-run verified; real apply is still open. |
+| D-06 | `takes_create` v0 uses real duplicate tracks and fader-based A/B; takes are identical until edited. | **Accepted for slice** | Engineering | Real dry-run, two-take panel apply, fader A/B and undo verified on a scratch Set. |
 | D-07 | Reference analysis reports measurements and unavailable values; it never claims an audition or mastery. | **Accepted** | Engineering | Real WAV measurement verified; limitations are explicit in the tool. |
 | D-08 | No user `.als` is written in place; writes use dry runs, scratch copies and undo where available. | **Accepted invariant** | Project convention | AGENTS and existing executor/scratch code. |
 | D-09 | No LLM runs inside the server; the MCP client supplies intelligence. | **Accepted** | `SPEC.md` | Tool server exposes vocabulary and data only. |
@@ -27,7 +27,7 @@ needs owner), Open (needs information), Blocked (external input required).
 | D-15 | A real producer workflow demo is an external release deliverable, not code. | **Open** | Marketing/product | No demo video; must use consented material. |
 | D-16 | Product naming: keep `Enableton` in code/docs for now; decide the public “EnAbleton” spelling separately. | **Proposed** | Product owner | External pack uses EnAbleton; current package is Enableton. |
 | D-17 | Take variation, select/discard and session memory are post-slice features, not claims about the current build. | **Accepted scope** | Engineering | They are listed in `docs/producer-layer.md` and are absent from code. |
-| D-18 | Add a local, loopback-only producer panel over the same bridge: status, session brief, tracks with safe row actions, dry-run/apply composer and read-only takes. It adds no dependency and exposes no destructive operation. | **Accepted for this build** | Owner brief, 2026-11-13 | Panel implementation, fake suite, live page and real scratch-Set mute apply/undo. |
+| D-18 | Add a local, loopback-only producer panel over the same bridge: status, session brief, tracks with safe row actions, dry-run/apply composer and read-only takes. It adds no dependency and exposes no destructive operation. | **Accepted for this build** | Owner brief, 2026-11-13 | Panel implementation, fake suite, real scratch-Set mute and take apply/A-B/undo. |
 
 ## Mapping to the external owner inputs
 

@@ -16,12 +16,12 @@ The producer slice exists but is only partly accepted:
 
 - `session_brief` — real Live read verified.
 - `reference_analyze` — real WAV measurement verified.
-- `takes_create` — real **dry-run** verified; real apply is still open.
-- Local web panel — implemented, with a real preview/apply/undo mute acceptance on a scratch Set.
+- `takes_create` — real dry-run, apply, fader A/B and undo verified on a backed-up scratch Set.
+- Local web panel — implemented, with real mute and take preview/apply/undo acceptance.
 - No take select/discard, no variation, no persistent memory.
 
-**Your first job is not to add features.** Preserve the committed panel baseline and finish the real
-take acceptance on a backed-up scratch Set.
+**Your first job is not to add features.** Preserve the committed panel baseline and review the
+take acceptance record before adding select/discard or variation.
 
 ## How to split the work
 
@@ -60,14 +60,14 @@ stdio serve. `MISSION.md` still narrates an earlier tool count and milestone sta
 | Item | Value |
 |---|---|
 | Repo | `Enableton`, package `0.1.0` |
-| Branch / baseline | `main` / `bd15174`; the panel implementation is committed in this baseline |
+| Branch / baseline | `main` / `a473577`; panel implementation committed |
 | Python | 3.11.17 via `uv` |
 | Live | Ableton Live 12.2.5 |
 | Remote Script | `0.4.26`, build `a7fcd016f88d`, installed and loaded |
 | Bridge | TCP `127.0.0.1:9878`, length-prefixed JSON |
-| Open Set | scratch copy `SCRATCH fortnight - panel acceptance`, 120 BPM, 32 tracks, 122 bars |
+| Open Set | scratch copy `SCRATCH fortnight - panel acceptance`, 120 BPM, 32 main tracks + 2 returns, 122 bars |
 | Catalogue | 87 tools, 9 modes, `produce` 19 |
-| Producer evidence | brief + WAV read + take dry-run + panel mute apply/undo; **no take apply** |
+| Producer evidence | brief + WAV read + panel mute and take apply/A-B/undo; take dry-run |
 | Save/export | no product save tool; native Live only |
 
 `doctor` at this snapshot reports `connected yes`, `errors 0`, no `stale`. That is not proof the main
@@ -116,8 +116,8 @@ clean.
 
 ## First meaningful task: prove a take on a scratch Set
 
-The open Set is now the scratch copy created for the panel acceptance. It is still not a substitute
-for the take workflow gate; make a fresh scratch copy if you need to leave its state untouched.
+The open Set is the scratch copy used for the panel and take acceptance. The take gate has passed on
+it; make a fresh scratch copy before another write if you need to preserve its current state.
 
 1. Choose a real song and make a **scratch copy**; do not edit the working `.als`.
 2. Open the scratch copy in Live.
@@ -141,8 +141,9 @@ If the source track has a duplicate name, use `track_index` and ensure the sourc
 before applying a volume restore. If the source has no clips, the dry-run still works but the take is
 not musically useful.
 
-**Acceptance:** one applied take set on a backed-up scratch Set, A/B verified, undo verified, working
-Set untouched. Until then, do not call the take workflow accepted.
+**Acceptance passed on 2026-11-13:** one two-take set applied through the panel on the backed-up
+scratch Set; fader A/B switched audibility; undo removed both copies and restored the source; the
+working Set and scratch `.als` hash were unchanged. Select/discard and variation remain open.
 
 ## Architecture you must understand
 
@@ -264,7 +265,6 @@ sound/device work. Do not drop them; map them into the producer experience:
 
 Missing before the slice is sellable:
 
-- real take apply/A-B/undo;
 - `takes_select`, `takes_discard`;
 - one actual take variation;
 - session memory;
@@ -300,8 +300,8 @@ See [ROADMAP.md](ROADMAP.md) for the order.
 - Do not apply a take without a backup and user awareness.
 - Do not call identical duplicate tracks “variations.”
 - Do not claim an audible result from a measurement.
-- Do not claim take select/discard, variation, persistent memory or a real take apply exists. The
-  panel itself does exist; its v1 limits are in [../panel.md](../panel.md).
+- Do not claim take select/discard, variation, persistent memory or audible verification exists.
+  Real take apply/A-B/undo is verified; the panel's v1 limits are in [../panel.md](../panel.md).
 - Do not bump the Remote Script for client-only producer work.
 - Do not invent legal, privacy, support or refund text.
 - Do not copy the external product's tool counts or install claims.
@@ -341,8 +341,8 @@ A feature is done when:
 - [ ] Confirm the open Set before any write.
 - [ ] Create a backed-up scratch copy of a real song.
 - [ ] Run `session_brief` on it.
-- [ ] Run `takes_create` dry-run; confirm nothing changed.
-- [ ] Apply one take set on the scratch copy; verify A/B and undo.
+- [x] Run `takes_create` dry-run; confirm nothing changed.
+- [x] Apply one take set on the scratch copy; verify A/B and undo.
 - [ ] Record the evidence.
 - [ ] Update `CURRENT_STATE.md` if the state changed.
 - [ ] Use the panel only for the safe v1 actions documented in [../panel.md](../panel.md).
@@ -370,8 +370,8 @@ Use this as the first instruction in a new session:
 You are taking over Enableton. Read docs/product/README.md, docs/product/HANDOFF.md,
 docs/product/CURRENT_STATE.md, SPEC.md, AGENTS.md and docs/producer-layer.md before changing
 anything. The tree may be dirty; do not overwrite user work. The current product direction is
-Analyze / Suggest / Create take, not the full 87-tool catalogue. First establish a clean baseline,
-run the fake suite and doctor, then prove one takes_create dry-run and one applied take set on a
-backed-up scratch Set with undo. The local panel exists; do not claim take select/discard, memory,
-variation or audible verification exists. Record evidence with Verified/Assumed/Unverified tags.
+Analyze / Suggest / Create take, not the full 87-tool catalogue. The panel baseline is committed and
+the two-take apply/A-B/undo gate passed on a scratch Set. Run the fake suite and doctor, then work on
+`takes_select`/`takes_discard` or variation. Do not claim memory or audible verification exists.
+Record evidence with Verified/Assumed/Unverified tags.
 ```

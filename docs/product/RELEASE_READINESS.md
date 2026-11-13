@@ -25,7 +25,8 @@ An unchecked item is a blocker, not a task someone may assume is done.
   verified.
 - [ ] MCP client config is generated from the actual path and tested with approved clients.
 - [x] The engine does not write a user `.als` in place by design; scratch/executor paths exist.
-- [~] Producer writes use dry-run/undo/scratch; real take apply and full rollback are not yet proven.
+- [x] Producer writes use dry-run/undo/scratch; a two-take panel apply, fader A/B and undo were
+  verified on a backed-up scratch Set, including removal of both copies and source-volume restore.
 - [x] The panel binds loopback only, serves no external assets, and its preview tokens are in-memory,
   single-use and expiring.
 - [x] Real panel mute apply/undo on a scratch Set: preview, read-back and restore verified; the
@@ -44,18 +45,19 @@ An unchecked item is a blocker, not a task someone may assume is done.
 ### Make and choose a take
 
 - [x] `takes_create` dry-run verified on real Live.
-- [ ] Real apply verified; A/B and undo verified.
+- [x] Real panel apply verified: two named take tracks created with isolated faders.
+- [x] Fader A/B verified; both copies removed and source volume restored by the returned undo tokens.
 - [ ] `takes_select` / `takes_discard` implemented.
 - [ ] One real variation implemented; identical copies are not a variation.
-- [ ] Producer-facing A/B evidence recorded.
+- [x] Producer-facing A/B evidence recorded in [../panel.md](../panel.md#live-acceptance-record).
 
 ### Panel
 
 - [x] `enableton panel` starts a loopback page; status, session, tracks, takes and static assets
   were exercised against real Live.
 - [x] A real dry-run/apply/undo of one mute field passed on a backed-up scratch Set.
-- [ ] Real panel take apply, manual UI click-through of every row action, and panel take
-  select/discard are not verified.
+- [x] Real panel take apply, A/B and undo passed on the scratch Set.
+- [ ] Manual UI click-through of every row action and panel take select/discard are not verified.
 
 ### Reference and sound
 
@@ -89,14 +91,13 @@ An unchecked item is a blocker, not a task someone may assume is done.
 ## Current blockers
 
 1. **No approved product shape.** D-02/D-03 are proposals.
-2. **No real take apply.** The differentiating workflow has only dry-run real evidence.
-3. **No A/B select/discard.** Producers must use raw fader values.
-4. **No integrated reference workflow.** Measurement exists; capture-to-change does not.
-5. **No setup/compatibility/client UX** matching the release checklist.
-6. **No legal/privacy/support assets.** Do not invent them.
-7. **No beta or demo.** Both are external deliverables.
-8. **Version scheme unresolved.** Package `0.1.0` and Remote Script `0.4.26` are not the same thing.
-9. **Documentation drift.** AGENTS/MISSION/mcp docs contain stale status lines; this pack records the
+2. **No A/B select/discard tool.** Producers must use raw fader values for the A/B switch.
+3. **No integrated reference workflow.** Measurement exists; capture-to-change does not.
+4. **No setup/compatibility/client UX** matching the release checklist.
+5. **No legal/privacy/support assets.** Do not invent them.
+6. **No beta or demo.** Both are external deliverables.
+7. **Version scheme unresolved.** Package `0.1.0` and Remote Script `0.4.26` are not the same thing.
+8. **Documentation drift.** AGENTS/MISSION/mcp docs contain stale status lines; this pack records the
     current interpretation but does not rewrite historical evidence.
 
 ## Evidence rules

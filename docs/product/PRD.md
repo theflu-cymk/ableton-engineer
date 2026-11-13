@@ -20,11 +20,12 @@ DAW, a hosted service, a replacement for Live, or a promise of unlimited LOM acc
 | Standalone app or MCP tool? | MCP server with producer workflow mode | Proposed, needs owner approval |
 | Primary surface | `enableton serve --mode produce` | Proposed |
 | Engine | Keep the current custom Enableton server/Remote Script | Proposed |
-| Panel | Defer; do not silently include | Proposed |
+| Panel | Local loopback panel as an additive surface; no separate app | Implemented for this build; release shape proposed |
 | Release | One-user beta before public | Open |
 
-The alternative — a separate in-Live or companion panel — is a different product shape with its own
-UX, packaging and support scope. It must not be smuggled into the MVP.
+The local loopback panel is implemented and documented in [../panel.md](../panel.md). A separate
+in-Live or standalone app remains a different product shape with its own UX, packaging and support
+scope; it is not part of this MVP.
 
 ## Target user
 
@@ -73,8 +74,8 @@ separate generative suggestion engine yet.
 Duplicate a real track into named alternatives, leave one audible, lower the others, and make the
 operation reversible. The producer chooses what to keep.
 
-**Current:** `takes_create` dry-run-supported duplicate workflow. Takes are identical until edited;
-select/discard/variation are planned, not present.
+**Current:** `takes_create` duplicate workflow with a verified real apply, fader A/B and undo on a
+scratch Set. Takes are identical until edited; select/discard/variation are planned, not present.
 
 ## MVP workflows
 
@@ -127,7 +128,7 @@ change.”
 | FR-3 | Generate usable MCP client configuration from the actual install path for approved clients. | Absent / unverified |
 | FR-4 | `session_brief` returns sections, roles, issues and next actions from one snapshot. | Implemented; real blank-Set read verified |
 | FR-5 | `reference_analyze` returns basic WAV measurements and optional advanced values, with explicit unavailable reasons. | Implemented; real WAV verified |
-| FR-6 | `takes_create` plans and creates real named duplicate takes with dry-run, undo and rollback. | Dry-run verified; real apply open |
+| FR-6 | `takes_create` plans and creates real named duplicate takes with dry-run, undo and rollback. | Dry-run and real apply/A-B/undo verified on a scratch Set |
 | FR-7 | The producer can select/discard takes without editing fader numbers. | Planned; not implemented |
 | FR-8 | Takes can become real alternatives through a bounded variation operation. | Planned; not implemented |
 | FR-9 | Capture → compare → one bounded change works as a producer flow. | Pieces exist; orchestration missing |
@@ -163,9 +164,11 @@ change.”
 ### Evidence-level
 
 - `session_brief` on a real Set has a named real-Live call and a fresh read-back.
-- `takes_create` dry-run matches the applied plan, and undo restores the source and take tracks.
+- `takes_create` dry-run matches the applied plan, and undo restores the source and removes the take
+  tracks; this passed through the panel on a backed-up scratch Set.
 - `reference_analyze` reports a real capture and clearly separates measured/unavailable fields.
-- A real A/B selection changes what is audible, and a second action restores it.
+- A real fader A/B selection changes what is audible, and undo restores the source; panel select/discard
+  is still absent.
 - Setup has a clean-machine transcript, not just a command list.
 - Compatibility, legal, support and beta gates have named owners and evidence.
 

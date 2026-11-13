@@ -158,5 +158,26 @@ particular Live Set behaves correctly.
 - A second preview/apply restored the mute to `False` and read it back.
 - The SHA-256 of the scratch `.als` was identical before and after; Live did not save the file.
 
-**[Unverified]** A real take apply/undo from the panel, and any manual UI click-through beyond the
-API and rendered-page checks. The panel has no `takes_select`/`takes_discard` controls in v1.
+**[Verified] 2026-11-13 — real take apply, A/B switch and undo.**
+
+- The same scratch Set and build were used. The source was `snare rush` (index 9, audio, one
+  arrangement clip, volume `0.85`).
+- `POST /api/plan` for `takes_create` with `track_index: 9` and `count: 2` planned indices 10 and
+  11, returned `dry_run: true`, and issued a token.
+- `POST /api/apply` created `snare rush panel take 1` (index 10, volume `0.85`, active) and
+  `snare rush panel take 2` (index 11, volume `0.0`), with the source at volume `0.0`.
+- A/B was exercised with `tracks_set_volume`: take 1 to `0.0`, then take 2 to `0.85`. The panel
+  readback caught up after its snapshot cache aged; a direct CLI read confirmed the switch.
+- Undo used the returned `tracks_duplicate` restore entries to remove indices 10 and 11, then
+  `tracks_set_volume` restored the source to `0.85`. Readback showed 32 main tracks plus 2 returns,
+  the take list empty, and the source restored.
+- The scratch `.als` SHA-256 stayed
+  `da3c7a31a14c6d63bd32ee203015ed4bf3e4bfb1875483f374e9d609bb5d382f`.
+
+The take copies were identical at creation; this proves duplication, fader A/B and undo, not a
+musical variation. The panel has no `takes_select`/`takes_discard` controls and no Apply-to-undo
+button in v1; the returned tokens were executed through the CLI.
+
+**[Unverified]** A manual UI click-through of every control, panel-driven take selection/discard,
+and audible verification. A write made outside the panel can leave `/api/tracks` and `/api/takes`
+stale until the snapshot cache ages (up to 30 seconds); `/api/session` reads fresh.

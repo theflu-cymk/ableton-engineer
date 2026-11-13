@@ -141,11 +141,13 @@ Do these in order unless an owner changes the priority.
    do not let the next session inherit an unexplained diff.
 2. **Re-read the authoritative docs.** `SPEC.md`, `AGENTS.md`, this pack, `docs/producer-layer.md`.
 3. **Run the baseline.** Full fake suite, `doctor`, `status --json`.
-4. **Choose a safe song.** Back up a real Set and open the copy; do not use the open blank Set for a
-   meaningful producer gate.
-5. **Prove the brief.** `session_brief` on the backed-up song; compare its sections to `sections_map`.
-6. **Prove the take dry-run.** `takes_create` on a unique track; confirm no track/fader changed.
-7. **Apply one take set.** Only on the scratch copy; verify A/B and undo.
+4. **Choose a safe song. [Done]** The panel acceptance used a backed-up scratch copy; the working
+   Set was not opened. Use a fresh scratch copy for further writes.
+5. **Prove the brief. [Done]** `session_brief` read the scratch Set; a broader song comparison remains
+   useful before release.
+6. **Prove the take dry-run. [Done]** `takes_create` planned two takes and wrote nothing.
+7. **Apply one take set. [Done]** Panel apply, fader A/B and undo passed on the scratch copy; the
+   `.als` hash was unchanged.
 8. **Implement `takes_select` / `takes_discard`.** Use the existing transaction/undo conventions.
 9. **Add one variation.** Keep it bounded and reversible; do not call identical copies variations.
 10. **Build the capture → reference → one-change loop.** Measure; do not claim audition.
