@@ -45,7 +45,7 @@ explicitly open product shape. No code feature work starts on a dirty mystery tr
 **Exit gate:** one real sentence-to-outcome producer flow on a backed-up scratch Set; no working
 song written; a named real-Live call for each step.
 
-**Do not claim:** generated variations, audible improvement or panel select/discard buttons.
+**Do not claim:** generated variations, audible improvement or a panel discard Apply button.
 
 ## Phase 2 — Producer usability
 
@@ -56,6 +56,7 @@ tools exist; do not put destructive delete on the panel's Apply path.
 
 - [x] Add `takes_select` (choose audible take) with explicit state and fader undo.
 - [x] Add `takes_discard` with preview, confirmation and irreversibility handling.
+- [x] Expose safe take Select controls in the panel; keep discard preview-only with no Apply.
 - Add one real `variation` path (velocity, transpose, duration or one device delta).
 - Add local session memory: goal, decisions, accepted take and “where we left off”.
 - Add a producer-facing reference/capture workflow, not a raw file path requirement.
@@ -153,8 +154,8 @@ Do these in order unless an owner changes the priority.
 9. **Add one variation.** Keep it bounded and reversible; do not call identical copies variations.
 10. **Build the capture → reference → one-change loop.** Measure; do not claim audition.
 11. **Write the real workflow evidence** into `RELEASE_READINESS.md`.
-12. **Record panel v1 as landed.** Keep setup/compatibility as the next surface work; add safe
-    select controls before any discard affordance, and never add a destructive Apply shortcut.
+12. **Record panel v1 as landed.** Keep setup/compatibility as the next surface work; add a clear
+    undo affordance, and never add a destructive Apply shortcut.
 
 ## Exit criteria for this roadmap
 

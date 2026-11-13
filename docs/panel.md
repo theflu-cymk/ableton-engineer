@@ -83,8 +83,13 @@ the panel; use the CLI or MCP tool with its own confirmation.
 
 ### Take groups
 
-This is read-only. The panel finds tracks named `<track> take N` and shows which take is audible
-from its fader. Create takes from the tracks row menu or the composer.
+The panel finds tracks named `<track> take N` and shows which take is audible from its fader.
+Each take has a **Select** control: it previews `takes_select` with the whole group and the chosen
+take as active, then the normal Apply button writes the fader change. The response includes the
+fader undo values; there is no one-click undo button. Each take also has **Preview discard**, which
+calls `takes_discard` with `dry_run: true`; that reversible-looking preview is deliberately not
+applicable from the panel because deletion is irreversible. Create takes from the tracks row menu
+or the composer.
 
 ## Why writes are safe
 
@@ -175,8 +180,8 @@ particular Live Set behaves correctly.
   `da3c7a31a14c6d63bd32ee203015ed4bf3e4bfb1875483f374e9d609bb5d382f`.
 
 The take copies were identical at creation; this proves duplication, fader A/B and undo, not a
-musical variation. The panel has no `takes_select`/`takes_discard` buttons and no Apply-to-undo
-button in v1; the returned tokens were executed through the CLI.
+musical variation. The panel now has a Select control and a discard-preview control, but no
+Apply-to-undo button.
 
 **[Verified] 2026-11-13 — real select and discard gate.**
 
@@ -190,6 +195,17 @@ button in v1; the returned tokens were executed through the CLI.
   `da3c7a31a14c6d63bd32ee203015ed4bf3e4bfb1875483f374e9d609bb5d382f`.
 - The open scratch Set accepted an unfreeze-tracks prompt in memory; the on-disk file was not saved.
 
-**[Unverified]** A manual UI click-through, panel buttons for select/discard, and audible
-verification. A write made outside the panel can leave `/api/tracks` and `/api/takes` stale until
-the snapshot cache ages (up to 30 seconds); `/api/session` reads fresh.
+**[Verified] 2026-11-13 — panel select and discard-preview controls.**
+
+- A two-take group was created through the panel API, then rendered as a take group in the page.
+- Clicking **Select** on take 2 opened a dry-run preview listing take 1 `0.85 → 0.0` and take 2
+  `0 → 0.85`, with an Apply button. Clicking Apply wrote both faders; Live read back take 1 `0.0`,
+  take 2 `0.85`, and the page re-rendered take 2 as audible.
+- Clicking **Preview discard** on take 1 showed `reversible: false`, `undo: []` and the irreversible
+  deletion note; the Apply button was hidden. No track was deleted by the panel.
+- The test takes were restored and removed through the CLI; the scratch Set returned to 32 main
+  tracks and 2 returns with `snare rush` at `0.85`. The `.als` SHA-256 stayed unchanged.
+
+**[Unverified]** Audible verification and a manual click-through of every unrelated row action. A
+write made outside the panel can leave `/api/tracks` and `/api/takes` stale until the snapshot cache
+ages (up to 30 seconds); `/api/session` reads fresh.

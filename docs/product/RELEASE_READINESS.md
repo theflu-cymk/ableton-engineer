@@ -58,8 +58,9 @@ An unchecked item is a blocker, not a task someone may assume is done.
   were exercised against real Live.
 - [x] A real dry-run/apply/undo of one mute field passed on a backed-up scratch Set.
 - [x] Real panel take apply, A/B and undo passed on the scratch Set.
-- [ ] Manual UI click-through and panel select/discard buttons are not verified; the CLI/MCP tools
-  have real scratch-Set evidence.
+- [x] Panel Select and Preview discard controls were clicked on the scratch Set; Select applied a
+  fader change and discard showed no Apply button.
+- [ ] Audible verification and a manual click-through of every unrelated row action are not verified.
 
 ### Reference and sound
 

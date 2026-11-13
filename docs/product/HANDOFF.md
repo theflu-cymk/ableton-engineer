@@ -18,8 +18,9 @@ The producer slice exists but is only partly accepted:
 - `reference_analyze` — real WAV measurement verified.
 - `takes_create` — real dry-run, apply, fader A/B and undo verified on a backed-up scratch Set.
 - `takes_select` / `takes_discard` — real select/undo and confirmed discard verified on the scratch Set.
-- Local web panel — implemented, with real mute and take preview/apply/undo acceptance.
-- No take variation and no persistent memory. Panel select/discard buttons are not implemented.
+- Local web panel — implemented, with real mute, take Select preview/apply and discard-preview
+  acceptance.
+- No take variation and no persistent memory. Panel discard is preview-only and has no Apply button.
 
 **Your first job is not to add features.** Preserve the committed baseline and review the take
 acceptance record before adding variation.
@@ -68,10 +69,10 @@ stdio serve. `MISSION.md` still narrates an earlier tool count and milestone sta
 | Bridge | TCP `127.0.0.1:9878`, length-prefixed JSON |
 | Open Set | scratch `SCRATCH fortnight - panel acceptance`, 32 main tracks + 2 returns; unsaved |
 | Catalogue | 89 tools, 9 modes, `produce` 21 |
-| Producer evidence | brief + WAV read + panel mute/take apply + select/undo + confirmed discard |
+| Producer evidence | brief + WAV read + panel mute/take apply + panel select UI/undo + confirmed discard |
 | Save/export | no product save tool; native Live only |
 
-`doctor` at this snapshot reports `connected yes`, `errors 0`, no `stale`. That is not proof the main
+`doctor` at this snapshot reports `connected yes`, no `stale`. That is not proof the main
 thread is healthy by itself; `display` and `drains` must be advancing too.
 
 ## First 30 minutes
@@ -302,9 +303,9 @@ See [ROADMAP.md](ROADMAP.md) for the order.
 - Do not apply a take without a backup and user awareness.
 - Do not call identical duplicate tracks “variations.”
 - Do not claim an audible result from a measurement.
-- Do not claim take variation, panel select/discard buttons, persistent memory or audible
-  verification exists. Real take select/undo and confirmed discard are verified; the panel's v1
-  limits are in [../panel.md](../panel.md).
+- Do not claim take variation, panel discard Apply, one-click undo, persistent memory or audible
+  verification exists. Real panel take select/undo and confirmed discard are verified; the panel's
+  v1 limits are in [../panel.md](../panel.md).
 - Do not bump the Remote Script for client-only producer work.
 - Do not invent legal, privacy, support or refund text.
 - Do not copy the external product's tool counts or install claims.
@@ -376,6 +377,6 @@ docs/product/CURRENT_STATE.md, SPEC.md, AGENTS.md and docs/producer-layer.md bef
 anything. The tree may be dirty; do not overwrite user work. The current product direction is
 Analyze / Suggest / Create take, not the full catalogue. The panel baseline is committed and the
 take create/select/discard gate passed on a scratch Set. Run the fake suite and doctor, then work on
-take variation. Do not claim memory, panel select/discard buttons, or audible verification exists.
+take variation. Do not claim memory, panel discard Apply, one-click undo, or audible verification exists.
 Record evidence with Verified/Assumed/Unverified tags.
 ```

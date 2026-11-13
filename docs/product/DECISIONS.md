@@ -26,8 +26,8 @@ needs owner), Open (needs information), Blocked (external input required).
 | D-14 | Package and installed Remote Script versions remain separately identified; do not claim one equals the other. | **Open** | Release owner | Package `0.1.0`, script `0.4.26`. External checklist asks for a consistent product version; decide the scheme. |
 | D-15 | A real producer workflow demo is an external release deliverable, not code. | **Open** | Marketing/product | No demo video; must use consented material. |
 | D-16 | Product naming: keep `Enableton` in code/docs for now; decide the public “EnAbleton” spelling separately. | **Proposed** | Product owner | External pack uses EnAbleton; current package is Enableton. |
-| D-17 | Take variation and session memory are post-slice features; select/discard are implemented as CLI/MCP tools but have no panel buttons. | **Accepted scope** | Engineering | Select/discard are in the manifest and have real scratch-Set evidence; variation and memory are absent. |
-| D-18 | Add a local, loopback-only producer panel over the same bridge: status, session brief, tracks with safe row actions, dry-run/apply composer and read-only takes. It adds no dependency and exposes no destructive operation. | **Accepted for this build** | Owner brief, 2026-11-13 | Panel implementation, fake suite, real scratch-Set mute, take apply/A-B, select/undo and confirmed discard. |
+| D-17 | Take variation and session memory are post-slice features; select has a panel control and discard is panel preview-only. | **Accepted scope** | Engineering | Select/discard are in the manifest and have real scratch-Set evidence; variation and memory are absent. |
+| D-18 | Add a local, loopback-only producer panel over the same bridge: status, session brief, tracks with safe row actions, dry-run/apply composer, take Select and preview-only discard. It adds no dependency and exposes no destructive Apply path. | **Accepted for this build** | Owner brief, 2026-11-13 | Panel implementation, fake suite, real scratch-Set mute, take apply/A-B, panel select/undo and confirmed discard preview. |
 
 ## Mapping to the external owner inputs
 

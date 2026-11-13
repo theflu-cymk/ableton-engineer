@@ -43,11 +43,11 @@ larger tool menu and not a standalone DAW.
 - **[Verified]** The full fake suite passed after this slice. A green fake suite is **not**
   real-Live proof.
 - **[Verified]** The producer slice has real evidence for a read-only brief, a take dry-run, a
-  two-take panel apply with fader A/B and undo, real select/undo and confirmed discard, a real WAV
+  two-take panel apply with fader A/B and undo, panel select/undo and discard preview, a real WAV
   reference measurement and a panel mute apply/undo. No take was applied to a working Set. No
   audible test was run.
-- **[Verified]** The local panel exists at `enableton panel`; it has no select/discard buttons or
-  persistent memory, and no take variation tool yet.
+- **[Verified]** The local panel exists at `enableton panel`; it has Select and preview-only discard
+  controls, no discard Apply button, no persistent memory and no take variation tool yet.
 - **[Verified]** The tree has no `LICENSE`, EULA, privacy policy, refund policy, support contact or
   demo video. Those are release blockers, not documentation chores to invent.
 

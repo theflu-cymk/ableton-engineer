@@ -10,14 +10,14 @@
 |---|---|---|
 | Package | `Enableton 0.1.0`, Python `>=3.11`; local runtime 3.11.17 via `uv` | [Verified] `pyproject.toml`, `uv run python -V` |
 | Git | branch `main`, panel baseline `a473577`; select/discard slice in this pass | [Verified] `git status`, `git log` |
-| Live | 12.2.5; connected; Remote Script `0.4.26`; build `a7fcd016f88d`; `errors 0`; not stale | [Verified] `uv run enableton doctor` after restart, 2026-11-13 |
+| Live | 12.2.5; connected; Remote Script `0.4.26`; build `a7fcd016f88d`; not stale | [Verified] `uv run enableton doctor` after restart, 2026-11-13 |
 | Open Set | scratch `SCRATCH fortnight - panel acceptance`, 120 BPM, 32 main tracks + 2 returns; no take tracks | [Verified] `enableton status`, 2026-11-13 |
 | Catalogue | 89 tools; 9 modes; `produce` has 21 resolved tools | [Verified] `tools.json`, `modes.json`, `enableton modes` |
 | Producer tools | `session_brief`, `reference_analyze`, `takes_create`, `takes_select`, `takes_discard` | [Verified] manifest and source |
-| Producer evidence | brief, WAV reference, take create/apply, panel select/undo and discard; real scratch-Set gate | [Verified] real calls on 2026-11-12 and 2026-11-13 |
+| Producer evidence | brief, WAV reference, take create/apply, panel select UI/undo and discard preview; real scratch-Set gate | [Verified] real calls on 2026-11-12 and 2026-11-13 |
 | Writes | Mute, two takes and select were applied/undone; discard removed both takes after confirm; no `.als` saved or changed | [Verified] panel/CLI apply, undo, discard and SHA-256 check, 2026-11-13 |
 | Tests | full fake suite green after this slice; not a substitute for Live | [Verified] `pytest -q` |
-| UI / memory | Local web panel implemented; no persistent producer memory | [Verified] source, live panel, and tests |
+| UI / memory | Local web panel implemented with take Select and preview-only discard; no persistent producer memory | [Verified] source, live panel, and tests |
 
 ## Architecture as implemented
 
@@ -69,7 +69,7 @@ are design-era names, not the current file map.
 
 - **[Verified]** The panel rendered the live scratch Set after Live was restarted with the current
   `a7fcd016f88d` build; its header showed `Live connected`, the session brief, the track rows and
-  the read-only take list.
+  take groups with Select and discard-preview controls.
 - **[Verified]** A real panel dry run previewed a single mute field, applied it on the scratch Set,
   read the field back as `true`, and returned the exact prior value as an undo token.
 - **[Verified]** Applying the undo token restored the field to `false`; the scratch `.als` SHA-256
@@ -77,13 +77,15 @@ are design-era names, not the current file map.
 - **[Verified]** The panel planned and applied a two-take set on `snare rush` (indices 10 and 11),
   with take 1 at `0.85`, take 2 and the source at `0.0`. A/B moved take 1 to `0.0` and take 2 to
   `0.85`; undo removed both copies and restored the source. The scratch `.als` hash stayed unchanged.
-- **[Verified]** Real `takes_select` via the panel selected take 2, read it back at `0.85` with take 1
-  at `0.0`, and the returned fader undo restored the prior state.
-- **[Verified]** Real `takes_discard` was previewed by the panel with `can_apply: false` and no token;
+- **[Verified]** Clicking the panel's Select control previewed `takes_select`, Apply wrote it, and
+  readback showed take 2 at `0.85` with take 1 at `0.0`; the returned fader undo restored the prior
+  state.
+- **[Verified]** Real `takes_discard` was previewed by the panel's Preview discard control with
+  `can_apply: false` and no token;
   the CLI removed both takes after `confirm: true` and read back 32 main tracks with the source
   restored. This is irreversible deletion, not undo.
-- **[Unverified]** A manual click-through of every UI control, panel buttons for take select/discard,
-  and audible verification. The fake suite covers the plan/apply and discard paths but is not Live proof.
+- **[Unverified]** Audible verification and a manual click-through of every unrelated row action.
+  The fake suite covers the plan/apply and discard paths but is not Live proof.
   An unfreeze-tracks prompt was accepted on the scratch Set during the gate; it is an in-memory
   freeze-state change, and the on-disk `.als` hash stayed unchanged.
 
@@ -114,7 +116,8 @@ are design-era names, not the current file map.
 - **[Verified]** Real panel apply on `snare rush` created two named take tracks; a CLI fader change
   switched A/B, and the returned undo tokens removed both copies and restored the source.
 - **[Verified]** Real panel select, undo and confirmed CLI discard passed on the scratch Set.
-- **[Unverified]** Panel UI buttons for select/discard and any audible check.
+- **[Verified]** Panel Select and Preview discard controls were clicked on real Live; discard had
+  no Apply button. Audible verification is still unverified.
 - **[Verified]** Takes are identical copies at creation; they are not generated variations.
 
 ### `takes_select` / `takes_discard`
@@ -160,8 +163,8 @@ The following is historical evidence, not a claim that the current build repeats
 
 1. **No take variation.** Take 2 is an identical copy.
 2. **No producer memory.** The brief is stateless; there is no “where did we leave off”.
-3. **Panel v1 is deliberately narrow.** Takes are read-only in the browser; select/discard exist in
-   the CLI/MCP tools but are not UI buttons. Discard is deliberately not applicable from the panel.
+3. **Panel v1 is deliberately narrow.** Take Select and discard-preview controls exist; discard is
+   deliberately not applicable from the panel, and there is no one-click undo.
 4. **No reference capture orchestration.** Analysis works on a file; capture → compare is manual.
 5. **No audible verification.** Measurement is not listening.
 
@@ -221,8 +224,8 @@ The following is historical evidence, not a claim that the current build repeats
 
 - Do not apply a take to a working Set just to make a demo.
 - Do not call `takes_create` a variation generator.
-- Do not claim take variation, panel select/discard buttons or audible verification exists. Real
-  take apply, fader A/B, select/undo and confirmed discard are verified on a scratch Set.
+- Do not claim take variation, panel discard Apply, one-click undo or audible verification exists.
+  Real take apply, fader A/B, panel select/undo and confirmed discard are verified on a scratch Set.
 - Do not copy external tool counts or setup steps.
 - Do not bump the Remote Script unless you are changing `remote_script/`; the producer tools are
   client-side.

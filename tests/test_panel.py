@@ -101,7 +101,9 @@ class PanelTests(unittest.TestCase):
         status, takes = self._request("GET", "/api/takes")
         self.assertEqual(status, 200)
         self.assertEqual(takes["groups"], [])
-        self.assertTrue(takes["read_only"])
+        self.assertFalse(takes["read_only"])
+        self.assertTrue(takes["controls"]["select"])
+        self.assertFalse(takes["controls"]["discard_apply"])
 
     def test_static_assets_are_served_without_a_build_step(self):
         connection = HTTPConnection("127.0.0.1", self.port, timeout=3.0)
@@ -116,7 +118,10 @@ class PanelTests(unittest.TestCase):
         connection.request("GET", "/panel.js")
         response = connection.getresponse()
         self.assertIn("javascript", response.getheader("Content-Type"))
-        self.assertIn("previewTool", response.read().decode("utf-8"))
+        script = response.read().decode("utf-8")
+        self.assertIn("previewTool", script)
+        self.assertIn("takes_select", script)
+        self.assertIn("takes_discard", script)
         connection.close()
 
     def test_plan_then_apply_and_token_is_single_use(self):
@@ -240,6 +245,39 @@ class PanelTests(unittest.TestCase):
         self.assertTrue(planned["preview"]["dry_run"])
         self.assertEqual(planned["preview"]["count"], 1)
         self.assertIn(names[1], [track.name for track in self.adapter.song.tracks])
+
+    def test_select_take_group_previews_and_applies(self):
+        status, create = self._request(
+            "POST", "/api/plan",
+            {"tool": "takes_create", "args": {"track": "Drums", "count": 2}},
+        )
+        self.assertEqual(status, 200)
+        status, applied = self._request("POST", "/api/apply", {"token": create["token"]})
+        self.assertEqual(status, 200)
+        names = [item["name"] for item in applied["result"]["takes"]]
+        active_volume = applied["result"]["source_volume"]
+
+        status, takes = self._request("GET", "/api/takes")
+        self.assertEqual(status, 200)
+        group = next(item for item in takes["groups"] if item["source"] == "Drums")
+        self.assertEqual([item["name"] for item in group["takes"]], names)
+
+        status, planned = self._request(
+            "POST", "/api/plan",
+            {"tool": "takes_select", "args": {"takes": names, "active": 2}},
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(planned["can_apply"])
+        self.assertTrue(planned["token"])
+        self.assertTrue(planned["preview"]["dry_run"])
+        self.assertEqual(planned["preview"]["changes"][1]["to"], active_volume)
+
+        status, selected = self._request("POST", "/api/apply", {"token": planned["token"]})
+        self.assertEqual(status, 200)
+        self.assertTrue(selected["applied"])
+        volumes = {track.name: track.volume for track in self.adapter.song.tracks}
+        self.assertEqual(volumes[names[0]], 0.0)
+        self.assertEqual(volumes[names[1]], active_volume)
 
     def test_rejected_write_returns_an_error_envelope_and_no_token(self):
         status, payload = self._request(

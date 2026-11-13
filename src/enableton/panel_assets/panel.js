@@ -536,14 +536,50 @@ function renderTakes() {
     const list = make("ul", "take-list");
     for (const take of group.takes || []) {
       const item = make("li", "take" + (take.active ? " is-active" : ""));
-      item.appendChild(document.createTextNode(take.name));
-      if (take.active) item.appendChild(make("span", "take-state", "audible"));
-      if (take.mute) item.appendChild(make("span", "take-state", "muted"));
+      const info = make("div", "take-info");
+      info.appendChild(make("span", "take-name", take.name));
+      if (take.active) info.appendChild(make("span", "take-state", "audible"));
+      if (take.mute) info.appendChild(make("span", "take-state", "muted"));
+      item.appendChild(info);
+
+      const controls = make("div", "take-controls");
+      if ((group.takes || []).length > 1) {
+        const select = make("button", "button tiny" + (take.active ? " is-on" : ""), take.active ? "Audible" : "Select");
+        select.type = "button";
+        select.disabled = take.active || state.previewBusy || !state.connected;
+        select.title = take.active
+          ? "This take is already audible"
+          : "Preview selecting this take; Apply is required";
+        if (!take.active) {
+          select.addEventListener("click", () => selectTake(group, take));
+        }
+        controls.appendChild(select);
+      }
+      const discard = make("button", "button tiny ghost discard-preview", "Preview discard");
+      discard.type = "button";
+      discard.disabled = state.previewBusy || !state.connected;
+      discard.title = "Preview deleting this take; the panel will not offer Apply";
+      discard.addEventListener("click", () => previewTool(
+        "takes_discard",
+        { takes: [take.name] },
+        `Preview discard ${take.name}`,
+      ));
+      controls.appendChild(discard);
+      item.appendChild(controls);
       list.appendChild(item);
     }
     wrapper.appendChild(list);
     content.appendChild(wrapper);
   }
+}
+
+function selectTake(group, take) {
+  const takes = (group.takes || []).map((item) => item.name);
+  previewTool(
+    "takes_select",
+    { takes, active: take.name },
+    `Select ${take.name}`,
+  );
 }
 
 function renderTrackOptions() {
@@ -791,6 +827,7 @@ async function previewTool(tool, args, label) {
     state.previewBusy = false;
     if (previewButton) previewButton.disabled = false;
     renderTracks();
+    renderTakes();
   }
 }
 

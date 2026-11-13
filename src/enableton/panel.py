@@ -309,7 +309,12 @@ class PanelService:
             group["takes"].sort(key=lambda item: item["take"])
             group["count"] = len(group["takes"])
             ordered.append(group)
-        return {"groups": ordered, "count": len(ordered), "read_only": True}
+        return {
+            "groups": ordered,
+            "count": len(ordered),
+            "read_only": False,
+            "controls": {"select": True, "discard_preview": True, "discard_apply": False},
+        }
 
     # -- preview / apply ---------------------------------------------------
     def plan(self, tool_name: Any, args: Any) -> Dict[str, Any]:

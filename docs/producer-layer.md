@@ -56,8 +56,9 @@ The fake suite proves internal consistency only. The real gate above is the sepa
   copy into a real alternative.
 - A/B is fader-based (`0.0` is treated as off). `takes_select` wraps that switch; the
   `takes_discard` deletion is irreversible.
-- The local panel exists, but it is deliberately narrow: read-only take groups, no select/discard
-  buttons, no one-click undo, and no audible check. The tools are available through CLI/MCP.
+- The local panel has take-group Select controls with a dry-run/Apply step, plus preview-only
+  discard controls with no Apply button. There is no one-click undo and no audible check; the same
+  tools remain available through CLI/MCP.
 - No automatic save/export. The existing save limitation is unchanged.
 
 ## Next phases
@@ -92,10 +93,10 @@ The fake suite proves internal consistency only. The real gate above is the sepa
 
 ### 5. Producer panel
 
-- The local panel exists with status, session brief, tracks, safe row actions and a dry-run/apply
-  composer; takes are read-only.
-- Next: expose safe select controls and a clear undo affordance; keep discard off the panel's Apply
-  path; keep the dry-run plan readable.
+- The local panel exists with status, session brief, tracks, safe row actions, a dry-run/apply
+  composer, and take-group Select controls; discard is preview-only.
+- Next: add a clear one-click undo affordance and keep discard off the panel's Apply path; keep the
+  dry-run plan readable.
 - Do not turn the panel into a separate product shape or hide a write behind one click.
 
 ## Acceptance for a sellable slice

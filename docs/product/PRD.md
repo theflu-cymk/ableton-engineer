@@ -76,7 +76,7 @@ operation reversible. The producer chooses what to keep.
 
 **Current:** `takes_create` duplicate workflow plus `takes_select` and `takes_discard`, with real
 apply, select/undo and confirmed discard on a scratch Set. Takes are identical until edited;
-variation is planned, not present. Panel select/discard buttons are not built.
+variation is planned, not present. The panel has Select and preview-only discard controls.
 
 ## MVP workflows
 
@@ -130,7 +130,7 @@ change.”
 | FR-4 | `session_brief` returns sections, roles, issues and next actions from one snapshot. | Implemented; real blank-Set read verified |
 | FR-5 | `reference_analyze` returns basic WAV measurements and optional advanced values, with explicit unavailable reasons. | Implemented; real WAV verified |
 | FR-6 | `takes_create` plans and creates real named duplicate takes with dry-run, undo and rollback. | Dry-run and real apply/A-B/undo verified on a scratch Set |
-| FR-7 | The producer can select/discard takes without editing fader numbers. | CLI/MCP tools implemented and verified; panel buttons pending |
+| FR-7 | The producer can select/discard takes without editing fader numbers. | CLI/MCP tools and panel Select verified; discard is panel preview-only |
 | FR-8 | Takes can become real alternatives through a bounded variation operation. | Planned; not implemented |
 | FR-9 | Capture → compare → one bounded change works as a producer flow. | Pieces exist; orchestration missing |
 | FR-10 | Every write identifies a fresh target, preserves the original and reports partial failure honestly. | Existing safety invariants; producer workflow not fully gated |
@@ -168,8 +168,8 @@ change.”
 - `takes_create` dry-run matches the applied plan, and undo restores the source and removes the take
   tracks; this passed through the panel on a backed-up scratch Set.
 - `reference_analyze` reports a real capture and clearly separates measured/unavailable fields.
-- A real fader A/B selection changes what is audible, and undo restores the source; panel select/discard
-  is still absent.
+- A real fader A/B selection changes what is audible, and undo restores the source; the panel Select
+  control writes it and discard remains preview-only.
 - Setup has a clean-machine transcript, not just a command list.
 - Compatibility, legal, support and beta gates have named owners and evidence.
 
