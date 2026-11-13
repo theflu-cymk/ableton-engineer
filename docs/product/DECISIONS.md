@@ -12,7 +12,7 @@ needs owner), Open (needs information), Blocked (external input required).
 |---|---|---|---|---|
 | D-01 | `SPEC.md` owns technical design; `AGENTS.md` owns safety conventions; `MISSION.md` owns historical sequencing but its status lines and counts can lag this tree. This pack owns the current product/release interpretation until the owner updates MISSION. | **Accepted for this pack** | Project convention | Do not silently reconcile a conflict; record it here. |
 | D-02 | Keep the custom Enableton Python server + custom Remote Script as the base. Do not migrate the MVP to the external `mcp-server-ableton-live` package. | **Proposed** | Engineering/product owner | The current engine has real-Live gates; migration would discard them. External docs describe another codebase. |
-| D-03 | MVP shape is a technical MCP server with a producer-facing `produce` mode, not a standalone or in-Live app. | **Proposed** | Product owner | Matches the existing stdio server and avoids inventing a panel. The panel is deferred. |
+| D-03 | MVP shape is a technical MCP server with a producer-facing `produce` mode; the local panel is an additive loopback surface, not a replacement engine. | **Proposed** | Product owner | The stdio server remains the engine. The panel is implemented and covered by D-18. |
 | D-04 | Producer experience uses three verbs: Analyze, Suggest, Create take. The 87-tool catalogue is engine vocabulary, not the primary menu. | **Proposed** | Product owner | `produce` mode exists; `session_brief`, `reference_analyze`, `takes_create` are the current slice. |
 | D-05 | “Suggest” means evidence-backed next actions and measured deltas, not autonomous generation or a hidden LLM. | **Accepted direction** | Product/engineering | `session_brief.next_actions` and reference deltas are current examples. |
 | D-06 | `takes_create` v0 uses real duplicate tracks and fader-based A/B; takes are identical until edited. | **Accepted for slice** | Engineering | Real dry-run verified; real apply is still open. |
@@ -27,6 +27,7 @@ needs owner), Open (needs information), Blocked (external input required).
 | D-15 | A real producer workflow demo is an external release deliverable, not code. | **Open** | Marketing/product | No demo video; must use consented material. |
 | D-16 | Product naming: keep `Enableton` in code/docs for now; decide the public “EnAbleton” spelling separately. | **Proposed** | Product owner | External pack uses EnAbleton; current package is Enableton. |
 | D-17 | Take variation, select/discard and session memory are post-slice features, not claims about the current build. | **Accepted scope** | Engineering | They are listed in `docs/producer-layer.md` and are absent from code. |
+| D-18 | Add a local, loopback-only producer panel over the same bridge: status, session brief, tracks with safe row actions, dry-run/apply composer and read-only takes. It adds no dependency and exposes no destructive operation. | **Accepted for this build** | Owner brief, 2026-11-13 | Panel implementation, fake suite, live page and real scratch-Set mute apply/undo. |
 
 ## Mapping to the external owner inputs
 
@@ -34,7 +35,7 @@ The Supreme Potato pack's D-1…D-11 remain the commercial checklist. This is th
 
 | External | Local decision | Current reconciliation |
 |---|---|---|
-| D-1 product shape | D-03 | Recommend producer-facing MCP mode; no standalone app in MVP. Needs approval. |
+| D-1 product shape | D-03/D-18 | Producer-facing MCP mode plus the additive local panel; the owner still needs to approve the release shape. |
 | D-2 supported matrix | D-11 | Still open. Do not claim broad compatibility. |
 | D-3 port behavior | D-12 | Current port 9878; port selection is not a shipped UX. |
 | D-4 release channel | D-10 | Recommend one-user beta; no beta has run. |
@@ -61,6 +62,7 @@ The Supreme Potato pack's D-1…D-11 remain the commercial checklist. This is th
 - Approve or reject D-02/D-03: custom Enableton MCP with producer mode as the MVP.
 - Name and audience: Enableton vs EnAbleton; one-user beta vs public launch.
 - Supported matrix and port behavior.
-- Whether the panel is post-MVP or a separate product.
+- Confirm the additive panel's release shape (D-18 is accepted for this build, not yet a release
+  commitment).
 - Version scheme for package and Remote Script.
 - Legal/privacy/support owners and inputs.

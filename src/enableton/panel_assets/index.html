@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Enableton panel</title>
+  <link rel="stylesheet" href="/panel.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">EN</span>
+      <div>
+        <h1>Enableton</h1>
+        <p class="eyebrow">Live companion</p>
+      </div>
+    </div>
+
+    <div class="connection" aria-live="polite">
+      <span id="conn-dot" class="status-dot is-unknown" aria-hidden="true"></span>
+      <span id="conn-label">Checking Live…</span>
+    </div>
+
+    <div class="status-meta">
+      <span class="meta-item"><span class="meta-key">Live</span> <span id="meta-live">—</span></span>
+      <span class="meta-item"><span class="meta-key">Script</span> <span id="meta-script">—</span></span>
+      <span class="meta-item"><span class="meta-key">Build</span> <span id="meta-build">—</span></span>
+      <span class="meta-item"><span class="meta-key">Queue</span> <span id="meta-queue">—</span></span>
+      <button id="btn-reconnect" class="button ghost" type="button">Reconnect</button>
+    </div>
+  </header>
+
+  <main id="main" class="page">
+    <section id="banner" class="banner" role="alert" hidden>
+      <div>
+        <h2 id="banner-title">Live is not connected</h2>
+        <p id="banner-message"></p>
+        <ul id="banner-hints" class="hint-list"></ul>
+      </div>
+    </section>
+
+    <section class="card session-card" aria-labelledby="session-heading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Current Set</p>
+          <h2 id="session-heading">Session</h2>
+        </div>
+        <span id="session-stamp" class="muted">waiting for Live</span>
+      </div>
+      <div id="session-content" class="session-content">
+        <p class="placeholder">The session brief will appear here when Live answers.</p>
+      </div>
+    </section>
+
+    <section class="card tracks-card" aria-labelledby="tracks-heading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Mixer</p>
+          <h2 id="tracks-heading">Tracks</h2>
+        </div>
+        <span id="track-count" class="muted">—</span>
+      </div>
+      <div class="table-wrap">
+        <table class="tracks-table">
+          <caption class="visually-hidden">Tracks in the current Live Set. Mute and solo are previewed before they are applied.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Track</th>
+              <th scope="col">Type</th>
+              <th scope="col">Devices</th>
+              <th scope="col" class="num">Volume</th>
+              <th scope="col" class="state-col">Mute</th>
+              <th scope="col" class="state-col">Solo</th>
+              <th scope="col" class="state-col">Arm</th>
+              <th scope="col" class="actions-col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tracks-body">
+            <tr><td colspan="8" class="placeholder">Waiting for the track list.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="fine-print">Mute and solo are written through the existing snapshot-restore tool, one field at a time. Nothing is written until you press Apply.</p>
+    </section>
+
+    <section class="card composer-card" aria-labelledby="composer-heading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Dry run first</p>
+          <h2 id="composer-heading">Action composer</h2>
+        </div>
+        <span class="muted">preview → apply</span>
+      </div>
+
+      <form id="composer" class="composer" novalidate>
+        <div class="field">
+          <label for="action-select">Action</label>
+          <select id="action-select">
+            <option value="volume">Set volume</option>
+            <option value="rename">Rename or recolour</option>
+            <option value="duplicate">Duplicate track</option>
+            <option value="takes">Create A/B takes</option>
+            <option value="custom">Custom tool</option>
+          </select>
+        </div>
+
+        <div class="field" id="track-field">
+          <label for="track-select">Track</label>
+          <select id="track-select"></select>
+        </div>
+
+        <div id="composer-fields" class="composer-fields"></div>
+
+        <div class="composer-actions">
+          <button id="btn-preview" class="button primary" type="submit">Preview change</button>
+          <span id="composer-hint" class="muted">Preview is a dry run. You can cancel before writing.</span>
+        </div>
+      </form>
+    </section>
+
+    <section id="preview-card" class="card preview-card" aria-labelledby="preview-heading" hidden>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Dry-run result</p>
+          <h2 id="preview-heading">Planned change</h2>
+        </div>
+        <span id="preview-title" class="muted"></span>
+      </div>
+      <p id="preview-note" class="notice" hidden></p>
+      <div id="preview-changes" class="change-list"></div>
+      <pre id="preview-json" class="json" tabindex="0"></pre>
+      <div id="apply-result" class="apply-result" hidden></div>
+      <div class="preview-actions">
+        <button id="btn-apply" class="button primary" type="button">Apply change</button>
+        <button id="btn-cancel" class="button" type="button">Cancel</button>
+        <span id="preview-meta" class="muted"></span>
+      </div>
+    </section>
+
+    <section class="card takes-card" aria-labelledby="takes-heading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Read only</p>
+          <h2 id="takes-heading">Take groups</h2>
+        </div>
+        <span id="takes-count" class="muted">—</span>
+      </div>
+      <div id="takes-content" class="takes-content">
+        <p class="placeholder">Take groups will appear here after `takes_create` has made some.</p>
+      </div>
+    </section>
+
+    <footer class="page-footer">
+      <p>Loopback only. No account, telemetry, external fonts or CDN assets.</p>
+      <p>If something fails, the terminal that started the panel has the same message.</p>
+    </footer>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script src="/panel.js"></script>
+</body>
+</html>

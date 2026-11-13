@@ -134,6 +134,17 @@ def main(argv: Optional[list] = None) -> int:
         "menu", help="interactive menu (what a bare `enableton` opens)", parents=[common]
     )
 
+    # The panel's --port is its own HTTP port, not the bridge port. It deliberately does not
+    # inherit ``common``: the bridge port stays at 9878 and the panel defaults to 9879 so the two
+    # can never collide by accident.
+    panel = sub.add_parser("panel", help="open the local producer panel")
+    panel.add_argument("--host", default=argparse.SUPPRESS)
+    panel.add_argument("--port", type=int, default=9879, help="panel HTTP port (default 9879)")
+    panel.add_argument(
+        "--no-browser", action="store_true",
+        help="print the URL instead of opening a browser",
+    )
+
     args = parser.parse_args(argv)
 
     if args.command == "setup":
@@ -386,6 +397,17 @@ def main(argv: Optional[list] = None) -> int:
         except ModeError as exc:
             parser.error(str(exc))
         return EXIT_OK
+
+    if args.command == "panel":
+        from .panel import run_panel
+
+        try:
+            return run_panel(
+                host=args.host, port=args.port, no_browser=args.no_browser,
+            )
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return EXIT_FINDINGS
 
     if args.command == "menu" or args.command is None:
         return _menu(parser)

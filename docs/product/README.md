@@ -1,6 +1,6 @@
 # Enableton product pack
 
-**Status:** integration draft, 2026-11-12. This pack describes the current tree and the product
+**Status:** integration draft, 2026-11-13. This pack describes the current tree and the product
 direction; it is not a release certificate.
 
 **Evidence tags used in this pack:** **[Verified]** means a command, source file, real-Live read or
@@ -25,25 +25,27 @@ technical design, stop and reconcile; do not silently pick one.
 ## The one-sentence direction
 
 Enableton should be a **producer-facing MCP workflow** — Analyze, Suggest, Create take — backed by
-real Live reads and reversible writes, not a larger tool menu and not a standalone DAW for the MVP.
+real Live reads and reversible writes, with a local panel as an additive front door. It is not a
+larger tool menu and not a standalone DAW.
 
 ## Current snapshot
 
-- **[Verified]** Repository: `Enableton`, package version `0.1.0`, branch `main`, baseline commit
-  `bd15174`, with a **dirty working tree** before this pack was written.
-- **[Verified]** Live 12.2.5, Remote Script `0.4.26`, build `8b2140fc8d91`, connected, `errors 0`,
-  `stale` absent at the 2026-11-12 check.
-- **[Verified]** The currently open Live Set is a blank untitled 120 BPM Set: 4 working tracks,
-  2 returns, 0 locators, 0 arrangement clips, 0 Session clips.
+- **[Verified]** Repository: `Enableton`, package version `0.1.0`, branch `main`; baseline
+  `bd15174`, with the panel implementation committed in this pass.
+- **[Verified]** Live 12.2.5, Remote Script `0.4.26`, build `a7fcd016f88d`, connected, `errors 0`,
+  not stale at the 2026-11-13 check.
+- **[Verified]** The currently open Live Set is the scratch copy `SCRATCH fortnight - panel
+  acceptance`: 120 BPM, 32 tracks, 122 bars. The original working Set was not opened or written.
 - **[Verified]** Catalogue: 87 tools in 9 modes. `produce` is one of them and contains 19 resolved
   tools. The three producer headline tools are `session_brief`, `reference_analyze` and
   `takes_create`.
 - **[Verified]** The fake suite was green before this documentation pass. A green fake suite is
   **not** real-Live proof.
-- **[Verified]** The producer slice has real evidence for a read-only brief, a take **dry-run**, and
-  a real WAV reference measurement. No take was applied to a working Set. No audible test was run.
-- **[Verified]** There is no in-Live panel, no persistent session memory, and no take
-  select/discard/variation tool yet.
+- **[Verified]** The producer slice has real evidence for a read-only brief, a take **dry-run**, a
+  real WAV reference measurement and a panel mute apply/undo on the scratch Set. No take was applied
+  to a working Set. No audible test was run.
+- **[Verified]** The local panel exists at `enableton panel`; there is no persistent session memory
+  and no take select/discard/variation tool yet.
 - **[Verified]** The tree has no `LICENSE`, EULA, privacy policy, refund policy, support contact or
   demo video. Those are release blockers, not documentation chores to invent.
 
@@ -90,11 +92,11 @@ The three external workflows remain the **release proof set**; the producer verb
    until the product owner approves the change.
 4. **Use the external release checklist without pretending it is satisfied.** Setup, compatibility,
    legal, support, demo and beta are still open.
-5. **Keep the producer panel as a post-MVP decision.** MCP/CLI is the MVP surface; the panel is a
-   separate product shape and must not be silently promised.
+5. **Treat the panel as an additive surface, not a replacement.** MCP/CLI remains the engine
+   surface; the panel is the producer front door and exposes only documented safe actions.
 
 ## First action
 
-Read [HANDOFF.md](HANDOFF.md), then run the baseline checks in its “First 30 minutes” section. Do not
-apply a write to the open Set. The current open Set is blank, so a meaningful take test needs a
-backed-up scratch copy of a real song.
+Read [HANDOFF.md](HANDOFF.md), then run the baseline checks in its “First 30 minutes” section. The
+open Set is the panel-acceptance scratch copy, not a working song. For the take gate, make a fresh
+backed-up scratch copy of a real song; never apply to the working Set.

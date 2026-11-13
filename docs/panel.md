@@ -1,0 +1,162 @@
+# The Enableton panel
+
+The panel is a local web window over the same bridge and tool catalogue the MCP server and CLI use.
+It is for the common producer actions: seeing whether Live is connected, reading the current Set,
+changing a track safely, and making the first A/B takes. It is not a second audio engine and it
+does not open a second socket protocol.
+
+The panel ships inside the existing `enableton` package. It has no build step, no npm dependency
+and no external assets: the HTML, CSS and JavaScript are served by the same Python process.
+
+## Start it
+
+```bash
+uv run enableton panel
+```
+
+The page opens at <http://127.0.0.1:9879/>. The panel listens on loopback only; the Live bridge
+remains on its usual port, 9878. To print the URL instead of opening a browser:
+
+```bash
+uv run enableton panel --no-browser
+```
+
+Use `--port` only when 9879 is already occupied:
+
+```bash
+uv run enableton panel --port 9880
+```
+
+Stop the panel with `Ctrl+C` in that terminal. A port of 9878 is refused because it belongs to the
+bridge.
+
+## What the screens show
+
+### Header
+
+The header is the first diagnostic. It shows:
+
+- the connection dot and a plain-language state;
+- the Live version, installed Remote Script version and loaded build digest;
+- the bridge queue depth;
+- a **Reconnect** button.
+
+A `stale` build means Live is running a different script build from this checkout. Run
+`uv run enableton setup --force` and restart Live, then check the header again. The same check is
+available as JSON from `uv run enableton doctor --json`.
+
+### Session
+
+This is `session_brief`: the Set title, section map, role balance, structural issues and the next
+three suggested producer moves. It is read-only. Roles are inferred from track names, not from
+audio, so treat the card as a map rather than a verdict.
+
+### Tracks
+
+One row per track with name, type, device names, volume, mute, solo and arm state. Mute and solo
+are buttons; arm is shown read-only.
+
+The row action menu offers only the safe v1 edits:
+
+- rename or recolour;
+- set volume;
+- duplicate the track;
+- create A/B takes.
+
+Destructive operations such as delete and clean-empty are deliberately absent from the panel.
+They remain available through the CLI and MCP surfaces, which have their own confirmation rules.
+
+Mute and solo use the existing `mix_snapshot_restore` tool with a single-field restore entry. That
+means the panel gets the tool's existing dry run, undo token and safety checks; it does not invent
+a hidden direct write.
+
+### Action composer
+
+The composer calls one named tool with typed arguments. `Preview change` is always a dry run. The
+panel then shows the changed fields and the complete raw result, with **Apply change** and
+**Cancel** buttons. Nothing is written until Apply is clicked.
+
+The panel keeps the preview token in its own memory, binds it to the exact tool and arguments, and
+consumes it on one Apply. It expires after ten minutes. A read-only tool never receives an apply
+token. A write the catalogue marks as irreversible can be previewed but cannot be applied from
+the panel; use the CLI or MCP tool with its own confirmation.
+
+### Take groups
+
+This is read-only. The panel finds tracks named `<track> take N` and shows which take is audible
+from its fader. Create takes from the tracks row menu or the composer.
+
+## Why writes are safe
+
+Every panel write goes through the same path as the CLI and MCP server:
+
+1. `POST /api/plan` forces `dry_run: true` and returns the planned changes.
+2. Apply replays exactly those arguments with `dry_run: false`.
+3. For catalogue writes, the existing executor takes a scratch copy of the Set, records the
+   undo token and rolls back if the tool refuses or the applied trace differs from the dry run.
+   `takes_create` is special-cased by the existing tool layer and performs its own duplicate and
+   volume rollback; it still has to pass the panel's preview first.
+4. The panel surfaces the undo token in the preview result after Apply.
+
+The panel never writes `.als` files in place. If the Set has never been saved, a preview can still
+run, but Apply refuses because there is no file to copy first. Save the Set, then preview again.
+
+## Failure modes seen in practice
+
+### 1. Live is closed or the Control Surface is not selected
+
+The page still loads. The health strip turns red and the banner says `Live is not connected` with
+the same hints `doctor` gives. In Live, choose **Enableton** in
+**Preferences > Link, Tempo & MIDI**, then press **Reconnect**. The terminal that started the
+panel has the exact error and the request path for a support report.
+
+### 2. The loaded script is stale
+
+The header shows a build digest, and marks it stale when it differs from this checkout. The fix is:
+
+```bash
+uv run enableton setup --force
+```
+
+Then restart Live. Live scans Remote Scripts only at startup. The panel will keep polling and will
+show the new build after the restart; no panel restart is required.
+
+### 3. A poll times out or the Set is reopened in Live
+
+The panel uses plain polling, not websockets. If a poll fails, the UI resets to a clear
+disconnected state and retries every two seconds. Reopening a Set in Live is therefore a normal
+recovery: wait for the next successful status poll, or press **Reconnect**. A preview token is
+single-use; if state changed, preview the edit again rather than trying to reuse an old Apply.
+
+The same reset happens if the bridge is busy or a command exceeds its timeout. The panel does not
+retry a write automatically: an interrupted Apply is never repeated silently.
+
+## Verification
+
+The panel tests use a fake bridge and do not need Live:
+
+```bash
+uv run pytest -q tests/test_panel.py
+```
+
+They cover the healthy status payload, the session/tracks/takes endpoints, static assets, a
+plan-to-apply flow, a rejected write, single-use tokens, the bridge-unreachable 503 and the
+loopback bind. Live verification is still a separate gate: a green fake suite is not proof that a
+particular Live Set behaves correctly.
+
+## Live acceptance record
+
+**[Verified] 2026-11-13 — scratch Set only.**
+
+- Live: `12.2.5`; Remote Script `0.4.26`; build `a7fcd016f88d`; `doctor` connected, `errors 0`.
+- Scratch file: `tmp/panel-scratch/SCRATCH fortnight - panel acceptance.als`, copied from the
+  existing `SCRATCH fortnight.als`; the working Set was not opened or written.
+- `POST /api/plan` previewed a mute change on track index 1 (`False` to `True`), returned
+  `dry_run: true`, and issued a token.
+- `POST /api/apply` applied it; `/api/tracks` read back `mute: true`, and the response contained the
+  exact undo token (`field: mute`, `value: false`).
+- A second preview/apply restored the mute to `False` and read it back.
+- The SHA-256 of the scratch `.als` was identical before and after; Live did not save the file.
+
+**[Unverified]** A real take apply/undo from the panel, and any manual UI click-through beyond the
+API and rendered-page checks. The panel has no `takes_select`/`takes_discard` controls in v1.

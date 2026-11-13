@@ -6,9 +6,10 @@ measurements and real A/B track takes.
 
 ## Status
 
-The Live engine and the producer slice are implemented and covered by the fake suite. The product
-surface is still an MCP/CLI tool, not a finished in-Live panel. See
-[docs/producer-layer.md](docs/producer-layer.md) for the phased plan and explicit limits.
+The Live engine, the producer slice and the local web panel are implemented and covered by the
+fake suite. The panel is the everyday entry point; the MCP server and CLI remain available for
+automation and the full tool catalogue. See [docs/panel.md](docs/panel.md) for the panel guide and
+[docs/producer-layer.md](docs/producer-layer.md) for the producer-layer limits.
 
 For the reconciled product direction, current evidence, owner decisions, roadmap and release
 gates, start at [docs/product/README.md](docs/product/README.md).
@@ -31,6 +32,21 @@ Then, in Live:
 
 Live scans Remote Scripts only at startup. After changing `remote_script/`, run
 `uv run enableton setup --force`, restart Live, and run `doctor` again.
+
+## Panel
+
+Open the local producer window:
+
+```bash
+uv run enableton panel
+```
+
+It opens <http://127.0.0.1:9879/> by default. Use `--no-browser` to print the URL instead, or
+`--port` if 9879 is occupied. The panel binds loopback only, has no build step, and loads no CDN
+assets or external fonts. It shows the connection report, the session brief, the tracks table with
+mute/solo and safe row actions, an action composer that always previews a dry run before Apply,
+and read-only take groups. See [docs/panel.md](docs/panel.md) for every screen and the failure
+modes.
 
 ## Producer mode
 

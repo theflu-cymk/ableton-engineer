@@ -1,6 +1,6 @@
 # Enableton handoff
 
-**Snapshot:** 2026-11-12. **Status:** integration draft; the working tree is not a release.
+**Snapshot:** 2026-11-13. **Status:** integration draft; the working tree is not a release.
 **Audience:** a new engineer, producer-operator or LLM taking over this repository.
 
 Read [README.md](README.md) first for the product pack index, then this file, then
@@ -17,10 +17,11 @@ The producer slice exists but is only partly accepted:
 - `session_brief` — real Live read verified.
 - `reference_analyze` — real WAV measurement verified.
 - `takes_create` — real **dry-run** verified; real apply is still open.
-- No take select/discard, no variation, no memory, no panel.
+- Local web panel — implemented, with a real preview/apply/undo mute acceptance on a scratch Set.
+- No take select/discard, no variation, no persistent memory.
 
-**Your first job is not to add features.** First establish a clean baseline and finish the real take
-acceptance on a backed-up scratch Set.
+**Your first job is not to add features.** Preserve the committed panel baseline and finish the real
+take acceptance on a backed-up scratch Set.
 
 ## How to split the work
 
@@ -59,14 +60,14 @@ stdio serve. `MISSION.md` still narrates an earlier tool count and milestone sta
 | Item | Value |
 |---|---|
 | Repo | `Enableton`, package `0.1.0` |
-| Branch / baseline | `main` / `bd15174`; **dirty tree** |
+| Branch / baseline | `main` / `bd15174`; the panel implementation is committed in this baseline |
 | Python | 3.11.17 via `uv` |
 | Live | Ableton Live 12.2.5 |
-| Remote Script | `0.4.26`, build `8b2140fc8d91`, installed |
+| Remote Script | `0.4.26`, build `a7fcd016f88d`, installed and loaded |
 | Bridge | TCP `127.0.0.1:9878`, length-prefixed JSON |
-| Open Set | untitled 120 BPM, 4 tracks + 2 returns, 0 locators/clips |
+| Open Set | scratch copy `SCRATCH fortnight - panel acceptance`, 120 BPM, 32 tracks, 122 bars |
 | Catalogue | 87 tools, 9 modes, `produce` 19 |
-| Producer evidence | brief + WAV read + take dry-run; **no take apply** |
+| Producer evidence | brief + WAV read + take dry-run + panel mute apply/undo; **no take apply** |
 | Save/export | no product save tool; native Live only |
 
 `doctor` at this snapshot reports `connected yes`, `errors 0`, no `stale`. That is not proof the main
@@ -103,11 +104,10 @@ Do not run `setup --force`, restart Live or bump the Remote Script unless you ch
 
 ### What to do if the tree is dirty
 
-It is dirty at this handoff. Before a feature edit:
+The panel baseline is committed. If the tree is dirty before a feature edit:
 
 1. Inspect the diff and decide what belongs to this work; do not discard user work.
-2. Commit the current producer slice and product docs as a baseline, excluding `tmp/` artifacts and
-   any user Sets.
+2. Commit only your own work; do not add unrelated changes, `tmp/` artifacts or user Sets.
 3. Only then create a new branch or begin changes.
 
 The project convention is one writer and a committed baseline before handing the tree on. If you
@@ -116,7 +116,8 @@ clean.
 
 ## First meaningful task: prove a take on a scratch Set
 
-The open Set is blank. A blank Set proves transport/read plumbing, not the producer workflow.
+The open Set is now the scratch copy created for the panel acceptance. It is still not a substitute
+for the take workflow gate; make a fresh scratch copy if you need to leave its state untouched.
 
 1. Choose a real song and make a **scratch copy**; do not edit the working `.als`.
 2. Open the scratch copy in Live.
@@ -188,6 +189,8 @@ changing transport or Remote Script code.
 | Path | What it owns |
 |---|---|
 | `src/enableton/producer.py` | `session_brief` |
+| `src/enableton/panel.py` | loopback panel HTTP app, previews and apply tokens |
+| `src/enableton/panel_assets/` | the panel's HTML, CSS and browser JavaScript |
 | `src/enableton/reference.py` | WAV reference measurements and comparison |
 | `src/enableton/takes.py` | duplicate/rename/fader A/B take workflow |
 | `src/enableton/tools.py` | catalogue dispatch, local tools, executor routing |
@@ -213,6 +216,9 @@ actual MCP server entrypoint. Do not create a parallel server because a diagram 
 ## How to use the current producer slice
 
 ```bash
+# Open the local producer panel.
+uv run enableton panel
+
 # Start the MCP server with producer vocabulary.
 uv run enableton serve --mode produce
 
@@ -263,7 +269,6 @@ Missing before the slice is sellable:
 - one actual take variation;
 - session memory;
 - integrated capture → reference → change;
-- producer panel;
 - setup/compatibility/client UX;
 - legal/support/demo/beta.
 
@@ -282,7 +287,8 @@ See [ROADMAP.md](ROADMAP.md) for the order.
 - **Capture restore is defective on this build.** Resampling can remove `Ext. In`; the current
   remediation is `No Input`. Do not claim exact restore. See `docs/M6_M7_STATUS.md`.
 - **`tracks_gain_stage` did not have a real measured-peak write** in the M4 audit; do not claim it.
-- **Current open Set is blank.** It cannot validate the producer experience.
+- **The open Set is a scratch copy.** It can validate a reversible write, but it is not a working
+  song and must not be treated as one.
 - **External docs use a different architecture:** 242 tools, port 9877, package versions and a
   generated bridge. Do not import those into this repo.
 - **Current docs drift:** `AGENTS` serve-stub bullet, `MISSION` counts, `docs/mcp.md` counts/versions.
@@ -294,7 +300,8 @@ See [ROADMAP.md](ROADMAP.md) for the order.
 - Do not apply a take without a backup and user awareness.
 - Do not call identical duplicate tracks “variations.”
 - Do not claim an audible result from a measurement.
-- Do not claim the panel or session memory exists.
+- Do not claim take select/discard, variation, persistent memory or a real take apply exists. The
+  panel itself does exist; its v1 limits are in [../panel.md](../panel.md).
 - Do not bump the Remote Script for client-only producer work.
 - Do not invent legal, privacy, support or refund text.
 - Do not copy the external product's tool counts or install claims.
@@ -338,18 +345,19 @@ A feature is done when:
 - [ ] Apply one take set on the scratch copy; verify A/B and undo.
 - [ ] Record the evidence.
 - [ ] Update `CURRENT_STATE.md` if the state changed.
-- [ ] Do not start the panel before the producer loop is accepted.
+- [ ] Use the panel only for the safe v1 actions documented in [../panel.md](../panel.md).
 
 ## Questions that need an owner
 
-1. Is the MVP shape approved: MCP + `produce`, no standalone panel?
+1. Is the MVP shape approved: MCP + `produce`, with the local panel as an additive surface?
 2. What exact Live/OS/MCP client matrix is supported?
 3. Is the first release a one-user beta or public launch?
 4. Who supplies legal, privacy, refund and support inputs?
 5. Is the public name Enableton or EnAbleton?
 6. What is the version scheme for package vs Remote Script?
 7. Which real song may be used for demo/beta, with consent?
-8. Is the panel post-MVP, a separate product, or not planned?
+8. Is the additive panel accepted as part of the product surface (D-18), and what release shape
+   does it imply?
 
 Do not answer these by assumption in code or marketing copy. Record them in
 [DECISIONS.md](DECISIONS.md).
@@ -362,9 +370,8 @@ Use this as the first instruction in a new session:
 You are taking over Enableton. Read docs/product/README.md, docs/product/HANDOFF.md,
 docs/product/CURRENT_STATE.md, SPEC.md, AGENTS.md and docs/producer-layer.md before changing
 anything. The tree may be dirty; do not overwrite user work. The current product direction is
-Analyze / Suggest / Create take, not the full 87-tool catalogue. The open Set is blank and must not
-be used for a meaningful write gate. First establish a clean baseline, run the fake suite and
-doctor, then prove one takes_create dry-run and one applied take set on a backed-up scratch Set with
-undo. Do not claim a panel, memory, variation or audible verification exists. Record evidence with
-Verified/Assumed/Unverified tags.
+Analyze / Suggest / Create take, not the full 87-tool catalogue. First establish a clean baseline,
+run the fake suite and doctor, then prove one takes_create dry-run and one applied take set on a
+backed-up scratch Set with undo. The local panel exists; do not claim take select/discard, memory,
+variation or audible verification exists. Record evidence with Verified/Assumed/Unverified tags.
 ```

@@ -1,6 +1,6 @@
 # Current state
 
-**Snapshot:** 2026-11-12. This describes the working tree, not a released artifact.
+**Snapshot:** 2026-11-13. This describes the working tree, not a released artifact.
 **Evidence:** [Verified] = checked in this tree or through Live; [Assumed] = planning assumption;
 [Unverified] = not exercised on the required surface.
 
@@ -9,15 +9,15 @@
 | Area | Current state | Evidence |
 |---|---|---|
 | Package | `Enableton 0.1.0`, Python `>=3.11`; local runtime 3.11.17 via `uv` | [Verified] `pyproject.toml`, `uv run python -V` |
-| Git | branch `main`, baseline `bd15174`; working tree dirty before this pack | [Verified] `git status`, `git log` |
-| Live | 12.2.5; connected; Remote Script `0.4.26`; build `8b2140fc8d91`; `errors 0`; not stale | [Verified] `uv run enableton doctor` |
-| Open Set | untitled, 120 BPM, 4 working tracks + 2 returns, 8 scenes, 0 locators, 0 clips | [Verified] `uv run enableton status --json` |
+| Git | branch `main`, baseline `bd15174`; the panel implementation is committed in this baseline | [Verified] `git status`, `git log` |
+| Live | 12.2.5; connected; Remote Script `0.4.26`; build `a7fcd016f88d`; `errors 0`; not stale | [Verified] `uv run enableton doctor` after restart, 2026-11-13 |
+| Open Set | scratch copy `SCRATCH fortnight - panel acceptance`, 120 BPM, 32 tracks, 122 bars | [Verified] panel `/api/session`, 2026-11-13 |
 | Catalogue | 87 tools; 9 modes; `produce` has 19 resolved tools | [Verified] `tools.json`, `modes.json`, `enableton modes` |
 | Producer tools | `session_brief`, `reference_analyze`, `takes_create` | [Verified] manifest and source |
-| Producer evidence | brief read real Live; take **dry-run** only; WAV reference measured | [Verified] real calls on 2026-11-12 |
-| Writes | No take applied; no `.als` written; no save/export | [Verified] this pass |
+| Producer evidence | brief read real Live; panel real mute apply/undo; take **dry-run** only; WAV reference measured | [Verified] real calls on 2026-11-12 and 2026-11-13 |
+| Writes | One reversible mute applied and undone on the scratch Set; no `.als` saved or changed | [Verified] panel apply/undo and SHA-256 check, 2026-11-13 |
 | Tests | fake suite green before this docs pass; not a substitute for Live | [Verified] `pytest -q` |
-| UI / memory | No in-Live panel; no persistent producer memory | [Verified] source and docs |
+| UI / memory | Local web panel implemented; no persistent producer memory | [Verified] source, live panel, and tests |
 
 ## Architecture as implemented
 
@@ -28,6 +28,8 @@ MCP host or CLI
       v
 src/enableton/
   mcp/transport.py      MCPServer, mode-scoped tools, session controls
+  panel.py              loopback HTTP panel, preview/apply tokens
+  panel_assets/         HTML, CSS and browser JavaScript
   tools.py              manifest dispatch + local producer tools
   live/adapter.py       adapter seam
   protocol/client.py    one TCP connection, one in-flight request
@@ -58,7 +60,23 @@ are design-era names, not the current file map.
   extra.
 - **[Verified]** `takes_create` uses real `tracks.duplicate`, rename and volume commands. It is
   dry-run by default, uses fader zero as “off”, returns undo tokens and attempts rollback.
-- **[Verified]** Both `producer.py` and the producer tools are in the working tree but uncommitted.
+- **[Verified]** The panel serves `/api/status`, `/api/session`, `/api/tracks`, `/api/takes`,
+  `/api/plan` and `/api/apply`; it binds `127.0.0.1:9879` and uses the same client and tool paths as
+  the CLI. Its preview tokens are in-memory, single-use and expire after ten minutes.
+- **[Verified]** The producer tools and the panel are part of the panel baseline commit.
+
+## Panel acceptance: what is real
+
+- **[Verified]** The panel rendered the live blank Set, then reconnected after Live was restarted
+  with the current `a7fcd016f88d` build; its header showed `Live connected`, the session brief,
+  six track rows (four tracks plus two returns) and the take list.
+- **[Verified]** A real panel dry run previewed a single mute field, applied it on the scratch Set,
+  read the field back as `true`, and returned the exact prior value as an undo token.
+- **[Verified]** Applying the undo token restored the field to `false`; the scratch `.als` SHA-256
+  was unchanged before and after, so Live did not save it.
+- **[Unverified]** A real take apply from the panel, a manual click-through of every UI control, and
+  panel support for take select/discard. The fake suite covers the plan/apply flow and the
+  executor-level mute apply, but a green suite is not Live proof.
 
 ## Producer slice: what is real
 
@@ -126,7 +144,8 @@ The following is historical evidence, not a claim that the current build repeats
 2. **No `takes_select` / `takes_discard`.** A/B requires `tracks_set_volume`; cleanup is manual.
 3. **No take variation.** Take 2 is an identical copy.
 4. **No producer memory.** The brief is stateless; there is no “where did we leave off”.
-5. **No panel.** MCP/CLI only.
+5. **Panel v1 is deliberately narrow.** Takes are read-only; take select/discard and destructive
+   operations are not exposed.
 6. **No reference capture orchestration.** Analysis works on a file; capture → compare is manual.
 7. **No audible verification.** Measurement is not listening.
 
@@ -138,7 +157,7 @@ The following is historical evidence, not a claim that the current build repeats
 - No uninstall/restore UX.
 - No legal/privacy/refund/support assets; no `LICENSE` in this checkout.
 - No demo video, beta, or version-consistency decision.
-- The tree is dirty; a new session has no clean baseline.
+- The panel baseline is committed; a release scan and version decision remain.
 
 ### Documentation drift
 
@@ -173,9 +192,9 @@ The following is historical evidence, not a claim that the current build repeats
 
 ### Reconcile
 
-- **Product shape:** external recommends a technical MCP tool. This repo's new direction is a
-  technical MCP tool **with a producer-facing workflow**. Recommendation: that is the MVP; a
-  standalone/in-Live panel is post-MVP and needs its own approval.
+- **Product shape:** external recommends a technical MCP tool. This repo's direction is a technical
+  MCP tool **with a producer-facing workflow**, plus an additive local panel. The panel is a
+  loopback-only surface over the same bridge, not a replacement for the MCP/CLI engine.
 - **Three workflows:** external requires inspect/repair, arrangement editing and sound/device work.
   This repo adds Analyze/Suggest/Create take. Use the producer verbs as the experience and the three
   external workflows as the release proof set.
@@ -186,7 +205,7 @@ The following is historical evidence, not a claim that the current build repeats
 
 - Do not apply a take to the open Set just to make a demo.
 - Do not call `takes_create` a variation generator.
-- Do not claim the producer panel exists.
+- Do not claim a real take apply, take variation or panel select/discard exists.
 - Do not copy external tool counts or setup steps.
 - Do not bump the Remote Script unless you are changing `remote_script/`; the producer tools are
   client-side.

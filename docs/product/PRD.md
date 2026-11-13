@@ -200,10 +200,11 @@ Do not set a public date before D-10 (release channel), D-11 (matrix), D-13 (leg
 
 ## Open product questions
 
-1. Is the MVP shape approved: MCP + producer mode, no standalone app?
+1. Is the MVP shape approved: MCP + producer mode, with the local panel as an additive surface?
 2. Which exact Live editions/versions, Windows versions and MCP clients are supported?
 3. Is the first release a one-user beta or a public launch?
 4. Who owns legal/privacy/refund/support inputs?
 5. What is the public name and version scheme?
-6. Is the producer panel post-MVP, a separate product, or not planned?
+6. Is the additive panel accepted as part of the release shape, and what does it imply for support
+   and compatibility?
 7. Which real song may be used for the demo and beta, with consent?

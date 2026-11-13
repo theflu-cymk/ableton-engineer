@@ -1,6 +1,6 @@
 # Roadmap and gates
 
-**Status:** integration draft, 2026-11-12. No dates: owner decisions and supported environments are
+**Status:** integration draft, 2026-11-13. No dates: owner decisions and supported environments are
 still open.
 
 This roadmap is **implementation-first**, because the producer slice already exists and has partial
@@ -22,7 +22,7 @@ real-Live evidence. It still maps to the external ten-item launch checklist; it 
 The four-role split, branch/worktree commands and merge queue are in
 [AGENT_WORKSTREAMS.md](AGENT_WORKSTREAMS.md).
 
-- Commit or explicitly preserve the current dirty working tree.
+- Commit the panel baseline and preserve the existing producer slice; exclude `tmp/` artifacts.
 - Confirm `SPEC.md` / `AGENTS.md` / `MISSION.md` drift and this pack's authority.
 - Run `uv run pytest -q`, `uv run enableton doctor`, `uv run enableton status --json`.
 - Approve or reject D-02/D-03: custom Enableton MCP with producer mode as the MVP.
@@ -45,11 +45,14 @@ explicitly open product shape. No code feature work starts on a dirty mystery tr
 **Exit gate:** one real sentence-to-outcome producer flow on a backed-up scratch Set; no working
 song written; a named real-Live call for each step.
 
-**Do not claim:** generated variations, audible improvement or panel support.
+**Do not claim:** generated variations, audible improvement or panel take selection.
 
 ## Phase 2 — Producer usability
 
 **Goal:** remove the need to know fader values and tool names.
+
+The local panel has landed as the additive front door for the safe v1 actions. Do not widen it with
+take select/discard or destructive operations until the underlying producer tools exist.
 
 - Add `takes_select` (choose audible take) with explicit state.
 - Add `takes_discard` with confirmation/irreversibility handling.
@@ -127,15 +130,15 @@ tested matrix and demo.
 | 6. README/troubleshooting/changelog/legal/support | 5 | README exists; legal/support absent |
 | 7. Compatibility gate | 3 | Not implemented as a gate |
 | 8. Demo video | 5 | Absent |
-| 9. Clean repo + version consistency | 5 | Dirty tree; version scheme open |
+| 9. Clean repo + version consistency | 5 | Panel baseline committed; version scheme open |
 | 10. Product-shape decision | 0 | Proposed, not approved |
 
 ## Immediate task queue
 
 Do these in order unless an owner changes the priority.
 
-1. **Freeze the baseline.** Commit the current working tree (excluding `tmp/` artifacts) or record
-   why it cannot be committed. Do not let the next session inherit an unexplained diff.
+1. **Preserve the committed baseline.** Keep the panel baseline clean; exclude `tmp/` artifacts and
+   do not let the next session inherit an unexplained diff.
 2. **Re-read the authoritative docs.** `SPEC.md`, `AGENTS.md`, this pack, `docs/producer-layer.md`.
 3. **Run the baseline.** Full fake suite, `doctor`, `status --json`.
 4. **Choose a safe song.** Back up a real Set and open the copy; do not use the open blank Set for a
@@ -147,7 +150,8 @@ Do these in order unless an owner changes the priority.
 9. **Add one variation.** Keep it bounded and reversible; do not call identical copies variations.
 10. **Build the capture → reference → one-change loop.** Measure; do not claim audition.
 11. **Write the real workflow evidence** into `RELEASE_READINESS.md`.
-12. **Only then** decide whether the panel or setup UX is next.
+12. **Record panel v1 as landed.** Keep setup/compatibility as the next surface work; do not widen
+    the panel before `takes_select`/`takes_discard` exist.
 
 ## Exit criteria for this roadmap
 
