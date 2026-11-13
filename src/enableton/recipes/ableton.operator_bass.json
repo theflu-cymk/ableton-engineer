@@ -1,0 +1,82 @@
+{
+  "id": "ableton.operator_bass",
+  "name": "Ableton - Operator FM bass",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "tearout",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "ableton",
+      "bass_music",
+      "checklist",
+      "dubstep",
+      "fm",
+      "native",
+      "operator",
+      "reference",
+      "resampling",
+      "riddim",
+      "sound_design",
+      "tearout",
+      "tutorial",
+      "youtube"
+    ]
+  },
+  "description": "Reference checklist for a heavy Ableton Operator bass: multiband control, drawn harmonics, filter distortion, velocity and LFO modulation, FM algorithms, Auto Filter and resampling. Not executable.",
+  "ingredients": [
+    {
+      "role": "synth",
+      "kind": "instrument",
+      "source": "Ableton Operator"
+    },
+    {
+      "role": "dynamics",
+      "kind": "instrument",
+      "source": "Multiband Dynamics"
+    },
+    {
+      "role": "filter",
+      "kind": "instrument",
+      "source": "Auto Filter"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Start with an Operator bass note. Put Multiband Dynamics before it and roll off the sub so the synth does not fight the dedicated sub or kick.",
+      "when": "after_apply",
+      "verify": "The bass has midrange weight without a bloated low end.",
+      "why": "dnksaus starts with multiband compression and turns off the sub band before designing the bass."
+    },
+    {
+      "instruction": "Draw random harmonics in the oscillator until the waveform looks interesting. Shape it with Operator's filter distortion, then map velocity to filter frequency.",
+      "when": "after_apply",
+      "verify": "Harder notes open the filter and the bass responds to playing strength.",
+      "why": "dnksaus draws harmonics, uses filter distortion and assigns velocity to filter frequency."
+    },
+    {
+      "instruction": "Use Operator's envelope and LFO on pitch, volume or filter. Try different FM algorithms and oscillator waveforms; the algorithm changes how the operators feed each other.",
+      "when": "after_apply",
+      "verify": "The patch has controlled movement and a different FM character than the starting tone.",
+      "why": "dnksaus demonstrates Operator's LFO, envelopes and FM algorithm menu."
+    },
+    {
+      "instruction": "Add more filtering after the synth: an Auto Filter in band-pass, mapped to a macro, can turn the bass into a moving fill or a narrower variant.",
+      "when": "after_apply",
+      "verify": "The same patch can serve as a full bass and a filtered fill.",
+      "why": "dnksaus maps Auto Filter band-pass to a macro after the Operator patch."
+    },
+    {
+      "instruction": "Print the result to an audio track and resample it. Modulate and chop the audio rather than keeping every layer live.",
+      "when": "after_apply",
+      "verify": "The resampled bass keeps its character and is easier to arrange.",
+      "why": "dnksaus resamples the Operator bass to an audio track and continues processing there."
+    }
+  ],
+  "notes": "Source: dnksaus, 'Make HEAVY Dubstep Basses with Operator' (https://www.youtube.com/watch?v=PFmBcZujMwk). Transcript summary, not quotes. Reference-only because the engine cannot create or verify Operator patches."
+}

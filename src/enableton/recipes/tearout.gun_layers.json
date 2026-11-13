@@ -1,0 +1,93 @@
+{
+  "id": "tearout.gun_layers",
+  "name": "Tearout - Machine-gun bass layers",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "tearout",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "bass_music",
+      "checklist",
+      "dubstep",
+      "gun_bass",
+      "layering",
+      "mix",
+      "reference",
+      "resampling",
+      "riddim",
+      "serum",
+      "sound_design",
+      "tearout",
+      "tutorial",
+      "youtube"
+    ]
+  },
+  "description": "Reference checklist for a layered tearout gun bass: gritty sine sub, mid body, short click/transient and a tonal layer, glued and resampled into one hit. Not executable.",
+  "ingredients": [
+    {
+      "role": "sub",
+      "kind": "instrument",
+      "source": "Serum gritty sine sub"
+    },
+    {
+      "role": "body",
+      "kind": "instrument",
+      "source": "Serum wavetable bass"
+    },
+    {
+      "role": "transient",
+      "kind": "sample",
+      "source": "Short percussion or noise click"
+    },
+    {
+      "role": "glue",
+      "kind": "instrument",
+      "source": "OTT, Saturator and glue compressor"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Build four separate layers: a gritty sine sub with noise and tube drive, a mid-range bass body, a short percussion transient EQ'd at its peak, and a tonal layer.",
+      "when": "after_apply",
+      "verify": "Each layer has one job and the sub is clean enough to survive on a club system.",
+      "why": "MOONBOY's tearout method splits sub, bass, transient and tonal layers before gluing them."
+    },
+    {
+      "instruction": "Give the sub a fast falling pitch envelope. On the body, use a second wavetable, a retriggered triplet LFO and a little noise for the click; keep the high click short and remove its low end so it does not clash with the sub.",
+      "when": "after_apply",
+      "verify": "The hit has a downward gunshot shape rather than one static bass note.",
+      "why": "Code: Pandorum calls the sub pitch fall crucial to the machine-gun identity and builds a separate short click layer."
+    },
+    {
+      "instruction": "Add a comb or steep low-pass filter, convolution and distortion to the body. Cut low end before distortion for definition, or leave some for crackle; make tone and length macros so the same patch yields several gun variations.",
+      "when": "after_apply",
+      "verify": "The body has a metallic, filtered crack and the variations stay in the same family.",
+      "why": "Code: Pandorum uses comb filtering, convolution, a steep driven low-pass, distortion and tone/length macros for the chain-gun foundation."
+    },
+    {
+      "instruction": "For the transient, shape a gun-like LFO that opens instantly and falls. Try an FM layer that starts high and drops low, then rises; Wheysted reverses the usual upward pitch movement for a harder impact.",
+      "when": "after_apply",
+      "verify": "The front of the hit is instantly present and the tail falls away instead of swelling.",
+      "why": "Wheysted's tearout-gun tutorial uses a fast transient LFO, pitch bend and reversed FM movement."
+    },
+    {
+      "instruction": "Group the layers and glue them with OTT, saturation and glue compression. Match the group level, then resample the whole hit so further filtering and chopping are cheap.",
+      "when": "after_apply",
+      "verify": "The layers read as one sound and the resampled hit keeps its transient.",
+      "why": "MOONBOY groups the four layers, processes them together and resamples; Dripment uses a repeatable OTT/Saturator/EQ/clipper loud rack."
+    },
+    {
+      "instruction": "Make variations from the resample: a band-passed phone-filter fill before the drop, a disperser for a watery transient, or a pitch-shifted copy. Keep reverb off the sub and check the gun in mono.",
+      "when": "after_apply",
+      "verify": "The variations build tension without smearing the drop; the sub stays centered.",
+      "why": "MOONBOY uses filtered fills and a disperser on resampled basses; Oddprophet keeps the sub out of the convolution path."
+    }
+  ],
+  "notes": "Sources: MOONBOY, 'HOW TO TEAROUT DUBSTEP (Marauda, Kai Wachi, Excision)' (https://www.youtube.com/watch?v=nApsgDWSQ7Y); Code: Pandorum, 'MACHINE GUN BASS DESIGN' (https://www.youtube.com/watch?v=sk--QbE_TM0); Wheysted Music, 'SERUM TEAR-OUT GUN BASS TUTORIAL' (https://www.youtube.com/watch?v=KkXF4T_WPbY); Dripment, '2 TEAROUT Serum 2 BASS ROUTINES' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summaries, not quotes. Reference-only because the engine cannot build, resample or verify these patches."
+}

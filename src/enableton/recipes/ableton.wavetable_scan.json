@@ -1,0 +1,72 @@
+{
+  "id": "ableton.wavetable_scan",
+  "name": "Technique - Wavetable scan and sub",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "dubstep",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "ableton",
+      "bass_music",
+      "checklist",
+      "dubstep",
+      "native",
+      "reference",
+      "riddim",
+      "scan",
+      "sound_design",
+      "sub",
+      "tearout",
+      "technique",
+      "tutorial",
+      "wavetable",
+      "youtube"
+    ]
+  },
+  "description": "Standalone technique from the Ableton Wavetable checklist: two tables, Env 2 scanning, mono sub, retriggered filter LFO and drive.",
+  "ingredients": [
+    {
+      "role": "synth",
+      "kind": "instrument",
+      "source": "Ableton Wavetable"
+    },
+    {
+      "role": "drive",
+      "kind": "instrument",
+      "source": "Wavetable drive or Saturator"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Load two gnarly wavetables and blend them; lower the second oscillator's level. Use Envelope 2 with an up-then-down shape on both oscillator positions.",
+      "when": "after_apply",
+      "verify": "Both tables scan together and the patch has a deliberate vowel-like movement.",
+      "why": "Push Patterns layers Sapphire and Ruby and assigns Envelope 2 to both oscillator positions."
+    },
+    {
+      "instruction": "Switch Wavetable to Mono and enable the sub oscillator. Set the filter LFO to retrigger with a 1/16 rate and a slower attack.",
+      "when": "after_apply",
+      "verify": "The bass is centered, has a clean sub, and the filter breathes in time.",
+      "why": "Push Patterns uses mono, the sub oscillator and a retriggered 1/16 filter LFO."
+    },
+    {
+      "instruction": "Drive the oscillator into the filter, then add a short, low reverb send. Keep the sub and transient tight.",
+      "when": "after_apply",
+      "verify": "The growl is aggressive but not washed out.",
+      "why": "Push Patterns drives Wavetable into the filter and uses a restrained reverb."
+    },
+    {
+      "instruction": "Try a custom table from a recorded vowel or one-shot and rescan it with the same modulation.",
+      "when": "after_apply",
+      "verify": "The patch becomes unique rather than a stock table.",
+      "why": "Push Patterns loads a user sample as a custom wavetable."
+    }
+  ],
+  "notes": "Source: Push Patterns, 'How To Make DUBSTEP BASS Sounds with WAVETABLE In Ableton Live' (https://www.youtube.com/watch?v=nbmxDxKji9M). Transcript summary, not quotes. Reference-only because the engine cannot create or verify Wavetable patches."
+}

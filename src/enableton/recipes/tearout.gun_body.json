@@ -1,0 +1,71 @@
+{
+  "id": "tearout.gun_body",
+  "name": "Technique - Gun body and filter",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "tearout",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "bass_music",
+      "body",
+      "checklist",
+      "comb_filter",
+      "dubstep",
+      "gun_bass",
+      "macros",
+      "reference",
+      "riddim",
+      "sound_design",
+      "tearout",
+      "technique",
+      "tutorial",
+      "wavetable",
+      "youtube"
+    ]
+  },
+  "description": "Standalone technique from the machine-gun checklist: Serum wavetable body, retriggered triplet LFO, comb/steep filtering, convolution and tone/length macros.",
+  "ingredients": [
+    {
+      "role": "body",
+      "kind": "instrument",
+      "source": "Serum 2 wavetable"
+    },
+    {
+      "role": "filter",
+      "kind": "instrument",
+      "source": "Comb and steep low-pass filters"
+    },
+    {
+      "role": "texture",
+      "kind": "instrument",
+      "source": "Convolver and distortion"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Pitch the body down and use a second wavetable. Choose a gnarly table and add a retriggered LFO on triplets.",
+      "when": "after_apply",
+      "verify": "The body has a short, repeating triplet movement rather than a static tone.",
+      "why": "Code: Pandorum builds the foundation from a pitched-down second wavetable and a triplet-retriggered LFO."
+    },
+    {
+      "instruction": "Add noise for the click, then use a comb filter and a steep driven low-pass. Automate volume so the body has a defined fall.",
+      "when": "after_apply",
+      "verify": "The filter adds metallic tone and the hit still falls away quickly.",
+      "why": "Code: Pandorum combines a comb filter, steep low-pass with drive and volume automation."
+    },
+    {
+      "instruction": "Add convolution and distortion. Cut low end before distortion for definition, or leave some for crackle; make tone and length macros.",
+      "when": "after_apply",
+      "verify": "The body has a consistent character across several gun variations.",
+      "why": "Code: Pandorum uses convolution, distortion, and tone/length macros for the chain-gun foundation."
+    }
+  ],
+  "notes": "Sources: MOONBOY, 'HOW TO TEAROUT DUBSTEP' (https://www.youtube.com/watch?v=nApsgDWSQ7Y); Code: Pandorum, 'MACHINE GUN BASS DESIGN' (https://www.youtube.com/watch?v=sk--QbE_TM0); Wheysted Music, 'SERUM TEAR-OUT GUN BASS TUTORIAL' (https://www.youtube.com/watch?v=KkXF4T_WPbY); Dripment, '2 TEAROUT Serum 2 BASS ROUTINES' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summaries, not quotes. Reference-only because the engine cannot create or verify these patches."
+}

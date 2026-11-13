@@ -1,0 +1,77 @@
+{
+  "id": "tearout.gun_glue",
+  "name": "Technique - Gun glue and resample",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "tearout",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "bass_music",
+      "checklist",
+      "dubstep",
+      "glue",
+      "gun_bass",
+      "ott",
+      "reference",
+      "resampling",
+      "riddim",
+      "sound_design",
+      "tearout",
+      "technique",
+      "tutorial",
+      "variation",
+      "youtube"
+    ]
+  },
+  "description": "Standalone technique from the machine-gun checklist: group the layers, glue with OTT and saturation, resample, then make filtered variations.",
+  "ingredients": [
+    {
+      "role": "layers",
+      "kind": "instrument",
+      "source": "Sub, body, click and tonal layers"
+    },
+    {
+      "role": "glue",
+      "kind": "instrument",
+      "source": "OTT, Saturator and glue compressor"
+    },
+    {
+      "role": "resample",
+      "kind": "sample",
+      "source": "Printed gun hit"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Group the sub, body, click and tonal layers. Balance them before adding glue so no layer is hiding a problem.",
+      "when": "after_apply",
+      "verify": "The layers are audible as one gesture before compression.",
+      "why": "MOONBOY groups the four layers and processes them together."
+    },
+    {
+      "instruction": "Glue with OTT, saturation and a glue compressor. A/B against the unglued group and match perceived level.",
+      "when": "after_apply",
+      "verify": "The hit is denser and louder without becoming a flat wall.",
+      "why": "MOONBOY uses saturators, OTT and glue compression; Dripment uses a repeatable OTT/Saturator loud rack."
+    },
+    {
+      "instruction": "Resample the group to audio. Keep the dry resample and make a band-passed phone-filter fill from a copy.",
+      "when": "after_apply",
+      "verify": "The resampled gun keeps its transient and the fill is clearly a variation.",
+      "why": "MOONBOY resamples the grouped bass and uses a band-pass filter for a pre-drop fill."
+    },
+    {
+      "instruction": "Add a disperser or pitch-shifted copy for further variations, but leave the main gun dry and mono-compatible.",
+      "when": "after_apply",
+      "verify": "The variations share the same identity without smearing the drop.",
+      "why": "MOONBOY uses a disperser and pitch changes on resampled basses."
+    }
+  ],
+  "notes": "Sources: MOONBOY, 'HOW TO TEAROUT DUBSTEP' (https://www.youtube.com/watch?v=nApsgDWSQ7Y); Code: Pandorum, 'MACHINE GUN BASS DESIGN' (https://www.youtube.com/watch?v=sk--QbE_TM0); Wheysted Music, 'SERUM TEAR-OUT GUN BASS TUTORIAL' (https://www.youtube.com/watch?v=KkXF4T_WPbY); Dripment, '2 TEAROUT Serum 2 BASS ROUTINES' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summaries, not quotes. Reference-only because the engine cannot create or verify these patches."
+}

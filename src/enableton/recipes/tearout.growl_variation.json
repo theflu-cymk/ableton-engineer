@@ -1,0 +1,77 @@
+{
+  "id": "tearout.growl_variation",
+  "name": "Technique - Growl comb and variation",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "tearout",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "bass_music",
+      "checklist",
+      "comb_filter",
+      "disperser",
+      "dubstep",
+      "growl",
+      "reference",
+      "resampling",
+      "riddim",
+      "sound_design",
+      "tearout",
+      "technique",
+      "tutorial",
+      "variation",
+      "youtube"
+    ]
+  },
+  "description": "Standalone technique from the growl checklist: different wavetables, disperser, notch and comb filters, small smooth moves and resampling.",
+  "ingredients": [
+    {
+      "role": "synth",
+      "kind": "instrument",
+      "source": "Serum 2"
+    },
+    {
+      "role": "texture",
+      "kind": "instrument",
+      "source": "Disperser or diffuser"
+    },
+    {
+      "role": "filter",
+      "kind": "instrument",
+      "source": "Notch and comb filters"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Audition several growl wavetables and keep the ones that respond well to the existing LFO and filter movement.",
+      "when": "after_apply",
+      "verify": "The table changes the character without requiring a new modulation setup.",
+      "why": "Oddprophet treats wavetable choice as a major part of making a growl unique."
+    },
+    {
+      "instruction": "Add a disperser or diffuser, then try notch filters. Keep the notches narrow enough that the bass still has body.",
+      "when": "after_apply",
+      "verify": "The growl gains a distinctive phasey texture while retaining weight.",
+      "why": "Oddprophet uses a disperser/diffuser and notch filters in the variation stage."
+    },
+    {
+      "instruction": "Add a comb filter with the resonator turned up. Move it in small, smooth strokes; large jumps sound broken.",
+      "when": "after_apply",
+      "verify": "The comb adds a controlled metallic vowel rather than a ringing artifact.",
+      "why": "Oddprophet recommends raising the comb resonator and making small smooth movements."
+    },
+    {
+      "instruction": "Resample the best variation and compare it with the original at matched loudness. Keep only the version that still reads as the same growl.",
+      "when": "after_apply",
+      "verify": "The variation is distinct but still usable in the same drop.",
+      "why": "The checklist's final stage is deliberate variation through multiple passes, not endless knob turning."
+    }
+  ],
+  "notes": "Sources: oddprophet, 'I Made A 1-2-3 Method For Dubstep Sound Design...' (https://www.youtube.com/watch?v=OwQDpCtbNTM); Dripment, '2 TEAROUT Serum 2 BASS ROUTINES' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summaries, not quotes. Reference-only because the engine cannot create or verify these patches."
+}

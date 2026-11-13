@@ -4,161 +4,158 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>Enableton panel</title>
+  <title>Enableton</title>
   <link rel="stylesheet" href="/panel.css">
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
 
-  <header class="topbar">
+  <header class="app-bar">
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">EN</span>
-      <div>
-        <h1>Enableton</h1>
-        <p class="eyebrow">Live companion</p>
-      </div>
+      <h1 class="brand-name">Enableton</h1>
     </div>
 
-    <div class="connection" aria-live="polite">
+    <nav class="tabs" aria-label="Panel views">
+      <button class="tab is-active" type="button" data-view="recipes">Recipes</button>
+      <button class="tab" type="button" data-view="set">Set</button>
+    </nav>
+
+    <div class="app-status" aria-live="polite">
       <span id="conn-dot" class="status-dot is-unknown" aria-hidden="true"></span>
       <span id="conn-label">Checking Live…</span>
-    </div>
-
-    <div class="status-meta">
-      <span class="meta-item"><span class="meta-key">Live</span> <span id="meta-live">—</span></span>
-      <span class="meta-item"><span class="meta-key">Script</span> <span id="meta-script">—</span></span>
-      <span class="meta-item"><span class="meta-key">Build</span> <span id="meta-build">—</span></span>
-      <span class="meta-item"><span class="meta-key">Queue</span> <span id="meta-queue">—</span></span>
-      <button id="btn-reconnect" class="button ghost" type="button">Reconnect</button>
+      <button id="btn-reconnect" class="button ghost tiny" type="button">Reconnect</button>
     </div>
   </header>
 
-  <main id="main" class="page">
-    <section id="banner" class="banner" role="alert" hidden>
-      <div>
-        <h2 id="banner-title">Live is not connected</h2>
-        <p id="banner-message"></p>
-        <ul id="banner-hints" class="hint-list"></ul>
+  <main id="main" class="shell">
+    <section id="view-recipes" class="view" aria-label="Recipes">
+      <div class="browser">
+        <aside class="facets" aria-label="Recipe filters">
+          <div class="search-box">
+            <input id="recipe-search" type="search" placeholder="Search recipes" autocomplete="off" spellcheck="false" aria-label="Search recipes">
+            <kbd aria-hidden="true">/</kbd>
+          </div>
+          <div id="recipe-facets" class="facet-list"></div>
+        </aside>
+
+        <section class="results" aria-label="Recipe results">
+          <div class="results-bar">
+            <p id="recipe-count" class="result-count">Loading recipes…</p>
+            <div class="result-controls">
+              <label class="select-label">Source
+                <select id="filter-source">
+                  <option value="all">All</option>
+                  <option value="user">User</option>
+                  <option value="shipped">Shipped</option>
+                </select>
+              </label>
+              <label class="select-label">Status
+                <select id="filter-status">
+                  <option value="all">All</option>
+                  <option value="user">User</option>
+                  <option value="draft">Draft</option>
+                  <option value="shipped">Shipped</option>
+                  <option value="invalid">Broken</option>
+                </select>
+              </label>
+              <label class="select-label">Sort
+                <select id="recipe-sort">
+                  <option value="name">Name</option>
+                  <option value="modified">Recently changed</option>
+                  <option value="bpm">BPM</option>
+                  <option value="kind">Kind</option>
+                  <option value="source">Source</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <ul id="recipe-list" class="recipe-list" role="listbox" aria-label="Recipes"></ul>
+        </section>
+
+        <article id="recipe-detail" class="detail" aria-live="polite">
+          <div class="detail-empty">
+            <p class="eyebrow">Recipe</p>
+            <h2>Pick a patch</h2>
+            <p>Search by name, tag, flavor or ingredient. Stage a recipe to see every step before anything writes.</p>
+          </div>
+        </article>
       </div>
     </section>
 
-    <section class="card session-card" aria-labelledby="session-heading">
-      <div class="section-heading">
+    <section id="view-set" class="view" hidden aria-label="Set">
+      <section class="set-head">
         <div>
           <p class="eyebrow">Current Set</p>
-          <h2 id="session-heading">Session</h2>
+          <h2 id="set-name">—</h2>
+          <p id="set-meta" class="muted"></p>
         </div>
-        <span id="session-stamp" class="muted">waiting for Live</span>
-      </div>
-      <div id="session-content" class="session-content">
-        <p class="placeholder">The session brief will appear here when Live answers.</p>
-      </div>
+        <p id="set-offline" class="notice" hidden></p>
+      </section>
+
+      <section class="panel" aria-labelledby="takes-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">A/B</p>
+            <h2 id="takes-heading">Take groups</h2>
+          </div>
+          <span id="takes-count" class="muted">—</span>
+        </div>
+        <div id="takes-content" class="takes-content">
+          <p class="placeholder">Take groups will appear here after takes have been created.</p>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="tracks-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Context</p>
+            <h2 id="tracks-heading">Tracks</h2>
+          </div>
+          <span id="track-count" class="muted">—</span>
+        </div>
+        <div class="table-wrap">
+          <table class="tracks-table">
+            <caption class="visually-hidden">Tracks in the current Live Set. Mute and solo are staged before they are written.</caption>
+            <thead>
+              <tr>
+                <th scope="col">Track</th>
+                <th scope="col">Type</th>
+                <th scope="col" class="num">Volume</th>
+                <th scope="col" class="state-col">Mute</th>
+                <th scope="col" class="state-col">Solo</th>
+              </tr>
+            </thead>
+            <tbody id="tracks-body">
+              <tr><td colspan="5" class="placeholder">Waiting for the track list.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="fine-print">Mute and solo stage a single-field change through the existing snapshot-restore tool. Nothing is written until Run.</p>
+      </section>
     </section>
-
-    <section class="card tracks-card" aria-labelledby="tracks-heading">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Mixer</p>
-          <h2 id="tracks-heading">Tracks</h2>
-        </div>
-        <span id="track-count" class="muted">—</span>
-      </div>
-      <div class="table-wrap">
-        <table class="tracks-table">
-          <caption class="visually-hidden">Tracks in the current Live Set. Mute and solo are previewed before they are applied.</caption>
-          <thead>
-            <tr>
-              <th scope="col">Track</th>
-              <th scope="col">Type</th>
-              <th scope="col">Devices</th>
-              <th scope="col" class="num">Volume</th>
-              <th scope="col" class="state-col">Mute</th>
-              <th scope="col" class="state-col">Solo</th>
-              <th scope="col" class="state-col">Arm</th>
-              <th scope="col" class="actions-col">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="tracks-body">
-            <tr><td colspan="8" class="placeholder">Waiting for the track list.</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="fine-print">Mute and solo are written through the existing snapshot-restore tool, one field at a time. Nothing is written until you press Apply.</p>
-    </section>
-
-    <section class="card composer-card" aria-labelledby="composer-heading">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Dry run first</p>
-          <h2 id="composer-heading">Action composer</h2>
-        </div>
-        <span class="muted">preview → apply</span>
-      </div>
-
-      <form id="composer" class="composer" novalidate>
-        <div class="field">
-          <label for="action-select">Action</label>
-          <select id="action-select">
-            <option value="volume">Set volume</option>
-            <option value="rename">Rename or recolour</option>
-            <option value="duplicate">Duplicate track</option>
-            <option value="takes">Create A/B takes</option>
-            <option value="custom">Custom tool</option>
-          </select>
-        </div>
-
-        <div class="field" id="track-field">
-          <label for="track-select">Track</label>
-          <select id="track-select"></select>
-        </div>
-
-        <div id="composer-fields" class="composer-fields"></div>
-
-        <div class="composer-actions">
-          <button id="btn-preview" class="button primary" type="submit">Preview change</button>
-          <span id="composer-hint" class="muted">Preview is a dry run. You can cancel before writing.</span>
-        </div>
-      </form>
-    </section>
-
-    <section id="preview-card" class="card preview-card" aria-labelledby="preview-heading" hidden>
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Dry-run result</p>
-          <h2 id="preview-heading">Planned change</h2>
-        </div>
-        <span id="preview-title" class="muted"></span>
-      </div>
-      <p id="preview-note" class="notice" hidden></p>
-      <div id="preview-changes" class="change-list"></div>
-      <pre id="preview-json" class="json" tabindex="0"></pre>
-      <div id="apply-result" class="apply-result" hidden></div>
-      <div class="preview-actions">
-        <button id="btn-apply" class="button primary" type="button">Apply change</button>
-        <button id="btn-cancel" class="button" type="button">Cancel</button>
-        <span id="preview-meta" class="muted"></span>
-      </div>
-    </section>
-
-    <section class="card takes-card" aria-labelledby="takes-heading">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Select & compare</p>
-          <h2 id="takes-heading">Take groups</h2>
-        </div>
-        <span id="takes-count" class="muted">—</span>
-      </div>
-      <div id="takes-content" class="takes-content">
-        <p class="placeholder">Take groups will appear here after `takes_create` has made some.</p>
-      </div>
-      <p class="fine-print">Select previews the whole take group and writes only after Apply. Discard is preview-only here; the panel never offers an Apply button for deletion.</p>
-    </section>
-
-    <footer class="page-footer">
-      <p>Loopback only. No account, telemetry, external fonts or CDN assets.</p>
-      <p>If something fails, the terminal that started the panel has the same message.</p>
-    </footer>
   </main>
+
+  <aside id="cue-drawer" class="cue-drawer" aria-label="Cue" hidden>
+    <header class="cue-head">
+      <div>
+        <p class="eyebrow">Cue</p>
+        <h2 id="cue-title">—</h2>
+      </div>
+      <button id="cue-close" class="button ghost tiny" type="button">Close</button>
+    </header>
+    <p id="cue-status" class="cue-status"></p>
+    <div id="cue-manual" class="cue-manual-wrap"></div>
+    <ol id="cue-steps" class="cue-steps"></ol>
+    <p id="cue-note" class="cue-note" hidden></p>
+    <div id="cue-result" class="cue-result" hidden></div>
+    <footer class="cue-actions">
+      <button id="cue-run" class="button primary" type="button">Run</button>
+      <button id="cue-discard" class="button" type="button">Discard</button>
+      <button id="cue-undo" class="button" type="button" hidden>Undo last write</button>
+      <span id="cue-meta" class="muted"></span>
+    </footer>
+  </aside>
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <script src="/panel.js"></script>

@@ -1,0 +1,70 @@
+{
+  "id": "tearout.gun_sub_pitch",
+  "name": "Technique - Gun sub and pitch fall",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "tearout",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "bass_music",
+      "checklist",
+      "dubstep",
+      "gun_bass",
+      "pitch_envelope",
+      "reference",
+      "riddim",
+      "serum",
+      "sound_design",
+      "sub",
+      "tearout",
+      "technique",
+      "tutorial",
+      "youtube"
+    ]
+  },
+  "description": "Standalone technique from the machine-gun checklist: gritty sine sub, noise, tube drive and a fast falling pitch envelope.",
+  "ingredients": [
+    {
+      "role": "sub",
+      "kind": "instrument",
+      "source": "Serum sine sub"
+    },
+    {
+      "role": "texture",
+      "kind": "sample",
+      "source": "Noise"
+    },
+    {
+      "role": "drive",
+      "kind": "instrument",
+      "source": "Tube distortion"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Use a sine sub at a low octave. Add a little noise and tube distortion so the sub is gritty rather than pure.",
+      "when": "after_apply",
+      "verify": "The sub has weight and audible grit without losing its fundamental.",
+      "why": "MOONBOY's gun sub is a gritty sine with noise and tube distortion."
+    },
+    {
+      "instruction": "Add a fast falling pitch envelope. The fall must happen immediately at the hit, not swell in late.",
+      "when": "after_apply",
+      "verify": "The note starts high and drops into the sub, giving the gun its impact.",
+      "why": "Code: Pandorum says the sub pitch fall is what separates a machine gun from a static bass."
+    },
+    {
+      "instruction": "Keep the sub mono and check it against the kick. Remove any click layer's low end if it clashes.",
+      "when": "after_apply",
+      "verify": "The sub is centered and the kick still punches through.",
+      "why": "Code: Pandorum layers a separate click and removes its low end so it does not fight the sub."
+    }
+  ],
+  "notes": "Sources: MOONBOY, 'HOW TO TEAROUT DUBSTEP' (https://www.youtube.com/watch?v=nApsgDWSQ7Y); Code: Pandorum, 'MACHINE GUN BASS DESIGN' (https://www.youtube.com/watch?v=sk--QbE_TM0); Wheysted Music, 'SERUM TEAR-OUT GUN BASS TUTORIAL' (https://www.youtube.com/watch?v=KkXF4T_WPbY); Dripment, '2 TEAROUT Serum 2 BASS ROUTINES' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summaries, not quotes. Reference-only because the engine cannot create or verify these patches."
+}

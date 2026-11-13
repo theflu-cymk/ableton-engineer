@@ -18,9 +18,11 @@ The producer slice exists but is only partly accepted:
 - `reference_analyze` — real WAV measurement verified.
 - `takes_create` — real dry-run, apply, fader A/B and undo verified on a backed-up scratch Set.
 - `takes_select` / `takes_discard` — real select/undo and confirmed discard verified on the scratch Set.
-- Local web panel — implemented, with real mute, take Select preview/apply and discard-preview
-  acceptance.
-- No take variation and no persistent memory. Panel discard is preview-only and has no Apply button.
+- Local web panel — minimal recipe browser and cue drawer, compact Set view, real mute and take
+  Select preview/apply, discard-preview acceptance, and real recipe staging/discard without a Live
+  write.
+- No take variation and no persistent memory. Panel discard is preview-only and has no Run button.
+  Recipes stage into an exact plan; Run and Undo are explicit.
 
 **Your first job is not to add features.** Preserve the committed baseline and review the take
 acceptance record before adding variation.
@@ -67,7 +69,7 @@ stdio serve. `MISSION.md` still narrates an earlier tool count and milestone sta
 | Live | Ableton Live 12.2.5 |
 | Remote Script | `0.4.26`, build `a7fcd016f88d`, installed and loaded |
 | Bridge | TCP `127.0.0.1:9878`, length-prefixed JSON |
-| Open Set | scratch `SCRATCH fortnight - panel acceptance`, 32 main tracks + 2 returns; unsaved |
+| Open Set | `victim denied`, 25 main tracks + 2 returns, 140.0001 BPM; no panel Run/Apply in this pass |
 | Catalogue | 89 tools, 9 modes, `produce` 21 |
 | Producer evidence | brief + WAV read + panel mute/take apply + panel select UI/undo + confirmed discard |
 | Save/export | no product save tool; native Live only |

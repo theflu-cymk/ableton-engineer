@@ -1,0 +1,94 @@
+{
+  "id": "bass.loud_rack",
+  "name": "Bass music - Reusable loud rack",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "tearout",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "bass_music",
+      "checklist",
+      "clipper",
+      "dubstep",
+      "loudness",
+      "mix",
+      "ott",
+      "reference",
+      "resampling",
+      "riddim",
+      "saturation",
+      "sound_design",
+      "tearout",
+      "tutorial",
+      "youtube"
+    ]
+  },
+  "description": "Reference checklist for a reusable bass loudness rack: gain-stage, OTT and saturation stages, EQ and clipper, then A/B and resample. Suitable for dubstep, riddim and tearout.",
+  "ingredients": [
+    {
+      "role": "ott",
+      "kind": "instrument",
+      "source": "OTT"
+    },
+    {
+      "role": "saturation",
+      "kind": "instrument",
+      "source": "Ableton Saturator"
+    },
+    {
+      "role": "eq",
+      "kind": "instrument",
+      "source": "EQ Eight"
+    },
+    {
+      "role": "clipper",
+      "kind": "instrument",
+      "source": "Clipper"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Print or meter the patch before the rack. Pick a repeatable peak target and compare before/after at matched loudness rather than deciding by the meter alone.",
+      "when": "after_apply",
+      "verify": "The processed bass is louder but not obviously flatter or more distorted.",
+      "why": "Dripment builds a saved loud rack and repeatedly A/Bs the gain before and after it."
+    },
+    {
+      "instruction": "Start the chain with OTT around 60 dB and roughly 80% depth, then a Saturator around 5 dB with dry/wet at 100%. Add a second OTT/Saturator stage around 6 dB and 76%.",
+      "when": "after_apply",
+      "verify": "Each stage adds a little density; no single stage is doing all the work.",
+      "why": "Dripment's Serum 2 loud rack uses two OTT/Saturator pairs with those starting values."
+    },
+    {
+      "instruction": "Turn off random movement so repeated hits are identical. Adjust OTT amount and depth by ear for each patch instead of copying the same numbers.",
+      "when": "after_apply",
+      "verify": "The same MIDI note produces the same sound every time.",
+      "why": "Dripment disables randomness in OTT and changes the amount per sound."
+    },
+    {
+      "instruction": "Finish with EQ Eight for corrective boosts/cuts and a clipper for the final peak. Back off the clipper if the transient starts to flatten.",
+      "when": "after_apply",
+      "verify": "The bass is competitive in level and still has a discernible attack.",
+      "why": "Dripment ends the rack with EQ Eight and a clipper."
+    },
+    {
+      "instruction": "Group the devices, save the rack, and reuse it across basses. Resample the processed hit before adding more movement or chopping.",
+      "when": "after_apply",
+      "verify": "The rack is recallable and the resampled version keeps the same character.",
+      "why": "Dripment saves the grouped effects as a rack and reuses it on the next bass routine."
+    },
+    {
+      "instruction": "Check the result in mono and against the kick/sub. If the low end disappears or the midrange pinches, bypass stages and rebuild one at a time.",
+      "when": "after_apply",
+      "verify": "The loudness survives mono and the kick still reads.",
+      "why": "A loud rack can hide phase and low-end problems; the tutorials repeatedly check the sound in context rather than soloed."
+    }
+  ],
+  "notes": "Source: Dripment, '2 TEAROUT Serum 2 BASS ROUTINES EVERY BEGINNER Should Know' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summary, not quotes. Reference-only because the engine has no OTT, Saturator, EQ or clipper chain."
+}

@@ -12,6 +12,7 @@ telemetry, CDN asset or remote font.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
@@ -24,11 +25,14 @@ from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from .manifest import load_manifest
+from .plans import PlanStore, PlanStoreError, TransactionStore, TransactionStoreError
 from .protocol.client import DEFAULT_PORT, LiveClient
 from .protocol.codes import LiveError
+from .recipe_store import RecipeStore, RecipeStoreError
+from .recipe_tools import default_store, show_recipe
 from .setup import default_source, digest
 from .state.snapshot import SnapshotCache
 from .tools import run_tool
@@ -64,6 +68,18 @@ class Preview:
     tool: str
     args: Dict[str, Any]
     result: Dict[str, Any]
+    created: float
+    expires: float
+
+
+@dataclass
+class Cue:
+    """A compiled recipe plan the producer has seen and may run once."""
+
+    token: str
+    recipe_id: str
+    plan_id: str
+    digest: str
     created: float
     expires: float
 
@@ -149,6 +165,15 @@ def _device_names(row: Dict[str, Any]) -> list:
     return names
 
 
+def _plan_digest(plan: Dict[str, Any]) -> str:
+    payload = {
+        "plan_id": plan.get("plan_id"),
+        "steps": plan.get("steps") or [],
+    }
+    body = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
 def _hints() -> list:
     return [
         "Open Ableton Live and open a Set.",
@@ -170,6 +195,9 @@ class PanelService:
         bridge_port: int = DEFAULT_PORT,
         preview_ttl: float = PREVIEW_TTL_S,
         backup_root: Optional[str] = None,
+        recipe_store: Optional[RecipeStore] = None,
+        plan_root: Optional[str] = None,
+        transaction_root: Optional[str] = None,
     ):
         self.host = host
         self.bridge_port = bridge_port
@@ -181,14 +209,19 @@ class PanelService:
         )
         self._preview_ttl = preview_ttl
         self._backup_root = backup_root
+        self._recipe_store = recipe_store
+        self._plan_root = plan_root
+        self._transaction_root = transaction_root
         self._expected_build = _expected_digest()
         self._previews: Dict[str, Preview] = {}
+        self._cues: Dict[str, Cue] = {}
         self._lock = threading.RLock()
 
     # -- lifecycle ---------------------------------------------------------
     def close(self) -> None:
         with self._lock:
             self._previews.clear()
+            self._cues.clear()
         close = getattr(self.adapter, "close", None)
         if callable(close):
             close()
@@ -315,6 +348,295 @@ class PanelService:
             "read_only": False,
             "controls": {"select": True, "discard_preview": True, "discard_apply": False},
         }
+
+    # -- recipes -----------------------------------------------------------
+    def _store(self) -> RecipeStore:
+        return self._recipe_store or default_store()
+
+    def _plan_store(self) -> PlanStore:
+        return PlanStore(root=self._plan_root)
+
+    def _transactions(self) -> TransactionStore:
+        return TransactionStore(root=self._transaction_root)
+
+    def recipes(self) -> Dict[str, Any]:
+        """Read the recipe catalog without requiring Live."""
+        try:
+            with self._lock:
+                rows = self._store().catalog()
+        except RecipeStoreError as exc:
+            raise PanelError("BAD_ARGS", str(exc), 400)
+        return {"recipes": rows, "count": len(rows)}
+
+    def recipe(self, recipe_id: Any) -> Dict[str, Any]:
+        if not isinstance(recipe_id, str) or not recipe_id:
+            raise PanelError("BAD_ARGS", "recipe id must be a non-empty string", 400)
+        try:
+            with self._lock:
+                rows = self._store().catalog()
+        except RecipeStoreError as exc:
+            raise PanelError("BAD_ARGS", str(exc), 400)
+        summary = next((row for row in rows if row.get("id") == recipe_id), None)
+        if summary is None:
+            raise PanelError("NOT_FOUND", "No recipe with id %r." % recipe_id, 404)
+        if summary.get("status") == "invalid":
+            raise PanelError(
+                "BAD_ARGS",
+                summary.get("error") or "This recipe file is not valid.",
+                400,
+                {"recipe": summary},
+            )
+        try:
+            with self._lock:
+                shown = show_recipe({"id": recipe_id}, store=self._store())
+        except Exception as exc:  # noqa: BLE001 - translated to the panel envelope
+            raise _as_error(exc)
+        return {"summary": summary, **shown}
+
+    def recipe_targets(self) -> Dict[str, Any]:
+        """MIDI clips that a rhythm recipe can render into."""
+        data = self._snapshot()
+        tracks = []
+        for row in data.get("tracks") or []:
+            if not isinstance(row, dict) or row.get("kind") != "midi":
+                continue
+            clips = []
+            for clip in row.get("arrangement") or []:
+                if not isinstance(clip, dict):
+                    continue
+                name = clip.get("name")
+                if not isinstance(name, str) or not name:
+                    continue
+                clips.append({
+                    "name": name,
+                    "location": "arrangement",
+                    "start": clip.get("start"),
+                    "length": clip.get("length"),
+                })
+            session = row.get("session") or {}
+            for clip in session.get("clips") or []:
+                if not isinstance(clip, dict):
+                    continue
+                name = clip.get("name")
+                if not isinstance(name, str) or not name:
+                    continue
+                clips.append({
+                    "name": name,
+                    "location": "session",
+                    "slot": clip.get("slot"),
+                })
+            if clips:
+                tracks.append({
+                    "index": row.get("index"),
+                    "name": row.get("name") or "",
+                    "clips": clips,
+                })
+        return {"tracks": tracks, "count": len(tracks)}
+
+    def cue_recipe(self, payload: Any) -> Dict[str, Any]:
+        """Compile a recipe into a stored plan and offer one exact Run token."""
+        if not isinstance(payload, dict):
+            raise PanelError("BAD_ARGS", "expected a JSON object", 400)
+        recipe_id = payload.get("id")
+        if not isinstance(recipe_id, str) or not recipe_id:
+            raise PanelError("BAD_ARGS", "id must be a non-empty recipe id", 400)
+        target = payload.get("target")
+        if target is not None and not isinstance(target, dict):
+            raise PanelError("BAD_ARGS", "target must be an object", 400)
+        bindings = payload.get("track_bindings") or {}
+        if not isinstance(bindings, dict):
+            raise PanelError("BAD_ARGS", "track_bindings must be an object", 400)
+        for key, value in bindings.items():
+            if not isinstance(key, str) or not key or not isinstance(value, str) or not value:
+                raise PanelError(
+                    "BAD_ARGS", "track_bindings must map non-empty names to non-empty names", 400,
+                )
+        confirmed = payload.get("manual_confirmed", False)
+        if not isinstance(confirmed, bool):
+            raise PanelError("BAD_ARGS", "manual_confirmed must be a boolean", 400)
+
+        args: Dict[str, Any] = {"id": recipe_id}
+        if target is not None:
+            args["target"] = target
+        if confirmed:
+            args["manual_confirmed"] = True
+        if bindings:
+            args["track_bindings"] = bindings
+        try:
+            with self._lock:
+                result = run_tool(
+                    "recipe_apply",
+                    args,
+                    adapter=self.adapter,
+                    catalogue=self.catalogue,
+                    cache=self.cache,
+                    plan_root=self._plan_root,
+                    recipe_store=self._store(),
+                )
+        except Exception as exc:  # noqa: BLE001
+            raise _as_error(exc)
+        if not isinstance(result, dict):
+            raise PanelError("INTERNAL", "The recipe compiler returned no result.", 500)
+
+        status = result.get("status")
+        base = {
+            "recipe_id": recipe_id,
+            "recipe_name": result.get("recipe_name") or recipe_id,
+            "status": status,
+            "plan_id": result.get("plan_id"),
+            "token": None,
+            "reason": result.get("reason"),
+            "manual": result.get("manual") or [],
+            "expected": result.get("expected") or {},
+            "render": result.get("render"),
+            "warnings": result.get("warnings") or [],
+        }
+        if status != "plan_ready":
+            base["can_confirm"] = status == "manual_required"
+            return base
+
+        plan_id = result.get("plan_id")
+        if not isinstance(plan_id, str) or not plan_id:
+            raise PanelError("INTERNAL", "The recipe compiler produced no plan id.", 500)
+        try:
+            plan = self._plan_store().get(plan_id)
+        except PlanStoreError as exc:
+            raise PanelError("PRECONDITION_FAILED", str(exc), 409)
+        digest = _plan_digest(plan)
+        token = secrets.token_urlsafe(24)
+        now = time.monotonic()
+        cue = Cue(
+            token=token,
+            recipe_id=recipe_id,
+            plan_id=plan_id,
+            digest=digest,
+            created=now,
+            expires=now + self._preview_ttl,
+        )
+        with self._lock:
+            for old_token, old in list(self._cues.items()):
+                if old.expires < now:
+                    self._cues.pop(old_token, None)
+            self._cues[token] = cue
+        return {
+            **base,
+            "status": "ready",
+            "plan_id": plan_id,
+            "token": token,
+            "expires_in_s": int(self._preview_ttl),
+            "intent": plan.get("intent"),
+            "steps": plan.get("steps") or [],
+        }
+
+    def run_cue(self, token: Any) -> Dict[str, Any]:
+        """Run exactly the plan the producer was shown, once."""
+        if not isinstance(token, str) or not token:
+            raise PanelError("BAD_ARGS", "token must be a non-empty string", 400)
+        with self._lock:
+            cue = self._cues.pop(token, None)
+        if cue is None:
+            raise PanelError(
+                "PREVIEW_NOT_FOUND",
+                "That cue has already been run, discarded or expired. Stage the recipe again.",
+                409,
+            )
+        if time.monotonic() > cue.expires:
+            raise PanelError(
+                "PREVIEW_EXPIRED",
+                "That cue expired. Stage the recipe again before running it.",
+                409,
+            )
+        try:
+            plan = self._plan_store().get(cue.plan_id)
+        except PlanStoreError as exc:
+            raise PanelError("PRECONDITION_FAILED", str(exc), 409)
+        if _plan_digest(plan) != cue.digest:
+            raise PanelError(
+                "PRECONDITION_FAILED",
+                "The stored plan changed after it was shown; nothing was run. Stage it again.",
+                409,
+            )
+        try:
+            with self._lock:
+                result = run_tool(
+                    "ableton_plan_apply",
+                    {"plan_id": cue.plan_id},
+                    adapter=self.adapter,
+                    catalogue=self.catalogue,
+                    cache=self.cache,
+                    backup_root=self._backup_root,
+                    plan_root=self._plan_root,
+                    transaction_root=self._transaction_root,
+                )
+        except Exception as exc:  # noqa: BLE001
+            raise _as_error(exc)
+        if not isinstance(result, dict):
+            raise PanelError("INTERNAL", "The plan executor returned no result.", 500)
+        if not result.get("applied"):
+            error = result.get("error") or {}
+            message = error.get("message") if isinstance(error, dict) else None
+            raise PanelError(
+                "APPLY_FAILED",
+                message or "Live refused the plan. Nothing was left half-applied.",
+                409,
+                {"result": result},
+            )
+        undo_available = False
+        try:
+            self._transactions().get()
+            undo_available = True
+        except TransactionStoreError:
+            pass
+        return {
+            "applied": True,
+            "plan_id": cue.plan_id,
+            "recipe_id": cue.recipe_id,
+            "result": result,
+            "undo_available": undo_available,
+        }
+
+    def discard_cue(self, token: Any) -> Dict[str, Any]:
+        """Delete a staged plan without touching Live."""
+        if not isinstance(token, str) or not token:
+            raise PanelError("BAD_ARGS", "token must be a non-empty string", 400)
+        with self._lock:
+            cue = self._cues.pop(token, None)
+        if cue is None:
+            raise PanelError(
+                "PREVIEW_NOT_FOUND",
+                "That cue is already gone.",
+                409,
+            )
+        try:
+            result = run_tool(
+                "ableton_plan_discard",
+                {"plan_id": cue.plan_id},
+                adapter=self.adapter,
+                catalogue=self.catalogue,
+                cache=self.cache,
+                plan_root=self._plan_root,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise _as_error(exc)
+        return {
+            "discarded": bool(result.get("discarded")),
+            "plan_id": cue.plan_id,
+        }
+
+    def undo(self) -> Dict[str, Any]:
+        """Restore the last applied transaction; the panel only offers this after a Run."""
+        try:
+            with self._lock:
+                return run_tool(
+                    "ableton_undo",
+                    {"scope": "last"},
+                    adapter=self.adapter,
+                    catalogue=self.catalogue,
+                    cache=self.cache,
+                    transaction_root=self._transaction_root,
+                )
+        except Exception as exc:  # noqa: BLE001
+            raise _as_error(exc)
 
     # -- preview / apply ---------------------------------------------------
     def plan(self, tool_name: Any, args: Any) -> Dict[str, Any]:
@@ -491,6 +813,13 @@ class PanelRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(200, {"ok": True, **self.service.tracks()})
             elif path == "/api/takes":
                 self._send_json(200, {"ok": True, **self.service.takes()})
+            elif path == "/api/recipes":
+                self._send_json(200, {"ok": True, **self.service.recipes()})
+            elif path.startswith("/api/recipes/"):
+                recipe_id = unquote(path[len("/api/recipes/"):])
+                self._send_json(200, {"ok": True, **self.service.recipe(recipe_id)})
+            elif path == "/api/recipe-targets":
+                self._send_json(200, {"ok": True, **self.service.recipe_targets()})
             elif path == "/":
                 self._send_asset("index.html", "text/html; charset=utf-8")
             elif path == "/panel.css":
@@ -512,6 +841,22 @@ class PanelRequestHandler(BaseHTTPRequestHandler):
             elif path == "/api/apply":
                 body = self._read_json()
                 result = self.service.apply(body.get("token"))
+                self._send_json(200, {"ok": True, **result})
+            elif path == "/api/cue":
+                body = self._read_json()
+                result = self.service.cue_recipe(body)
+                self._send_json(200, {"ok": True, **result})
+            elif path == "/api/cue/run":
+                body = self._read_json()
+                result = self.service.run_cue(body.get("token"))
+                self._send_json(200, {"ok": True, **result})
+            elif path == "/api/cue/discard":
+                body = self._read_json()
+                result = self.service.discard_cue(body.get("token"))
+                self._send_json(200, {"ok": True, **result})
+            elif path == "/api/undo":
+                self._read_json()
+                result = self.service.undo()
                 self._send_json(200, {"ok": True, **result})
             else:
                 raise PanelError("NOT_FOUND", "No panel route at %s." % path, 404)

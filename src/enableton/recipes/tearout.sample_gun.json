@@ -1,0 +1,94 @@
+{
+  "id": "tearout.sample_gun",
+  "name": "Tearout - Sample-to-gun (Serum 2 spectral)",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "tearout",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "bass_music",
+      "checklist",
+      "dubstep",
+      "gun_bass",
+      "reference",
+      "resampling",
+      "riddim",
+      "sample_design",
+      "serum",
+      "serum2",
+      "sound_design",
+      "spectral",
+      "tearout",
+      "tutorial",
+      "youtube"
+    ]
+  },
+  "description": "Reference checklist for turning a tonal percussion sample into a tearout gun with Serum 2's spectral oscillator, stacked overdrive, convolution, multiband compression and pitch bend. Not executable.",
+  "ingredients": [
+    {
+      "role": "sub",
+      "kind": "instrument",
+      "source": "Serum 2 sine sub"
+    },
+    {
+      "role": "sample",
+      "kind": "sample",
+      "source": "Tonal percussion or ride"
+    },
+    {
+      "role": "drive",
+      "kind": "instrument",
+      "source": "Stacked Serum 2 overdrive"
+    },
+    {
+      "role": "space",
+      "kind": "instrument",
+      "source": "Serum 2 convolver and splitter"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Start with a sine sub on oscillator A. Switch oscillator B to spectral and drag in a tonal percussion sample such as a ride; pitch it down an octave.",
+      "when": "after_apply",
+      "verify": "The sample contributes a pitched metallic tone while the sine holds the low end.",
+      "why": "Oddprophet's Serum 2 sample-to-gun tutorial uses a sine sub plus a spectral oscillator loaded with a tonal percussion sample."
+    },
+    {
+      "instruction": "Stack two or more overdrives for crunch. Put a splitter after the drive and route only the highs through a convolver with a medium plate impulse; adjust decay, gain and mix.",
+      "when": "after_apply",
+      "verify": "The top end has body and space while the sub path stays dry.",
+      "why": "Oddprophet stacks Serum 2 overdrives, then convolves only the split high path."
+    },
+    {
+      "instruction": "Distort again after the splitter and compress with the multiband compressor. Use LFO 2 to global main tuning for short pitch bends so each hit has a downward or upward flick.",
+      "when": "after_apply",
+      "verify": "The gun has a controlled transient and a repeatable pitch gesture, not random drift.",
+      "why": "Oddprophet adds post-splitter distortion, multiband compression and an LFO pitch bend."
+    },
+    {
+      "instruction": "Use the spectral scan knob to set playback speed and direction. Add a band-pass notch filter and route the spectral oscillator through it; adjust until the sample speaks.",
+      "when": "after_apply",
+      "verify": "Scanning changes the sample's vowel/timbre without breaking the hit.",
+      "why": "Oddprophet demonstrates the scan control, band-pass notch and spectral filter routing."
+    },
+    {
+      "instruction": "Try different samples and warp modes. Remove or replace the sub if the sample already has weight, and tidy stereo low end after printing.",
+      "when": "after_apply",
+      "verify": "The recipe works beyond one sample and the low end stays mono-compatible.",
+      "why": "Oddprophet swaps in several samples and treats the technique as a reusable gun recipe."
+    },
+    {
+      "instruction": "Resample the result and A/B it against the source. Check that the transient survives and that the sub does not fight the kick.",
+      "when": "after_apply",
+      "verify": "The resampled gun is punchier than the source and sits with the drums.",
+      "why": "The tutorial's point is a repeatable sample-to-gun transformation; resampling is the practical way to keep the result stable."
+    }
+  ],
+  "notes": "Source: oddprophet, 'SERUM 2: HOW TO TURN ANY SAMPLE INTO A HEAVY DUBSTEP BASS' (https://www.youtube.com/watch?v=LRQFCUXqXr4). Transcript summary, not quotes. Reference-only because Serum 2's spectral oscillator and effects cannot be created or verified by this engine."
+}

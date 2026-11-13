@@ -1,0 +1,71 @@
+{
+  "id": "tearout.growl_fatten",
+  "name": "Technique - Growl convolution and multiband",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "tearout",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "bass_music",
+      "checklist",
+      "convolution",
+      "dubstep",
+      "growl",
+      "multiband",
+      "reference",
+      "riddim",
+      "serum",
+      "sound_design",
+      "sub",
+      "tearout",
+      "technique",
+      "tutorial",
+      "youtube"
+    ]
+  },
+  "description": "Standalone technique from the growl checklist: split the sub away, convolve the upper path, then flatten with multiband compression.",
+  "ingredients": [
+    {
+      "role": "split",
+      "kind": "instrument",
+      "source": "Serum splitter"
+    },
+    {
+      "role": "space",
+      "kind": "instrument",
+      "source": "Convolver with short impulse"
+    },
+    {
+      "role": "dynamics",
+      "kind": "instrument",
+      "source": "Multiband compressor"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Split the low end away before the convolver. Reverb and convolution belong on the upper path; the sub stays dry.",
+      "when": "after_apply",
+      "verify": "The sub remains centered and tight while the top has texture.",
+      "why": "Oddprophet splits the growl and explicitly keeps the sub out of the convolution path."
+    },
+    {
+      "instruction": "Use a short impulse, reduce decay, raise gain and set the wet mix so the convolution adds texture rather than a room. The effect also creates combing and phase texture.",
+      "when": "after_apply",
+      "verify": "The growl sounds denser and more textured, not washed out.",
+      "why": "Oddprophet uses a short convolver decay and a controlled mix on the upper path."
+    },
+    {
+      "instruction": "Flatten the result with multiband compression, then raise the output to compensate. Check that the movement is still audible.",
+      "when": "after_apply",
+      "verify": "The growl is consistently loud without obvious band pumping.",
+      "why": "Oddprophet uses multiband compression to even out the growl and compensates the level."
+    }
+  ],
+  "notes": "Sources: oddprophet, 'I Made A 1-2-3 Method For Dubstep Sound Design...' (https://www.youtube.com/watch?v=OwQDpCtbNTM); Dripment, '2 TEAROUT Serum 2 BASS ROUTINES' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summaries, not quotes. Reference-only because the engine cannot create or verify these patches."
+}

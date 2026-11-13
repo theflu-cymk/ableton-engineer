@@ -1,0 +1,93 @@
+{
+  "id": "tearout.growl",
+  "name": "Tearout - Growl, 1-2-3 method",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "tearout",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "bass_music",
+      "checklist",
+      "comb_filter",
+      "convolution",
+      "dubstep",
+      "growl",
+      "multiband",
+      "reference",
+      "riddim",
+      "serum",
+      "sound_design",
+      "tearout",
+      "tutorial",
+      "youtube"
+    ]
+  },
+  "description": "Reference checklist for a tearout/dubstep growl: get the ballpark with a growl wavetable and open-close LFO, make it fat with convolution and multiband compression, then make it unique with filters, pitch bend and resampling. Not executable.",
+  "ingredients": [
+    {
+      "role": "synth",
+      "kind": "instrument",
+      "source": "Serum 2"
+    },
+    {
+      "role": "table",
+      "kind": "sample",
+      "source": "Growl wavetable"
+    },
+    {
+      "role": "filter",
+      "kind": "instrument",
+      "source": "Band-pass notch or comb filter"
+    },
+    {
+      "role": "fatten",
+      "kind": "instrument",
+      "source": "Convolver plus multiband compressor"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Stage one: load a growl wavetable at bass octave and move its position. Put one LFO on wavetable position and shape an open-close. A growl opens for a long time; a gun opens at the start and closes quickly; a wobble is a regular open-close.",
+      "when": "after_apply",
+      "verify": "The patch is recognizably a growl before any heavy processing.",
+      "why": "Oddprophet's 1-2-3 method starts by choosing the sound family and using one LFO for the open-close shape."
+    },
+    {
+      "instruction": "Add a band-pass notch filter and attach an LFO to its cutoff. Use a second LFO on global main tuning for small pitch bends, not a huge sweep.",
+      "when": "after_apply",
+      "verify": "The growl talks and bends without losing its fundamental rhythm.",
+      "why": "Oddprophet uses band-pass notch as the main subtractive filter and a separate pitch-bend LFO."
+    },
+    {
+      "instruction": "Stage two, before getting creative: split the low end away, distort the mids/highs, then send only the upper path through a short convolver impulse. Bring down decay, raise gain and mix for texture. No reverb on the sub.",
+      "when": "after_apply",
+      "verify": "The growl is thick and textured while the sub stays dry and centered.",
+      "why": "Oddprophet splits the sound, convolves the top, and explicitly keeps the sub out of the reverb."
+    },
+    {
+      "instruction": "Flatten the result with multiband compression and turn the output back up. Use the compressor to even out the growl, not to replace the filter movement.",
+      "when": "after_apply",
+      "verify": "The growl is consistently loud across its movement without obvious band pumping.",
+      "why": "Oddprophet uses multiband compression to flatten uneven frequencies and compensates the level."
+    },
+    {
+      "instruction": "Stage three: try different growl wavetables, a disperser/diffuser, notch filters and a comb filter with resonator turned up. Move the comb in small smooth strokes.",
+      "when": "after_apply",
+      "verify": "The sound becomes distinctive rather than a stock growl, while remaining controllable.",
+      "why": "Oddprophet's third stage is deliberate variation; he warns that comb filters need the resonator up and gentle movement."
+    },
+    {
+      "instruction": "Dripment variation: use a comb filter into band-pass, raise resonance and drive, put an LFO on the frequency knob, try triplets, then add hyper/dimension and a second comb in the effects section before the loud rack.",
+      "when": "after_apply",
+      "verify": "The patch gains vowel-like movement and stereo width without losing the mono sub.",
+      "why": "Dripment's second Serum 2 routine uses comb/band-pass filtering, triplet LFO movement and a second comb in the effects chain."
+    }
+  ],
+  "notes": "Sources: oddprophet, 'I Made A 1-2-3 Method For Dubstep Sound Design... It Works Every Time' (https://www.youtube.com/watch?v=OwQDpCtbNTM); Dripment, '2 TEAROUT Serum 2 BASS ROUTINES EVERY BEGINNER Should Know' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summaries, not quotes. Reference-only because these are Serum 2 patch and resampling methods."
+}

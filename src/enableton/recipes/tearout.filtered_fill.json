@@ -1,0 +1,82 @@
+{
+  "id": "tearout.filtered_fill",
+  "name": "Tearout - Filtered resample fill",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "tearout",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "arrangement",
+      "bass_music",
+      "checklist",
+      "dubstep",
+      "fill",
+      "filter",
+      "reference",
+      "resampling",
+      "riddim",
+      "sound_design",
+      "tearout",
+      "transition",
+      "tutorial",
+      "youtube"
+    ]
+  },
+  "description": "Reference checklist for a filtered tearout fill: resample a heavy bass, band-pass it into a weak phone-like build, then return to the dry hard bass at the drop. Not executable.",
+  "ingredients": [
+    {
+      "role": "source",
+      "kind": "sample",
+      "source": "Resampled tearout bass"
+    },
+    {
+      "role": "filter",
+      "kind": "instrument",
+      "source": "EQ Eight band-pass"
+    },
+    {
+      "role": "transient",
+      "kind": "instrument",
+      "source": "Disperser"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Resample a finished gun or growl to audio. Duplicate the resample so the dry drop version and the filtered fill version are independent.",
+      "when": "after_apply",
+      "verify": "The fill uses the same sound as the drop but can be processed destructively.",
+      "why": "MOONBOY resamples the layered bass, then makes filtered fills from the resample."
+    },
+    {
+      "instruction": "Band-pass the fill heavily, phone-like, and automate it to open or thin out over the fill. Keep it quiet and weak compared with the drop.",
+      "when": "after_apply",
+      "verify": "The fill creates expectation instead of competing with the main bass.",
+      "why": "MOONBOY uses a band-pass phone filter on the resampled bass as a pre-drop fill."
+    },
+    {
+      "instruction": "Add a disperser to the resampled fill for a watery, less digital transient. Automate pitch or filter movement across the fill so it does not loop statically.",
+      "when": "after_apply",
+      "verify": "The fill moves and has a distinct texture from the dry drop.",
+      "why": "MOONBOY uses a disperser on resampled basses and pitch changes for variation."
+    },
+    {
+      "instruction": "Place the fill in a four- or eight-bar gap, then cut to the dry hard bass on the drop. A/B the drop with and without the fill.",
+      "when": "after_apply",
+      "verify": "The drop hits harder with the fill than without it.",
+      "why": "The tutorial uses the filtered section to build expectation before the heavy drop."
+    },
+    {
+      "instruction": "Check the fill and drop in mono and at low volume. If the fill is too loud, the drop loses impact; if it is too quiet, the transition disappears.",
+      "when": "after_apply",
+      "verify": "The contrast survives on small speakers and in mono.",
+      "why": "This is a contrast technique, so relative level matters more than the fill's solo sound."
+    }
+  ],
+  "notes": "Source: MOONBOY, 'HOW TO TEAROUT DUBSTEP (Marauda, Kai Wachi, Excision)' (https://www.youtube.com/watch?v=nApsgDWSQ7Y). Transcript summary, not quotes. Reference-only because the engine cannot automate filters or place arrangement fills."
+}

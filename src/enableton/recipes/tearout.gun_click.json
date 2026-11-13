@@ -1,0 +1,76 @@
+{
+  "id": "tearout.gun_click",
+  "name": "Technique - Gun click and transient",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "tearout",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "bass_music",
+      "checklist",
+      "click",
+      "disperser",
+      "dubstep",
+      "gun_bass",
+      "reference",
+      "riddim",
+      "sound_design",
+      "tearout",
+      "technique",
+      "transient",
+      "tutorial",
+      "youtube"
+    ]
+  },
+  "description": "Standalone technique from the machine-gun checklist: a short high click layer, peak EQ and disperser for the gun's front edge.",
+  "ingredients": [
+    {
+      "role": "click",
+      "kind": "sample",
+      "source": "Short percussion or noise"
+    },
+    {
+      "role": "eq",
+      "kind": "instrument",
+      "source": "EQ Eight"
+    },
+    {
+      "role": "disperser",
+      "kind": "instrument",
+      "source": "Disperser"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Choose a very short percussion or noise source. Trim it so it ends before the bass body develops.",
+      "when": "after_apply",
+      "verify": "The click is a transient, not a second sustained sound.",
+      "why": "MOONBOY uses a percussion transient layer; Code: Pandorum adds a short noise click."
+    },
+    {
+      "instruction": "EQ a peak at the click's strongest point and remove low end. The high layer should add attack without masking the sub.",
+      "when": "after_apply",
+      "verify": "The click cuts through on small speakers while the low end stays clean.",
+      "why": "MOONBOY EQ's the peak of the transient layer; Code: Pandorum removes low end from the click."
+    },
+    {
+      "instruction": "Add a disperser, or stack several gentle EQ boosts, to make the transient less digital and more watery.",
+      "when": "after_apply",
+      "verify": "The front edge has a distinctive shape rather than a generic sample attack.",
+      "why": "MOONBOY demonstrates a disperser and an EQ-based alternative on the transient layer."
+    },
+    {
+      "instruction": "Blend the click under the body and check the full gun in mono. If it sounds like a separate sample, shorten it and lower it.",
+      "when": "after_apply",
+      "verify": "The click reads as part of one gun hit.",
+      "why": "The layer has to support the body, not sit on top of it."
+    }
+  ],
+  "notes": "Sources: MOONBOY, 'HOW TO TEAROUT DUBSTEP' (https://www.youtube.com/watch?v=nApsgDWSQ7Y); Code: Pandorum, 'MACHINE GUN BASS DESIGN' (https://www.youtube.com/watch?v=sk--QbE_TM0); Wheysted Music, 'SERUM TEAR-OUT GUN BASS TUTORIAL' (https://www.youtube.com/watch?v=KkXF4T_WPbY); Dripment, '2 TEAROUT Serum 2 BASS ROUTINES' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summaries, not quotes. Reference-only because the engine cannot create or verify these patches."
+}

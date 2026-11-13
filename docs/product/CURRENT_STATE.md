@@ -11,13 +11,13 @@
 | Package | `Enableton 0.1.0`, Python `>=3.11`; local runtime 3.11.17 via `uv` | [Verified] `pyproject.toml`, `uv run python -V` |
 | Git | branch `main`, panel baseline `a473577`; select/discard slice in this pass | [Verified] `git status`, `git log` |
 | Live | 12.2.5; connected; Remote Script `0.4.26`; build `a7fcd016f88d`; not stale | [Verified] `uv run enableton doctor` after restart, 2026-11-13 |
-| Open Set | scratch `SCRATCH fortnight - panel acceptance`, 120 BPM, 32 main tracks + 2 returns; no take tracks | [Verified] `enableton status`, 2026-11-13 |
+| Open Set | `victim denied`, 140.0001 BPM, 25 main tracks + 2 returns; no take tracks; no panel Run/Apply in this pass | [Verified] panel `session`/`tracks`, 2026-11-13 |
 | Catalogue | 89 tools; 9 modes; `produce` has 21 resolved tools | [Verified] `tools.json`, `modes.json`, `enableton modes` |
 | Producer tools | `session_brief`, `reference_analyze`, `takes_create`, `takes_select`, `takes_discard` | [Verified] manifest and source |
 | Producer evidence | brief, WAV reference, take create/apply, panel select UI/undo and discard preview; real scratch-Set gate | [Verified] real calls on 2026-11-12 and 2026-11-13 |
 | Writes | Mute, two takes and select were applied/undone; discard removed both takes after confirm; no `.als` saved or changed | [Verified] panel/CLI apply, undo, discard and SHA-256 check, 2026-11-13 |
 | Tests | full fake suite green after this slice; not a substitute for Live | [Verified] `pytest -q` |
-| UI / memory | Local web panel implemented with take Select and preview-only discard; no persistent producer memory | [Verified] source, live panel, and tests |
+| UI / memory | Local web panel is a minimal recipe browser plus cue drawer and compact Set view; no audio render and no persistent producer memory | [Verified] source, live panel, and tests |
 
 ## Architecture as implemented
 
@@ -61,8 +61,10 @@ are design-era names, not the current file map.
 - **[Verified]** `takes_create` uses real `tracks.duplicate`, rename and volume commands. It is
   dry-run by default, uses fader zero as “off”, returns undo tokens and attempts rollback.
 - **[Verified]** The panel serves `/api/status`, `/api/session`, `/api/tracks`, `/api/takes`,
-  `/api/plan` and `/api/apply`; it binds `127.0.0.1:9879` and uses the same client and tool paths as
-  the CLI. Its preview tokens are in-memory, single-use and expire after ten minutes.
+  `/api/plan`, `/api/apply`, `/api/recipes`, `/api/recipes/<id>`, `/api/recipe-targets`,
+  `/api/cue`, `/api/cue/run`, `/api/cue/discard` and `/api/undo`; it binds `127.0.0.1:9879` and
+  uses the same client and tool paths as the CLI. Preview and cue tokens are in-memory,
+  single-use and expire after ten minutes.
 - **[Verified]** The producer tools and the panel are part of the panel baseline commit.
 
 ## Panel acceptance: what is real
@@ -80,12 +82,18 @@ are design-era names, not the current file map.
 - **[Verified]** Clicking the panel's Select control previewed `takes_select`, Apply wrote it, and
   readback showed take 2 at `0.85` with take 1 at `0.0`; the returned fader undo restored the prior
   state.
+- **[Verified]** The minimal recipe browser rendered 14 real recipes, searched to 6 `triaal` rows,
+  sorted by BPM and filtered to the 2 rhythm recipes. The cue compiled `triaal — exact fader
+  balance` into 9 steps only after its manual checkpoint was confirmed, and discarded the plan
+  without writing Live. The browser also staged `dubstep.half_time` into `Chords MIDI / Track 1`
+  (26 notes), enabled Run only after staging, and discarded it. No recipe Run was performed.
 - **[Verified]** Real `takes_discard` was previewed by the panel's Preview discard control with
   `can_apply: false` and no token;
   the CLI removed both takes after `confirm: true` and read back 32 main tracks with the source
   restored. This is irreversible deletion, not undo.
-- **[Unverified]** Audible verification and a manual click-through of every unrelated row action.
-  The fake suite covers the plan/apply and discard paths but is not Live proof.
+- **[Unverified]** Audible verification, a real recipe Run, and a manual click-through of every
+  unrelated Set control. The fake suite covers the recipe cue/run and tool plan/apply paths but is
+  not Live proof.
   An unfreeze-tracks prompt was accepted on the scratch Set during the gate; it is an in-memory
   freeze-state change, and the on-disk `.als` hash stayed unchanged.
 

@@ -1,0 +1,88 @@
+{
+  "id": "ableton.drift_growl",
+  "name": "Ableton - Drift growl and wobble",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "tearout",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "ableton",
+      "bass_music",
+      "checklist",
+      "drift",
+      "dubstep",
+      "growl",
+      "native",
+      "reference",
+      "riddim",
+      "sound_design",
+      "tearout",
+      "tutorial",
+      "wobble",
+      "youtube"
+    ]
+  },
+  "description": "Reference checklist for a native Ableton Drift growl: initialized saw and low-pass, Env 2 filter movement, audio-rate LFO pitch FM, inverse high-pass movement and Saturator. Not executable.",
+  "ingredients": [
+    {
+      "role": "synth",
+      "kind": "instrument",
+      "source": "Ableton Drift"
+    },
+    {
+      "role": "drive",
+      "kind": "instrument",
+      "source": "Ableton Saturator"
+    },
+    {
+      "role": "eq",
+      "kind": "instrument",
+      "source": "EQ Eight"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Initialize Drift: turn oscillator 2 down, remove the filter frequency modulation, set Envelope 1 sustain to 100% and release to minimum, and set velocity-to-volume to 0%.",
+      "when": "after_apply",
+      "verify": "The synth is a clean saw through an open low-pass with no hidden modulation.",
+      "why": "Matt Tinkler starts from an initialized Drift so every later move is deliberate."
+    },
+    {
+      "instruction": "Set the low-pass to about 20 Hz. Assign Envelope 2 to filter frequency, raise its attack, drop sustain to 0% and adjust decay until the filter opens and closes like a wub.",
+      "when": "after_apply",
+      "verify": "The filter moves slowly enough to hear as a growl rather than a pluck.",
+      "why": "Matt Tinkler uses Envelope 2 on the low-pass with a slow attack and zero sustain."
+    },
+    {
+      "instruction": "Set Drift's LFO rate to 1:1 so it runs at audio rate relative to the oscillator. Apply a small amount of LFO to pitch and choose a whole-number ratio from 1 to 16.",
+      "when": "after_apply",
+      "verify": "The growl gains aggressive FM harmonics while remaining tonal.",
+      "why": "Matt Tinkler uses Drift's 1:1 LFO for pitch FM and recommends whole-number ratios."
+    },
+    {
+      "instruction": "Assign Envelope 2 negatively to the high-pass frequency so it moves opposite the low-pass. Then assign Envelope 2 to the LFO amount for extra pitch movement.",
+      "when": "after_apply",
+      "verify": "The filter tone evolves through the note instead of sitting in one place.",
+      "why": "Matt Tinkler adds inverse high-pass movement and envelope-controlled LFO depth."
+    },
+    {
+      "instruction": "Try oscillator shape changes, a second oscillator an octave or fifth above with detune, different filter types/resonance and different LFO waveforms. Raise oscillator level to drive the filter for saturation.",
+      "when": "after_apply",
+      "verify": "The patch has several distinct timbres without adding new devices.",
+      "why": "Matt Tinkler varies shape, oscillator layering, filter type and LFO waveform in Drift."
+    },
+    {
+      "instruction": "Add Ableton Saturator after Drift, increase drive and try the Base Shape or Color modes. Finish with EQ and only a small amount of width or unison.",
+      "when": "after_apply",
+      "verify": "The growl is louder and more aggressive but still mono-compatible in the low end.",
+      "why": "Matt Tinkler uses Saturator's drive, Base Shape and Color, then discusses width and unison."
+    }
+  ],
+  "notes": "Source: Matt Tinkler, 'Make AWESOME Bass Growls With Ableton Drift' (https://www.youtube.com/watch?v=KQlGU3LTWMk). Transcript summary, not quotes. Reference-only because the engine cannot create or verify Drift patches."
+}

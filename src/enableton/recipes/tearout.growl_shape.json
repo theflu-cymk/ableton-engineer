@@ -1,0 +1,71 @@
+{
+  "id": "tearout.growl_shape",
+  "name": "Technique - Growl open-close and filter",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "tearout",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "bass_music",
+      "checklist",
+      "dubstep",
+      "filter",
+      "growl",
+      "open_close",
+      "pitch_bend",
+      "reference",
+      "riddim",
+      "serum",
+      "sound_design",
+      "tearout",
+      "technique",
+      "tutorial",
+      "youtube"
+    ]
+  },
+  "description": "Standalone technique from the growl checklist: growl wavetable, open-close LFO, band-pass notch filter and a separate pitch-bend LFO.",
+  "ingredients": [
+    {
+      "role": "synth",
+      "kind": "instrument",
+      "source": "Serum 2"
+    },
+    {
+      "role": "table",
+      "kind": "sample",
+      "source": "Growl wavetable"
+    },
+    {
+      "role": "filter",
+      "kind": "instrument",
+      "source": "Band-pass notch filter"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Load a growl wavetable at bass octave and move the wavetable position. Use one LFO on position and choose an open-close shape: long open for a growl, instant open then close for a gun.",
+      "when": "after_apply",
+      "verify": "The patch has a clear vowel-like open and close, not random wavetable chatter.",
+      "why": "Oddprophet's one-LFO open-close is the core of the 1-2-3 growl method."
+    },
+    {
+      "instruction": "Add a band-pass notch filter and attach the LFO to cutoff. Keep the movement musical rather than wide and random.",
+      "when": "after_apply",
+      "verify": "The growl talks while the fundamental rhythm stays intact.",
+      "why": "Oddprophet uses band-pass notch as the main subtractive filter for growls."
+    },
+    {
+      "instruction": "Use a second LFO on global main tuning for a small pitch bend. Keep the amount subtle; the growl should bend, not detune into noise.",
+      "when": "after_apply",
+      "verify": "The pitch movement supports the growl without destroying its pitch center.",
+      "why": "Oddprophet adds a separate pitch-bend LFO to global main tuning."
+    }
+  ],
+  "notes": "Sources: oddprophet, 'I Made A 1-2-3 Method For Dubstep Sound Design...' (https://www.youtube.com/watch?v=OwQDpCtbNTM); Dripment, '2 TEAROUT Serum 2 BASS ROUTINES' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summaries, not quotes. Reference-only because the engine cannot create or verify these patches."
+}

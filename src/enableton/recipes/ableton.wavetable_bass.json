@@ -1,0 +1,81 @@
+{
+  "id": "ableton.wavetable_bass",
+  "name": "Ableton - Wavetable growl bass",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "tearout",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "ableton",
+      "bass_music",
+      "checklist",
+      "dubstep",
+      "growl",
+      "native",
+      "reference",
+      "riddim",
+      "sound_design",
+      "tearout",
+      "tutorial",
+      "wavetable",
+      "youtube"
+    ]
+  },
+  "description": "Reference checklist for an Ableton Wavetable dubstep growl: two wavetables, Env 2 scanning, mono sub, retriggered filter LFO, drive and a short reverb send. Not executable.",
+  "ingredients": [
+    {
+      "role": "synth",
+      "kind": "instrument",
+      "source": "Ableton Wavetable"
+    },
+    {
+      "role": "drive",
+      "kind": "instrument",
+      "source": "Wavetable drive or Saturator"
+    },
+    {
+      "role": "space",
+      "kind": "instrument",
+      "source": "Ableton Reverb"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Load two gnarly wavetables, for example Sapphire and Ruby. Blend them and lower the second oscillator's level so it adds texture instead of dominating.",
+      "when": "after_apply",
+      "verify": "The oscillator pair has a vocal, metallic character before filtering.",
+      "why": "Push Patterns layers two Wavetable tables and lowers the second's volume."
+    },
+    {
+      "instruction": "Use Envelope 2 with an up-then-down shape and assign it to both oscillator positions. Adjust the matrix amounts until the scan is slow enough to hear as movement.",
+      "when": "after_apply",
+      "verify": "Both tables scan together and the patch has a deliberate vowel-like motion.",
+      "why": "Push Patterns assigns Envelope 2 to oscillator 1 and 2 positions and shapes the scan."
+    },
+    {
+      "instruction": "Turn Poly off and use Mono. Turn on the sub oscillator. Set the filter LFO to retrigger, give it a slower attack and a 1/16 musical rate, then assign it to filter cutoff.",
+      "when": "after_apply",
+      "verify": "The bass is centered, has a clean sub, and the filter breathes in time.",
+      "why": "Push Patterns switches Wavetable to mono, enables the sub and uses a retriggered 1/16 filter LFO."
+    },
+    {
+      "instruction": "Drive the oscillator into the filter for grit, then add a small reverb send. Keep the reverb short and low so the sub and transient stay tight.",
+      "when": "after_apply",
+      "verify": "The growl is aggressive but not washed out.",
+      "why": "Push Patterns drives Wavetable into the filter and adds a restrained reverb."
+    },
+    {
+      "instruction": "Try a custom wavetable made from a recorded vowel or one-shot. Drag the sample into the wavetable slot and rescan it with the same modulation.",
+      "when": "after_apply",
+      "verify": "The patch becomes a unique table rather than a stock preset.",
+      "why": "Push Patterns demonstrates loading a user sample as a custom wavetable."
+    }
+  ],
+  "notes": "Source: Push Patterns, 'How To Make DUBSTEP BASS Sounds with WAVETABLE In Ableton Live' (https://www.youtube.com/watch?v=nbmxDxKji9M). Transcript summary, not quotes. Reference-only because the engine cannot create or verify Wavetable patches."
+}
