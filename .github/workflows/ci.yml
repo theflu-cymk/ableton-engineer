@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (windows, 3.11)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+          enable-cache: true
+
+      - name: Sync from the lockfile
+        run: uv sync --locked --all-extras
+
+      - name: Reject tracked files over 5 MB
+        run: uv run python scripts/check_repo_size.py
+
+      - name: Run the suite
+        run: uv run pytest -q
