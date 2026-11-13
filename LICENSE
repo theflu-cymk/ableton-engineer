@@ -1,0 +1,85 @@
+EnAbleton End User Licence Agreement
+
+Version 1.0 — 13 November 2026
+
+Copyright (c) 2026 theflu-cymk. All rights reserved.
+
+EnAbleton is licensed, not sold. By installing or using EnAbleton you accept
+this agreement. If you do not accept it, do not install or use the software and
+remove any copy you have made.
+
+1. Licence grant
+
+You are granted one non-exclusive, non-transferable licence to install and use
+EnAbleton on computers that you own or control, for your own music production,
+whether personal or professional. One licence covers one person. Team, studio
+and multi-seat use requires a separate licence for each person who uses it.
+
+2. Restrictions
+
+You may not:
+
+- copy, publish, distribute, sublicense, rent, lease or resell EnAbleton or any
+  part of it, including its source code and the Live Remote Script it installs;
+- make EnAbleton available to others as a service, hosted tool or bundled
+  component of another product;
+- remove or alter any copyright, licence or attribution notice;
+- use EnAbleton, or knowledge of its internals, to create a competing product;
+- reverse engineer, decompile or disassemble it, except where that restriction
+  is prohibited by applicable law.
+
+3. Ownership
+
+EnAbleton, its source code, documentation and the Remote Script it installs
+remain the property of the licensor. This agreement grants rights of use only.
+
+Third-party components keep their own licences. The Model Context Protocol
+Python SDK (`mcp`) is MIT licensed by its authors, and Python is covered by the
+PSF licence. Nothing in this agreement restricts rights you have under those
+licences.
+
+4. Ableton
+
+EnAbleton is an independent product. It is not affiliated with, endorsed by or
+supported by Ableton AG. Ableton Live is required and is licensed to you
+separately by Ableton. This licence grants no rights in Ableton Live, its
+content, its devices or its presets.
+
+5. Your work
+
+You keep every right to your music, Live sets, audio files and project
+material. EnAbleton claims no ownership of, or licence to, anything you create
+or process with it.
+
+6. No warranty
+
+EnAbleton is provided "as is", without warranty of any kind, express or implied,
+including fitness for a particular purpose, merchantability, accuracy of any
+musical or analytical result, or freedom from interruption or error. Automated
+edits to a Live set may not produce the result you intended. Keep your own
+backups of any set you allow EnAbleton to modify.
+
+7. Limitation of liability
+
+To the maximum extent permitted by law, the licensor is not liable for lost or
+damaged projects, lost audio, lost profit, lost opportunity or any indirect,
+incidental or consequential loss arising from use of EnAbleton. Where liability
+cannot be excluded, it is limited to the amount you paid for the licence.
+
+8. Refunds
+
+All sales are final. No refunds are offered. See `docs/TERMS.md`.
+
+9. Termination
+
+This licence ends if you breach any term above. On termination you must stop
+using EnAbleton and delete all copies, including the installed Remote Script.
+Sections 3, 6, 7 and 10 survive termination.
+
+10. Governing law
+
+This agreement is governed by the laws of the jurisdiction stated on the
+purchase page, without regard to conflict-of-law rules. Nothing here removes a
+right you have under mandatory consumer law in your place of residence.
+
+Contact: see `docs/TERMS.md`.
