@@ -1,0 +1,19 @@
+# Normalise line endings so Windows checkouts stop reporting phantom changes.
+* text=auto
+
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.lock text eol=lf
+
+# Never touch these; diffing or converting them corrupts the file.
+*.wav binary
+*.mp3 binary
+*.als binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.frag binary
