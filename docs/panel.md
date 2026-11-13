@@ -166,8 +166,8 @@ particular Live Set behaves correctly.
   11, returned `dry_run: true`, and issued a token.
 - `POST /api/apply` created `snare rush panel take 1` (index 10, volume `0.85`, active) and
   `snare rush panel take 2` (index 11, volume `0.0`), with the source at volume `0.0`.
-- A/B was exercised with `tracks_set_volume`: take 1 to `0.0`, then take 2 to `0.85`. The panel
-  readback caught up after its snapshot cache aged; a direct CLI read confirmed the switch.
+- A/B was exercised with `tracks_set_volume`: take 1 to `0.0`, then take 2 to `0.85`. A fresh
+  panel readback after its snapshot cache aged confirmed the switch.
 - Undo used the returned `tracks_duplicate` restore entries to remove indices 10 and 11, then
   `tracks_set_volume` restored the source to `0.85`. Readback showed 32 main tracks plus 2 returns,
   the take list empty, and the source restored.
