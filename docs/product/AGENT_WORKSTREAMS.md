@@ -68,7 +68,7 @@ signatures are product/engineering decisions, but the boundaries should be froze
 
 | Contract | Owner | Minimum shape |
 |---|---|---|
-| `takes_select` | A1 | Select one take by track + index/name; report audible take and volumes; reversible |
+| `takes_select` | A1 | Explicit `takes` list plus `active` take name or 1-based number; optional `volume` (defaults to the loudest positive fader, or 0.85 when the group is silent); dry-run by default; apply lowers the other takes to 0 and returns fader undo |
 | `takes_discard` | A1 | Delete a selected take; explicit confirmation; irreversible unless a safe trash path exists |
 | take variation | A1 | Bounded, reversible, real MIDI/audio/device change; no fake “variation” flag |
 | session memory | A1 | Local JSON outside the `.als`; goal, decisions, accepted take, resume text |
