@@ -175,9 +175,21 @@ particular Live Set behaves correctly.
   `da3c7a31a14c6d63bd32ee203015ed4bf3e4bfb1875483f374e9d609bb5d382f`.
 
 The take copies were identical at creation; this proves duplication, fader A/B and undo, not a
-musical variation. The panel has no `takes_select`/`takes_discard` controls and no Apply-to-undo
+musical variation. The panel has no `takes_select`/`takes_discard` buttons and no Apply-to-undo
 button in v1; the returned tokens were executed through the CLI.
 
-**[Unverified]** A manual UI click-through of every control, panel-driven take selection/discard,
-and audible verification. A write made outside the panel can leave `/api/tracks` and `/api/takes`
-stale until the snapshot cache ages (up to 30 seconds); `/api/session` reads fresh.
+**[Verified] 2026-11-13 — real select and discard gate.**
+
+- The panel planned and applied `takes_select` for `snare rush gate take 1` and
+  `snare rush gate take 2` with `active: 2`; readback showed take 2 at `0.85` and take 1 at `0.0`.
+- The returned fader undo restored take 1 to `0.85` and take 2 to `0.0` through the CLI.
+- The panel previewed `takes_discard` for both takes with `can_apply: false` and no token; the CLI
+  applied it only with `confirm: true`. Readback showed 32 main tracks plus 2 returns, both take
+  tracks gone, and the source restored to `0.85`.
+- The scratch `.als` SHA-256 remained
+  `da3c7a31a14c6d63bd32ee203015ed4bf3e4bfb1875483f374e9d609bb5d382f`.
+- The open scratch Set accepted an unfreeze-tracks prompt in memory; the on-disk file was not saved.
+
+**[Unverified]** A manual UI click-through, panel buttons for select/discard, and audible
+verification. A write made outside the panel can leave `/api/tracks` and `/api/takes` stale until
+the snapshot cache ages (up to 30 seconds); `/api/session` reads fresh.

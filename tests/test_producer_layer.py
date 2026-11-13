@@ -9,7 +9,7 @@ from enableton.live.fake import FakeAdapter
 from enableton.producer import session_brief
 from enableton.reference import reference_analyze
 from enableton.state.snapshot import SnapshotCache
-from enableton.takes import create_takes
+from enableton.takes import create_takes, discard_takes, select_takes
 from enableton.tools import run_tool
 from enableton.protocol.codes import LiveError
 
@@ -137,6 +137,83 @@ class TakeTests(unittest.TestCase):
     def test_unknown_argument_is_rejected(self):
         with self.assertRaises(LiveError):
             create_takes(self.adapter, self.cache, {"track": "Drums", "bogus": 1})
+
+    def _two_takes(self):
+        result = create_takes(
+            self.adapter, self.cache, {"track": "Drums", "count": 2, "dry_run": False}
+        )
+        return [item["name"] for item in result["takes"]]
+
+    def test_select_dry_run_apply_and_undo(self):
+        names = self._two_takes()
+        preview = select_takes(
+            self.adapter, self.cache, {"takes": names, "active": 2}
+        )
+
+        self.assertTrue(preview["dry_run"])
+        self.assertEqual(preview["active"], names[1])
+        self.assertEqual(preview["changes"][0]["to"], 0.0)
+        self.assertEqual(preview["changes"][1]["to"], 0.82)
+        self.assertEqual(self.adapter.song.tracks[1].volume, 0.82)
+        self.assertEqual(self.adapter.song.tracks[2].volume, 0.0)
+
+        applied = select_takes(
+            self.adapter, self.cache, {"takes": names, "active": names[1], "dry_run": False}
+        )
+        self.assertFalse(applied["dry_run"])
+        self.assertEqual(self.adapter.song.tracks[1].volume, 0.0)
+        self.assertAlmostEqual(self.adapter.song.tracks[2].volume, 0.82)
+
+        self.adapter.call("tracks.set_volume", {"restore": applied["undo"], "dry_run": False})
+        self.assertAlmostEqual(self.adapter.song.tracks[1].volume, 0.82)
+        self.assertEqual(self.adapter.song.tracks[2].volume, 0.0)
+
+    def test_select_is_available_through_run_tool(self):
+        names = self._two_takes()
+        result = run_tool(
+            "takes_select", {"takes": names, "active": 1}, adapter=self.adapter
+        )
+        self.assertTrue(result["dry_run"])
+        self.assertEqual(result["active"], names[0])
+
+    def test_discard_requires_confirm_and_removes_only_named_takes(self):
+        names = self._two_takes()
+        before = len(self.adapter.song.tracks)
+
+        with self.assertRaises(LiveError) as ctx:
+            discard_takes(self.adapter, self.cache, {"takes": [names[1]], "dry_run": False})
+        self.assertEqual(ctx.exception.code, "PRECONDITION_FAILED")
+        self.assertEqual(len(self.adapter.song.tracks), before)
+
+        preview = discard_takes(self.adapter, self.cache, {"takes": [names[1]]})
+        self.assertTrue(preview["dry_run"])
+        self.assertEqual(preview["count"], 1)
+        self.assertEqual(len(self.adapter.song.tracks), before)
+
+        applied = discard_takes(
+            self.adapter, self.cache,
+            {"takes": [names[1]], "confirm": True, "dry_run": False},
+        )
+        self.assertFalse(applied["dry_run"])
+        self.assertFalse(applied["reversible"])
+        self.assertEqual([track.name for track in self.adapter.song.tracks], ["Drums", names[0], "Bass layer", "Vocal chop"])
+        self.assertNotIn(names[1], [track.name for track in self.adapter.song.tracks])
+
+    def test_take_tools_reject_a_source_track_and_mixed_groups(self):
+        names = self._two_takes()
+        with self.assertRaises(LiveError) as ctx:
+            select_takes(self.adapter, self.cache, {"takes": ["Drums"], "active": 1})
+        self.assertEqual(ctx.exception.code, "BAD_ARGS")
+
+        bass = create_takes(
+            self.adapter, self.cache, {"track": "Bass layer", "count": 1, "dry_run": False}
+        )
+        with self.assertRaises(LiveError) as ctx:
+            select_takes(
+                self.adapter, self.cache,
+                {"takes": [names[0], bass["takes"][0]["name"]], "active": 1},
+            )
+        self.assertEqual(ctx.exception.code, "BAD_ARGS")
 
 
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ from .reports import (
     sections_map, structure, summary_from_snapshot, unused, warp_check,
 )
 from .state.snapshot import SnapshotCache
-from .takes import create_takes
+from .takes import create_takes, discard_takes, select_takes
 
 LOCAL = {
     "session_brief": session_brief,
@@ -189,6 +189,15 @@ def run_tool(
             raise LiveError("UNSUPPORTED", "takes_create needs a connected Live adapter")
         try:
             return create_takes(adapter, cache, args)
+        except LiveError:
+            raise
+
+    if name in ("takes_select", "takes_discard"):
+        if adapter is None:
+            raise LiveError("UNSUPPORTED", "%s needs a connected Live adapter" % (name,))
+        handler = select_takes if name == "takes_select" else discard_takes
+        try:
+            return handler(adapter, cache, args)
         except LiveError:
             raise
 

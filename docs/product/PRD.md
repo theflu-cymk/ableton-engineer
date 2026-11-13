@@ -8,7 +8,7 @@
 
 Enableton is a local MCP server that lets a producer use an AI client to understand a real Ableton
 Live Set, make a small reversible change, and hear or inspect the result. The product should feel
-like a **co-producer with context, alternatives and proof**, not a catalogue of 87 commands.
+like a **co-producer with context, alternatives and proof**, not a catalogue of 89 commands.
 
 The MVP is a **technical MCP tool with a producer-facing `produce` mode**. It is not a standalone
 DAW, a hosted service, a replacement for Live, or a promise of unlimited LOM access.
@@ -74,8 +74,9 @@ separate generative suggestion engine yet.
 Duplicate a real track into named alternatives, leave one audible, lower the others, and make the
 operation reversible. The producer chooses what to keep.
 
-**Current:** `takes_create` duplicate workflow with a verified real apply, fader A/B and undo on a
-scratch Set. Takes are identical until edited; select/discard/variation are planned, not present.
+**Current:** `takes_create` duplicate workflow plus `takes_select` and `takes_discard`, with real
+apply, select/undo and confirmed discard on a scratch Set. Takes are identical until edited;
+variation is planned, not present. Panel select/discard buttons are not built.
 
 ## MVP workflows
 
@@ -101,8 +102,8 @@ but wrap them in producer language.
 1. Resolve a unique track.
 2. Dry-run `takes_create` and show planned names, indices and fader changes.
 3. Apply only on a backed-up scratch Set.
-4. A/B with a dedicated select tool (planned) or `tracks_set_volume` as the interim.
-5. Undo and verify the original track/fader state.
+4. A/B with `takes_select`; undo the fader change and verify the original state.
+5. Preview `takes_discard`, then apply only with explicit confirmation when a take is being removed.
 
 **External mapping:** arrangement editing.
 
@@ -129,7 +130,7 @@ change.”
 | FR-4 | `session_brief` returns sections, roles, issues and next actions from one snapshot. | Implemented; real blank-Set read verified |
 | FR-5 | `reference_analyze` returns basic WAV measurements and optional advanced values, with explicit unavailable reasons. | Implemented; real WAV verified |
 | FR-6 | `takes_create` plans and creates real named duplicate takes with dry-run, undo and rollback. | Dry-run and real apply/A-B/undo verified on a scratch Set |
-| FR-7 | The producer can select/discard takes without editing fader numbers. | Planned; not implemented |
+| FR-7 | The producer can select/discard takes without editing fader numbers. | CLI/MCP tools implemented and verified; panel buttons pending |
 | FR-8 | Takes can become real alternatives through a bounded variation operation. | Planned; not implemented |
 | FR-9 | Capture → compare → one bounded change works as a producer flow. | Pieces exist; orchestration missing |
 | FR-10 | Every write identifies a fresh target, preserves the original and reports partial failure honestly. | Existing safety invariants; producer workflow not fully gated |

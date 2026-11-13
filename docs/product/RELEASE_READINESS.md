@@ -47,7 +47,8 @@ An unchecked item is a blocker, not a task someone may assume is done.
 - [x] `takes_create` dry-run verified on real Live.
 - [x] Real panel apply verified: two named take tracks created with isolated faders.
 - [x] Fader A/B verified; both copies removed and source volume restored by the returned undo tokens.
-- [ ] `takes_select` / `takes_discard` implemented.
+- [x] `takes_select` implemented with dry-run, readback and fader undo on the scratch Set.
+- [x] `takes_discard` implemented with preview, explicit confirm, deletion readback and no false undo claim.
 - [ ] One real variation implemented; identical copies are not a variation.
 - [x] Producer-facing A/B evidence recorded in [../panel.md](../panel.md#live-acceptance-record).
 
@@ -57,7 +58,8 @@ An unchecked item is a blocker, not a task someone may assume is done.
   were exercised against real Live.
 - [x] A real dry-run/apply/undo of one mute field passed on a backed-up scratch Set.
 - [x] Real panel take apply, A/B and undo passed on the scratch Set.
-- [ ] Manual UI click-through of every row action and panel take select/discard are not verified.
+- [ ] Manual UI click-through and panel select/discard buttons are not verified; the CLI/MCP tools
+  have real scratch-Set evidence.
 
 ### Reference and sound
 
@@ -91,13 +93,12 @@ An unchecked item is a blocker, not a task someone may assume is done.
 ## Current blockers
 
 1. **No approved product shape.** D-02/D-03 are proposals.
-2. **No A/B select/discard tool.** Producers must use raw fader values for the A/B switch.
-3. **No integrated reference workflow.** Measurement exists; capture-to-change does not.
-4. **No setup/compatibility/client UX** matching the release checklist.
-5. **No legal/privacy/support assets.** Do not invent them.
-6. **No beta or demo.** Both are external deliverables.
-7. **Version scheme unresolved.** Package `0.1.0` and Remote Script `0.4.26` are not the same thing.
-8. **Documentation drift.** AGENTS/MISSION/mcp docs contain stale status lines; this pack records the
+2. **No integrated reference workflow.** Measurement exists; capture-to-change does not.
+3. **No setup/compatibility/client UX** matching the release checklist.
+4. **No legal/privacy/support assets.** Do not invent them.
+5. **No beta or demo.** Both are external deliverables.
+6. **Version scheme unresolved.** Package `0.1.0` and Remote Script `0.4.26` are not the same thing.
+7. **Documentation drift.** AGENTS/MISSION/mcp docs contain stale status lines; this pack records the
     current interpretation but does not rewrite historical evidence.
 
 ## Evidence rules

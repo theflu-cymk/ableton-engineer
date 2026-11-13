@@ -223,6 +223,8 @@
         "session_brief",
         "reference_analyze",
         "takes_create",
+        "takes_select",
+        "takes_discard",
         "tracks_list",
         "tracks_set_volume",
         "sections_map",

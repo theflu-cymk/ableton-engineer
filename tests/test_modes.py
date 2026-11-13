@@ -59,6 +59,8 @@ class ModeTests(unittest.TestCase):
         self.assertIn("session_brief", modes.get("produce").tools)
         self.assertIn("reference_analyze", modes.get("produce").tools)
         self.assertIn("takes_create", modes.get("produce").tools)
+        self.assertIn("takes_select", modes.get("produce").tools)
+        self.assertIn("takes_discard", modes.get("produce").tools)
 
     def test_unknown_mode_is_a_clear_error(self):
         modes = load_modes(self.catalogue)

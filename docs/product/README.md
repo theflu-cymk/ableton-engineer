@@ -34,18 +34,20 @@ larger tool menu and not a standalone DAW.
   `a473577`, with the panel implementation committed.
 - **[Verified]** Live 12.2.5, Remote Script `0.4.26`, build `a7fcd016f88d`, connected, `errors 0`,
   not stale at the 2026-11-13 check.
-- **[Verified]** No Live Set is currently open. The `SCRATCH fortnight - panel acceptance` Set used
-  for the gate was closed without saving. The original working Set was not opened or written.
-- **[Verified]** Catalogue: 87 tools in 9 modes. `produce` is one of them and contains 19 resolved
-  tools. The three producer headline tools are `session_brief`, `reference_analyze` and
-  `takes_create`.
-- **[Verified]** The fake suite was green before this documentation pass. A green fake suite is
-  **not** real-Live proof.
+- **[Verified]** The open Live Set is the unsaved `SCRATCH fortnight - panel acceptance` copy: 32
+  main tracks plus 2 returns. An unfreeze-tracks prompt was accepted in memory; the on-disk file is
+  unchanged. The original working Set was not opened or written.
+- **[Verified]** Catalogue: 89 tools in 9 modes. `produce` is one of them and contains 21 resolved
+  tools. The producer headline tools are `session_brief`, `reference_analyze`, `takes_create`,
+  `takes_select` and `takes_discard`.
+- **[Verified]** The full fake suite passed after this slice. A green fake suite is **not**
+  real-Live proof.
 - **[Verified]** The producer slice has real evidence for a read-only brief, a take dry-run, a
-  two-take panel apply with fader A/B and undo, a real WAV reference measurement and a panel mute
-  apply/undo on the scratch Set. No take was applied to a working Set. No audible test was run.
-- **[Verified]** The local panel exists at `enableton panel`; there is no persistent session memory
-  and no take select/discard/variation tool yet.
+  two-take panel apply with fader A/B and undo, real select/undo and confirmed discard, a real WAV
+  reference measurement and a panel mute apply/undo. No take was applied to a working Set. No
+  audible test was run.
+- **[Verified]** The local panel exists at `enableton panel`; it has no select/discard buttons or
+  persistent memory, and no take variation tool yet.
 - **[Verified]** The tree has no `LICENSE`, EULA, privacy policy, refund policy, support contact or
   demo video. Those are release blockers, not documentation chores to invent.
 
@@ -60,7 +62,7 @@ The Supreme Potato product documentation at
 | Product/code name | EnAbleton | Enableton |
 | Backend | Pinned `mcp-server-ableton-live` package and generated Remote Script | Custom Python server + `remote_script/Enableton` |
 | Reported version | `0.1.0b1`, upstream `1.8.1`, protocol `1.8.1-ext.15` | package `0.1.0`; Remote Script `0.4.26` |
-| Tool count | 242 (156 upstream + 86 additions) | 87 catalogue entries at this snapshot |
+| Tool count | 242 (156 upstream + 86 additions) | 89 catalogue entries at this snapshot |
 | Port | 9877 | 9878 |
 | Current focus | Commercial release checklist and owner decisions | Working Live engine plus the first producer slice |
 | Strongest evidence | Release-gate framing and required business inputs | Real-Live protocol/write gates and the new producer workflow |
@@ -97,6 +99,6 @@ The three external workflows remain the **release proof set**; the producer verb
 
 ## First action
 
-Read [HANDOFF.md](HANDOFF.md), then run the baseline checks in its “First 30 minutes” section. No Set
-is open now. For another write gate, make a fresh backed-up scratch copy of a real song; never apply
-to the working Set.
+Read [HANDOFF.md](HANDOFF.md), then run the baseline checks in its “First 30 minutes” section. Use the
+current unsaved scratch Set only for reversible work; for another write gate, make a fresh backed-up
+scratch copy of a real song and never apply to the working Set.

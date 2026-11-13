@@ -221,6 +221,26 @@ class PanelTests(unittest.TestCase):
         self.assertFalse(planned["can_apply"])
         self.assertIsNone(planned["token"])
 
+    def test_discard_is_preview_only_because_deletion_is_irreversible(self):
+        status, create = self._request(
+            "POST", "/api/plan",
+            {"tool": "takes_create", "args": {"track": "Drums", "count": 2}},
+        )
+        self.assertEqual(status, 200)
+        status, applied = self._request("POST", "/api/apply", {"token": create["token"]})
+        self.assertEqual(status, 200)
+        names = [item["name"] for item in applied["result"]["takes"]]
+
+        status, planned = self._request(
+            "POST", "/api/plan", {"tool": "takes_discard", "args": {"takes": [names[1]]}}
+        )
+        self.assertEqual(status, 200)
+        self.assertFalse(planned["can_apply"])
+        self.assertIsNone(planned["token"])
+        self.assertTrue(planned["preview"]["dry_run"])
+        self.assertEqual(planned["preview"]["count"], 1)
+        self.assertIn(names[1], [track.name for track in self.adapter.song.tracks])
+
     def test_rejected_write_returns_an_error_envelope_and_no_token(self):
         status, payload = self._request(
             "POST", "/api/plan",

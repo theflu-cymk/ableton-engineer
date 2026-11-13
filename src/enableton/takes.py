@@ -8,9 +8,12 @@ reversible, but the takes start as identical copies; the producer edits each cop
 
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, List, Optional
 
 from .protocol.codes import LiveError
+
+_TAKE_RE = re.compile(r"^(?P<base>.+?)\s+take\s+(?P<take>\d+)$", re.IGNORECASE)
 
 
 def _source(snapshot: Dict[str, Any], args: Dict[str, Any]) -> Dict[str, Any]:
@@ -191,4 +194,208 @@ def create_takes(adapter: Any, cache: Any, args: Optional[Dict[str, Any]] = None
         "active": takes[0]["name"] if takes else None,
         "undo": {"duplicates": duplicate_undo, "volumes": volume_tokens},
         "note": "Take 1 is audible; the source and other takes are at fader zero. Edit copies, then A/B with tracks_set_volume.",
+    }
+
+
+def _take_names(args: Dict[str, Any]) -> List[str]:
+    raw = args.get("takes")
+    if not isinstance(raw, list) or not raw:
+        raise LiveError("BAD_ARGS", "takes must be a non-empty list of exact take names")
+    if len(raw) > 8:
+        raise LiveError("BAD_ARGS", "takes is limited to 8 names")
+    names: List[str] = []
+    for value in raw:
+        if not isinstance(value, str) or not value.strip():
+            raise LiveError("BAD_ARGS", "takes must contain non-empty names")
+        name = value.strip()
+        if name in names:
+            raise LiveError("BAD_ARGS", "takes contains a duplicate name")
+        names.append(name)
+    return names
+
+
+def _resolve_takes(snapshot: Dict[str, Any], names: List[str]) -> List[Dict[str, Any]]:
+    tracks = list(snapshot.get("tracks") or [])
+    rows: List[Dict[str, Any]] = []
+    base: Optional[str] = None
+    for name in names:
+        matches = [track for track in tracks if track.get("name") == name]
+        if not matches:
+            raise LiveError("NOT_FOUND", "no track named %r" % (name,))
+        if len(matches) > 1:
+            raise LiveError("AMBIGUOUS_REF", "%d tracks are named %r; use unique take names" % (len(matches), name))
+        row = matches[0]
+        if str(row.get("kind") or "") == "return":
+            raise LiveError("BAD_ARGS", "%r is a return track, not a take" % (name,))
+        match = _TAKE_RE.match(name)
+        if match is None:
+            raise LiveError(
+                "BAD_ARGS", "%r is not a take name; expected '<group> take <number>'" % (name,)
+            )
+        group = match.group("base").strip()
+        if base is None:
+            base = group
+        elif group != base:
+            raise LiveError("BAD_ARGS", "takes must belong to the same group")
+        rows.append(row)
+    return rows
+
+
+def _volume_of(row: Dict[str, Any]) -> float:
+    try:
+        return float(row["volume"])
+    except (KeyError, TypeError, ValueError):
+        raise LiveError("UNSUPPORTED", "track %r has no readable volume" % (row.get("name"),))
+
+
+def _resolve_active(names: List[str], active: Any) -> str:
+    if isinstance(active, bool):
+        raise LiveError("BAD_ARGS", "active must be a take name or a 1-based take number")
+    if isinstance(active, int):
+        if active < 1 or active > len(names):
+            raise LiveError("BAD_ARGS", "active must be a 1-based take number in this group")
+        return names[active - 1]
+    if isinstance(active, str) and active in names:
+        return active
+    raise LiveError("BAD_ARGS", "active must be one of the takes, or a 1-based take number")
+
+
+def select_takes(adapter: Any, cache: Any, args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Make one take audible and lower the other takes to fader zero."""
+    args = dict(args or {})
+    unknown = sorted(set(args) - {"takes", "active", "volume", "dry_run"})
+    if unknown:
+        raise LiveError("BAD_ARGS", "unknown argument(s): %s" % ", ".join(unknown))
+    dry_run = args.get("dry_run", True)
+    if not isinstance(dry_run, bool):
+        raise LiveError("BAD_ARGS", "dry_run must be true or false")
+    names = _take_names(args)
+    rows = _resolve_takes(cache.get(), names)
+    active = _resolve_active(names, args.get("active"))
+    volumes = {str(row["name"]): _volume_of(row) for row in rows}
+    raw_volume = args.get("volume")
+    if raw_volume is None:
+        audible = [value for value in volumes.values() if value > 0.001]
+        level = max(audible) if audible else 0.85
+    else:
+        if isinstance(raw_volume, bool):
+            raise LiveError("BAD_ARGS", "volume must be a number from 0 to 1")
+        try:
+            level = float(raw_volume)
+        except (TypeError, ValueError):
+            raise LiveError("BAD_ARGS", "volume must be a number from 0 to 1")
+        if level < 0.0 or level > 1.0:
+            raise LiveError("BAD_ARGS", "volume must be a number from 0 to 1")
+
+    changes = []
+    for row in rows:
+        name = str(row["name"])
+        target = level if name == active else 0.0
+        current = volumes[name]
+        changes.append({
+            "track": name,
+            "track_index": int(row["index"]),
+            "from": round(current, 4),
+            "to": round(target, 4),
+        })
+    undo = [{"track_index": int(row["index"]), "volume": volumes[str(row["name"])]} for row in rows]
+    note = "Selecting a take sets it audible and the other takes to fader zero; undo restores the prior faders."
+    if dry_run:
+        return {
+            "dry_run": True,
+            "group": _TAKE_RE.match(active).group("base").strip(),
+            "active": active,
+            "volume": round(level, 4),
+            "changes": changes,
+            "undo": [],
+            "note": note,
+        }
+
+    try:
+        adapter.call(
+            "tracks.set_volume",
+            {"tracks": names, "volume": 0.0, "dry_run": False},
+            timeout_ms=8000,
+        )
+        adapter.call(
+            "tracks.set_volume",
+            {"tracks": [active], "volume": level, "dry_run": False},
+            timeout_ms=8000,
+        )
+    except Exception as exc:  # noqa: BLE001 - report the failed write and try to restore
+        rollback = {"restored": False, "errors": []}
+        try:
+            adapter.call(
+                "tracks.set_volume",
+                {"restore": undo, "dry_run": False},
+                timeout_ms=8000,
+            )
+            rollback["restored"] = True
+        except Exception as restore_exc:  # noqa: BLE001
+            rollback["errors"].append(str(restore_exc))
+        cache.invalidate()
+        raise LiveError(
+            "LIVE_ERROR",
+            "takes_select failed: %s" % (exc,),
+            {"rollback": rollback, "changes": changes},
+        )
+
+    cache.invalidate()
+    return {
+        "dry_run": False,
+        "group": _TAKE_RE.match(active).group("base").strip(),
+        "active": active,
+        "volume": round(level, 4),
+        "changes": changes,
+        "undo": undo,
+        "note": note,
+    }
+
+
+def discard_takes(adapter: Any, cache: Any, args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Delete take tracks after an explicit confirmation; this is irreversible."""
+    args = dict(args or {})
+    unknown = sorted(set(args) - {"takes", "confirm", "dry_run"})
+    if unknown:
+        raise LiveError("BAD_ARGS", "unknown argument(s): %s" % ", ".join(unknown))
+    dry_run = args.get("dry_run", True)
+    if not isinstance(dry_run, bool):
+        raise LiveError("BAD_ARGS", "dry_run must be true or false")
+    names = _take_names(args)
+    rows = _resolve_takes(cache.get(), names)
+    if not dry_run and args.get("confirm") is not True:
+        raise LiveError(
+            "PRECONDITION_FAILED",
+            "takes_discard deletes tracks and cannot be undone; an apply needs confirm: true",
+        )
+
+    ordered = sorted(rows, key=lambda row: int(row["index"]), reverse=True)
+    deleted: List[Dict[str, Any]] = []
+    try:
+        for row in ordered:
+            result = adapter.call(
+                "tracks.delete",
+                {"track_index": int(row["index"]), "confirm": True, "dry_run": dry_run},
+                timeout_ms=8000,
+            )
+            deleted.extend(result.get("deleted") or [])
+    except Exception as exc:  # noqa: BLE001 - deletion is irreversible; report the partial state
+        if not dry_run:
+            cache.invalidate()
+        raise LiveError(
+            "LIVE_ERROR",
+            "takes_discard failed after %d deletion(s): %s" % (len(deleted), exc),
+            {"deleted": deleted, "reversible": False},
+        )
+
+    if not dry_run:
+        cache.invalidate()
+    return {
+        "dry_run": dry_run,
+        "deleted": deleted,
+        "count": len(deleted),
+        "reversible": False,
+        "requires_confirm": True,
+        "undo": [],
+        "note": "Deleted take tracks cannot be restored on this Live build.",
     }

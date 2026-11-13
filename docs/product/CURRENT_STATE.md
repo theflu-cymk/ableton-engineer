@@ -9,14 +9,14 @@
 | Area | Current state | Evidence |
 |---|---|---|
 | Package | `Enableton 0.1.0`, Python `>=3.11`; local runtime 3.11.17 via `uv` | [Verified] `pyproject.toml`, `uv run python -V` |
-| Git | branch `main`, baseline `a473577`; panel implementation committed | [Verified] `git status`, `git log` |
+| Git | branch `main`, panel baseline `a473577`; select/discard slice in this pass | [Verified] `git status`, `git log` |
 | Live | 12.2.5; connected; Remote Script `0.4.26`; build `a7fcd016f88d`; `errors 0`; not stale | [Verified] `uv run enableton doctor` after restart, 2026-11-13 |
-| Open Set | none; the `SCRATCH fortnight - panel acceptance` Set was closed without saving after the take gate | [Verified] user report and panel 503, 2026-11-13 |
-| Catalogue | 87 tools; 9 modes; `produce` has 19 resolved tools | [Verified] `tools.json`, `modes.json`, `enableton modes` |
-| Producer tools | `session_brief`, `reference_analyze`, `takes_create` | [Verified] manifest and source |
-| Producer evidence | brief read real Live; panel mute and take apply/A-B/undo; real take dry-run; WAV reference measured | [Verified] real calls on 2026-11-12 and 2026-11-13 |
-| Writes | A mute and a two-take set were applied and undone on the scratch Set; no `.als` saved or changed | [Verified] panel/CLI apply, undo and SHA-256 check, 2026-11-13 |
-| Tests | fake suite green before this docs pass; not a substitute for Live | [Verified] `pytest -q` |
+| Open Set | scratch `SCRATCH fortnight - panel acceptance`, 120 BPM, 32 main tracks + 2 returns; no take tracks | [Verified] `enableton status`, 2026-11-13 |
+| Catalogue | 89 tools; 9 modes; `produce` has 21 resolved tools | [Verified] `tools.json`, `modes.json`, `enableton modes` |
+| Producer tools | `session_brief`, `reference_analyze`, `takes_create`, `takes_select`, `takes_discard` | [Verified] manifest and source |
+| Producer evidence | brief, WAV reference, take create/apply, panel select/undo and discard; real scratch-Set gate | [Verified] real calls on 2026-11-12 and 2026-11-13 |
+| Writes | Mute, two takes and select were applied/undone; discard removed both takes after confirm; no `.als` saved or changed | [Verified] panel/CLI apply, undo, discard and SHA-256 check, 2026-11-13 |
+| Tests | full fake suite green after this slice; not a substitute for Live | [Verified] `pytest -q` |
 | UI / memory | Local web panel implemented; no persistent producer memory | [Verified] source, live panel, and tests |
 
 ## Architecture as implemented
@@ -77,8 +77,15 @@ are design-era names, not the current file map.
 - **[Verified]** The panel planned and applied a two-take set on `snare rush` (indices 10 and 11),
   with take 1 at `0.85`, take 2 and the source at `0.0`. A/B moved take 1 to `0.0` and take 2 to
   `0.85`; undo removed both copies and restored the source. The scratch `.als` hash stayed unchanged.
-- **[Unverified]** A manual click-through of every UI control, panel support for take select/discard,
-  and audible verification. The fake suite covers the plan/apply flow but is not Live proof.
+- **[Verified]** Real `takes_select` via the panel selected take 2, read it back at `0.85` with take 1
+  at `0.0`, and the returned fader undo restored the prior state.
+- **[Verified]** Real `takes_discard` was previewed by the panel with `can_apply: false` and no token;
+  the CLI removed both takes after `confirm: true` and read back 32 main tracks with the source
+  restored. This is irreversible deletion, not undo.
+- **[Unverified]** A manual click-through of every UI control, panel buttons for take select/discard,
+  and audible verification. The fake suite covers the plan/apply and discard paths but is not Live proof.
+  An unfreeze-tracks prompt was accepted on the scratch Set during the gate; it is an in-memory
+  freeze-state change, and the on-disk `.als` hash stayed unchanged.
 
 ## Producer slice: what is real
 
@@ -106,18 +113,27 @@ are design-era names, not the current file map.
   no track created.
 - **[Verified]** Real panel apply on `snare rush` created two named take tracks; a CLI fader change
   switched A/B, and the returned undo tokens removed both copies and restored the source.
-- **[Unverified]** Panel-driven select/discard and any audible check.
+- **[Verified]** Real panel select, undo and confirmed CLI discard passed on the scratch Set.
+- **[Unverified]** Panel UI buttons for select/discard and any audible check.
 - **[Verified]** Takes are identical copies at creation; they are not generated variations.
+
+### `takes_select` / `takes_discard`
+
+- **[Verified]** `takes_select` accepted two take names and selected take 2; dry-run, apply and
+  undo returned the expected fader changes.
+- **[Verified]** `takes_discard` returned a preview with `can_apply: false` in the panel; the CLI
+  apply required `confirm: true`, deleted both named takes and reported no undo token.
+- **[Verified]** A source track name is rejected; take names must belong to one group.
 
 ## Existing engine breadth
 
-The 87-tool catalogue includes:
+The 89-tool catalogue includes:
 - core status, guide, inspect and plan tools;
 - track, clip, note, device and mix writes;
 - arrangement/section tools;
 - transport and capture;
 - recipe tools;
-- the three producer tools.
+- the five producer tools.
 
 This breadth is **engine capability**, not the intended producer menu. The product pack recommends
 `produce` as the demonstrated surface and keeps `auto` as the default until that is approved.
@@ -142,13 +158,12 @@ The following is historical evidence, not a claim that the current build repeats
 
 ### Product gaps
 
-1. **No `takes_select` / `takes_discard`.** A/B requires `tracks_set_volume`; cleanup is manual.
-2. **No take variation.** Take 2 is an identical copy.
-3. **No producer memory.** The brief is stateless; there is no “where did we leave off”.
-4. **Panel v1 is deliberately narrow.** Takes are read-only; take select/discard and destructive
-   operations are not exposed.
-5. **No reference capture orchestration.** Analysis works on a file; capture → compare is manual.
-6. **No audible verification.** Measurement is not listening.
+1. **No take variation.** Take 2 is an identical copy.
+2. **No producer memory.** The brief is stateless; there is no “where did we leave off”.
+3. **Panel v1 is deliberately narrow.** Takes are read-only in the browser; select/discard exist in
+   the CLI/MCP tools but are not UI buttons. Discard is deliberately not applicable from the panel.
+4. **No reference capture orchestration.** Analysis works on a file; capture → compare is manual.
+5. **No audible verification.** Measurement is not listening.
 
 ### Release gaps
 
@@ -206,8 +221,8 @@ The following is historical evidence, not a claim that the current build repeats
 
 - Do not apply a take to a working Set just to make a demo.
 - Do not call `takes_create` a variation generator.
-- Do not claim take variation, panel select/discard or audible verification exists. Real take apply,
-  fader A/B and undo are verified on a scratch Set; select/discard are not.
+- Do not claim take variation, panel select/discard buttons or audible verification exists. Real
+  take apply, fader A/B, select/undo and confirmed discard are verified on a scratch Set.
 - Do not copy external tool counts or setup steps.
 - Do not bump the Remote Script unless you are changing `remote_script/`; the producer tools are
   client-side.

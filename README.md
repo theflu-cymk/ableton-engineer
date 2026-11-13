@@ -56,11 +56,13 @@ Start the MCP server with the producer-facing tool set:
 uv run enableton serve --mode produce
 ```
 
-The three headline tools are:
+The five headline producer tools are:
 
 - `session_brief` — maps sections, roles, density, issues and next actions.
 - `reference_analyze` — measures a WAV reference, optionally against another file.
 - `takes_create` — duplicates a track into named A/B takes, dry-run by default.
+- `takes_select` — makes one take audible and returns fader undo tokens.
+- `takes_discard` — previews take deletion; an apply requires `confirm: true` and cannot be undone.
 
 The rest of the catalogue is available through `ableton_guide`, `ableton_inspect` and
 `ableton_escalate`.
@@ -81,7 +83,8 @@ If the optional packages are not installed, the report says so instead of invent
 - Read tools never modify a Set.
 - Writes use dry runs and undo tokens where the underlying command supports them.
 - `.als` files are never written in place by this project.
-- The take tool changes track faders and duplicates tracks; run its dry run first.
+- The take tools duplicate tracks, change faders and can delete takes; run `takes_create` and
+  `takes_select` dry runs first, and use the discard confirmation deliberately.
 - Audio measurements are not a listening test. Producers still make the final call.
 
 ## Tests

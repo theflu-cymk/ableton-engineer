@@ -264,7 +264,8 @@ No dates until the owner approves scope. Use gates.
 
 ### Sprint 1 — parallel implementation
 
-- **A1:** `takes_select`, `takes_discard`, one variation; fake tests; no real apply yet.
+- **A1:** `takes_select` and `takes_discard` are implemented and passed a real scratch-Set gate;
+  next is one bounded variation with fake tests and a separate real gate.
 - **A2:** capture restore fallback and size stability; Remote Script `0.4.27`; fake tests; then one
   serialized real capture.
 - **A3:** setup/doctor/compat/client-config design and implementation; no Live writes.
@@ -327,7 +328,8 @@ Conflict rules:
 
 ### A1 — producer core
 
-- `takes_select` / `takes_discard` behavior and fake tests.
+- **[Done]** `takes_select` / `takes_discard` behavior, fake tests and real scratch-Set select/undo
+  and confirmed discard.
 - One real variation, not an alias for identical duplicates.
 - Real scratch-Set apply/A-B/undo.
 - Exact evidence, including the `takes_create` dry-run and apply.
@@ -383,10 +385,11 @@ You are A1, producer core. Work in your own worktree on feat/producer-core, base
 origin/integration/producer-mvp. Read docs/product/AGENT_WORKSTREAMS.md and
 docs/producer-layer.md. Own producer.py, takes.py, reference.py and
 tests/test_producer_layer.py. Do not edit tools.json, modes.json, tools.py, the Remote
-Script or docs/product. Implement takes_select, takes_discard and one real bounded
-variation, with fake tests first. Request manifest registration from A0 with exact JSON.
-Do not apply a real write until A0 grants the Live gate token and you have a backed-up
-scratch Set. Record what you did not verify, especially audition.
+Script or docs/product. takes_select and takes_discard are already implemented and have a real
+scratch-Set gate; do not redo them. Implement one real bounded variation, with fake tests
+first. Request manifest registration from A0 with exact JSON. Do not apply a real write until
+A0 grants the Live gate token and you have a backed-up scratch Set. Record what you did not
+verify, especially audition.
 ```
 
 ### A2

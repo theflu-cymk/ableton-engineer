@@ -70,6 +70,68 @@
       "cmd": null
     },
     {
+      "name": "takes_select",
+      "domain": "takes",
+      "summary": "Choose which take is audible and lower the others.",
+      "description": "Takes a group of exact take names and makes one of them audible, setting the other take faders to zero. Dry-run by default. The active level defaults to the loudest take's current fader, or 0.85 when the whole group is silent; pass volume to override it. Returns fader undo tokens. It does not create or alter musical material.",
+      "examples": ["make take 2 audible", "switch the A/B takes", "compare the two takes"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "takes": {
+            "type": "array",
+            "items": {"type": "string"},
+            "minItems": 1,
+            "maxItems": 8,
+            "description": "Exact take track names from the same group."
+          },
+          "active": {
+            "type": ["string", "integer"],
+            "description": "Take name, or a 1-based take number within takes."
+          },
+          "volume": {"type": "number", "minimum": 0, "maximum": 1, "description": "Optional audible fader level; inferred when omitted."},
+          "dry_run": {"type": "boolean", "default": true}
+        },
+        "required": ["takes", "active"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 15000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "takes_discard",
+      "domain": "takes",
+      "summary": "Delete take tracks after an explicit confirm; irreversible.",
+      "description": "Deletes exact take tracks from one group after a dry run. This Live build cannot put a deleted track back, so an apply requires confirm: true, returns no undo token and is declared irreversible. The panel can preview it but will not offer Apply. Delete take tracks only after you have chosen what to keep.",
+      "examples": ["discard the unused take", "delete take 2", "clean up these takes"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "takes": {
+            "type": "array",
+            "items": {"type": "string"},
+            "minItems": 1,
+            "maxItems": 8,
+            "description": "Exact take track names from the same group."
+          },
+          "confirm": {"type": "boolean", "description": "Must be true to apply; deletion cannot be undone."},
+          "dry_run": {"type": "boolean", "default": true}
+        },
+        "required": ["takes"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 30000,
+      "writes": true,
+      "reversible": false,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
       "name": "ableton_status",
       "domain": "core",
       "summary": "Connection state, Set summary and finding counts.",

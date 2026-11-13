@@ -10,18 +10,19 @@ Read [README.md](README.md) first for the product pack index, then this file, th
 
 Enableton is a custom Python MCP server that controls Ableton Live 12.2.5 through a Remote Script.
 The engine has broad inspect/edit/mix/arrangement capability. The current product direction is
-narrower: a producer should use **Analyze / Suggest / Create take**, not the 87-tool catalogue.
+narrower: a producer should use **Analyze / Suggest / Create take**, not the full tool catalogue.
 
 The producer slice exists but is only partly accepted:
 
 - `session_brief` — real Live read verified.
 - `reference_analyze` — real WAV measurement verified.
 - `takes_create` — real dry-run, apply, fader A/B and undo verified on a backed-up scratch Set.
+- `takes_select` / `takes_discard` — real select/undo and confirmed discard verified on the scratch Set.
 - Local web panel — implemented, with real mute and take preview/apply/undo acceptance.
-- No take select/discard, no variation, no persistent memory.
+- No take variation and no persistent memory. Panel select/discard buttons are not implemented.
 
-**Your first job is not to add features.** Preserve the committed panel baseline and review the
-take acceptance record before adding select/discard or variation.
+**Your first job is not to add features.** Preserve the committed baseline and review the take
+acceptance record before adding variation.
 
 ## How to split the work
 
@@ -30,7 +31,7 @@ The team plan is [AGENT_WORKSTREAMS.md](AGENT_WORKSTREAMS.md). It defines four r
 | Role | Branch | Outcome |
 |---|---|---|
 | **A0** integrator / release captain | `integration/producer-mvp` | Baseline, shared files, merge queue, Live gate token |
-| **A1** producer core | `feat/producer-core` | `takes_select`, `takes_discard`, variation, real take gate |
+| **A1** producer core | `feat/producer-core` | take variation, panel take controls, real take gate |
 | **A2** live / audio | `feat/live-audio` | Capture restore fix, Remote Script, real audio gate |
 | **A3** setup / release / UX | `feat/setup-release` | Setup, compatibility, client config, release docs |
 
@@ -65,9 +66,9 @@ stdio serve. `MISSION.md` still narrates an earlier tool count and milestone sta
 | Live | Ableton Live 12.2.5 |
 | Remote Script | `0.4.26`, build `a7fcd016f88d`, installed and loaded |
 | Bridge | TCP `127.0.0.1:9878`, length-prefixed JSON |
-| Open Set | none; the scratch acceptance Set was closed without saving |
-| Catalogue | 87 tools, 9 modes, `produce` 19 |
-| Producer evidence | brief + WAV read + panel mute and take apply/A-B/undo; take dry-run |
+| Open Set | scratch `SCRATCH fortnight - panel acceptance`, 32 main tracks + 2 returns; unsaved |
+| Catalogue | 89 tools, 9 modes, `produce` 21 |
+| Producer evidence | brief + WAV read + panel mute/take apply + select/undo + confirmed discard |
 | Save/export | no product save tool; native Live only |
 
 `doctor` at this snapshot reports `connected yes`, `errors 0`, no `stale`. That is not proof the main
@@ -116,8 +117,9 @@ clean.
 
 ## First meaningful task: prove a take on a scratch Set
 
-The scratch Set used for panel and take acceptance was closed without saving. The take gate is
-recorded, but Live now has no Set open; make a fresh backed-up scratch copy before another write.
+The scratch Set used for panel and take acceptance is open and unsaved. The take gate is recorded;
+make a fresh backed-up scratch copy before another write, and never treat this copy as a working
+song.
 
 1. Choose a real song and make a **scratch copy**; do not edit the working `.als`.
 2. Open the scratch copy in Live.
@@ -142,8 +144,8 @@ before applying a volume restore. If the source has no clips, the dry-run still 
 not musically useful.
 
 **Acceptance passed on 2026-11-13:** one two-take set applied through the panel on the backed-up
-scratch Set; fader A/B switched audibility; undo removed both copies and restored the source; the
-working Set and scratch `.als` hash were unchanged. Select/discard and variation remain open.
+scratch Set; fader A/B, select/undo and confirmed discard passed; the working Set and scratch `.als`
+hash were unchanged. Take variation remains open.
 
 ## Architecture you must understand
 
@@ -245,8 +247,9 @@ produce an explicit unavailable block. It is a measurement report, not an auditi
 ### `takes_create`
 
 Duplicates a unique track, names copies, sets the source and all but take 1 to volume zero, and
-returns duplicate/volume undo tokens. It does not create different musical material. A/B currently
-needs `tracks_set_volume`; select/discard are not implemented.
+returns duplicate/volume undo tokens. It does not create different musical material. `takes_select`
+switches the audible take and returns fader undo tokens; `takes_discard` requires `confirm: true`
+and is irreversible.
 
 ## Current product direction and what is missing
 
@@ -265,7 +268,6 @@ sound/device work. Do not drop them; map them into the producer experience:
 
 Missing before the slice is sellable:
 
-- `takes_select`, `takes_discard`;
 - one actual take variation;
 - session memory;
 - integrated capture → reference → change;
@@ -287,8 +289,8 @@ See [ROADMAP.md](ROADMAP.md) for the order.
 - **Capture restore is defective on this build.** Resampling can remove `Ext. In`; the current
   remediation is `No Input`. Do not claim exact restore. See `docs/M6_M7_STATUS.md`.
 - **`tracks_gain_stage` did not have a real measured-peak write** in the M4 audit; do not claim it.
-- **No Set is open now.** The acceptance scratch was closed without saving; open a fresh backed-up
-  copy before a write, and never use a working song as scratch.
+- **The open Set is a scratch copy.** It has accepted an unfreeze prompt in memory; the on-disk
+  `.als` is unchanged. Never treat it as a working song.
 - **External docs use a different architecture:** 242 tools, port 9877, package versions and a
   generated bridge. Do not import those into this repo.
 - **Current docs drift:** `AGENTS` serve-stub bullet, `MISSION` counts, `docs/mcp.md` counts/versions.
@@ -300,8 +302,9 @@ See [ROADMAP.md](ROADMAP.md) for the order.
 - Do not apply a take without a backup and user awareness.
 - Do not call identical duplicate tracks “variations.”
 - Do not claim an audible result from a measurement.
-- Do not claim take select/discard, variation, persistent memory or audible verification exists.
-  Real take apply/A-B/undo is verified; the panel's v1 limits are in [../panel.md](../panel.md).
+- Do not claim take variation, panel select/discard buttons, persistent memory or audible
+  verification exists. Real take select/undo and confirmed discard are verified; the panel's v1
+  limits are in [../panel.md](../panel.md).
 - Do not bump the Remote Script for client-only producer work.
 - Do not invent legal, privacy, support or refund text.
 - Do not copy the external product's tool counts or install claims.
@@ -343,9 +346,10 @@ A feature is done when:
 - [ ] Run `session_brief` on it.
 - [x] Run `takes_create` dry-run; confirm nothing changed.
 - [x] Apply one take set on the scratch copy; verify A/B and undo.
-- [ ] Record the evidence.
-- [ ] Update `CURRENT_STATE.md` if the state changed.
-- [ ] Use the panel only for the safe v1 actions documented in [../panel.md](../panel.md).
+- [x] Select a take, verify undo, and confirm the discard gate.
+- [x] Record the evidence.
+- [x] Update `CURRENT_STATE.md` if the state changed.
+- [x] Use the panel only for the safe v1 actions documented in [../panel.md](../panel.md).
 
 ## Questions that need an owner
 
@@ -370,8 +374,8 @@ Use this as the first instruction in a new session:
 You are taking over Enableton. Read docs/product/README.md, docs/product/HANDOFF.md,
 docs/product/CURRENT_STATE.md, SPEC.md, AGENTS.md and docs/producer-layer.md before changing
 anything. The tree may be dirty; do not overwrite user work. The current product direction is
-Analyze / Suggest / Create take, not the full 87-tool catalogue. The panel baseline is committed and
-the two-take apply/A-B/undo gate passed on a scratch Set. Run the fake suite and doctor, then work on
-`takes_select`/`takes_discard` or variation. Do not claim memory or audible verification exists.
+Analyze / Suggest / Create take, not the full catalogue. The panel baseline is committed and the
+take create/select/discard gate passed on a scratch Set. Run the fake suite and doctor, then work on
+take variation. Do not claim memory, panel select/discard buttons, or audible verification exists.
 Record evidence with Verified/Assumed/Unverified tags.
 ```
