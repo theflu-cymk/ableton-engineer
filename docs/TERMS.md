@@ -36,9 +36,8 @@ be corrected.
 
 ## Support
 
-- **Channel:** open an issue at
-  <https://github.com/theflu-cymk/ableton-engineer/issues>. Issue access is
-  granted to licence holders.
+- **Channel:** email <brian.troy.jones@gmail.com>. Licence holders may also open
+  an issue at <https://github.com/theflu-cymk/ableton-engineer/issues>.
 - **Response time:** within five business days.
 - **Scope:** installation, connection to Live, and behaviour of the documented
   commands. Musical judgement, third-party plug-ins, Ableton licensing and
@@ -47,9 +46,6 @@ be corrected.
   the report they print with secrets removed. `doctor` reports the installed
   package version, the script version Live is running, the connection port and
   the build digest, which is enough to tell a stale install from a broken one.
-
-A dedicated support email address is to be added to the purchase page and this
-file before public sale; until then the issue tracker is the support channel.
 
 ## Your data
 
@@ -60,3 +56,8 @@ writes — the Remote Script in Live's User Library, any capture it records, and
 any plan or recipe it stores — stay in the folders reported by the commands that
 create them. Uninstalling with `enableton setup --force` or deleting the Remote
 Script folder removes it from Live.
+
+## Governing law
+
+These terms and the licence are governed by the laws of the State of Texas,
+United States.
