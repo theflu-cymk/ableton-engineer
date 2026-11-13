@@ -157,24 +157,81 @@ def _reversible(steps: Sequence[Dict[str, Any]], catalogue: Dict[str, Tool]) -> 
     return True
 
 
+def _proposed_steps(raw: Any, catalogue: Dict[str, Tool]) -> List[Dict[str, Any]]:
+    """Validate an explicit plan before it can become a stored plan.
+
+    The caller may propose any tool in the catalogue, not only the tools in its current mode.
+    Only reversible writes with a dry-run mode are allowed: a proposal must be previewable and
+    undoable before the executor is asked to apply it.
+    """
+    if not isinstance(raw, list) or not raw:
+        raise EscalationError("steps must be a non-empty array")
+    if len(raw) > diagnostics.MAX_PLAN_STEPS:
+        raise EscalationError("steps is limited to %d" % diagnostics.MAX_PLAN_STEPS)
+
+    steps = []
+    for index, entry in enumerate(raw, start=1):
+        if not isinstance(entry, dict):
+            raise EscalationError("step %d must be an object" % index)
+        unknown = sorted(set(entry) - {"tool", "args", "why"})
+        if unknown:
+            raise EscalationError(
+                "step %d has unknown key(s): %s" % (index, ", ".join(unknown))
+            )
+        name = entry.get("tool")
+        if not isinstance(name, str) or not name:
+            raise EscalationError("step %d needs a tool name" % index)
+        args = entry.get("args") or {}
+        if not isinstance(args, dict):
+            raise EscalationError("step %d args must be an object" % index)
+        if "dry_run" in args or "restore" in args:
+            raise EscalationError("step %d must not set dry_run or restore" % index)
+        why = entry.get("why")
+        if why is not None and not isinstance(why, str):
+            raise EscalationError("step %d why must be a string" % index)
+
+        tool = catalogue.get(name)
+        if tool is None:
+            raise EscalationError("step %d names unknown tool %r" % (index, name))
+        if not tool.writes:
+            raise EscalationError("step %d tool %r is read-only" % (index, name))
+        if "dry_run" not in (tool.input.get("properties") or {}):
+            raise EscalationError("step %d tool %r has no dry-run mode" % (index, name))
+        if not tool.reversible:
+            raise EscalationError("step %d tool %r is not reversible" % (index, name))
+
+        step = {"n": index, "tool": name, "args": dict(args)}
+        if why:
+            step["why"] = why
+        steps.append(step)
+    return steps
+
+
+def validate_steps(
+    raw: Any,
+    catalogue: Optional[Dict[str, Tool]] = None,
+) -> List[Dict[str, Any]]:
+    """Validate a reusable sequence without storing a plan or touching Live."""
+    if catalogue is None:
+        from .manifest import load_manifest
+
+        catalogue = load_manifest()
+    return _proposed_steps(raw, catalogue)
+
+
 def escalate(
     data: Dict[str, Any],
     args: Optional[Dict[str, Any]] = None,
     catalogue: Optional[Dict[str, Tool]] = None,
     store: Optional[PlanStore] = None,
+    adapter: Any = None,
 ) -> Dict[str, Any]:
-    """Compile and store a bounded plan for an intent or explicit finding selection."""
+    """Compile a plan from findings, or validate explicit steps proposed by the caller."""
     args = dict(args or {})
-    _only(args, ("intent", "context"))
-    intent = args.get("intent")
-    if not isinstance(intent, str) or not intent.strip():
-        raise EscalationError("intent must be a non-empty string")
+    _only(args, ("intent", "context", "steps"))
     context = args.get("context") or {}
     if not isinstance(context, dict):
         raise EscalationError("context must be an object")
-    unknown = sorted(set(context) - {"phases", "finding_ids", "mode"})
-    if unknown:
-        raise EscalationError("unknown context key(s): %s" % ", ".join(unknown))
 
     if catalogue is None:
         from .manifest import load_manifest
@@ -182,6 +239,61 @@ def escalate(
         catalogue = load_manifest()
     if store is None:
         store = PlanStore()
+
+    if args.get("steps") is not None:
+        if context:
+            raise EscalationError("context cannot be combined with explicit steps")
+        intent = args.get("intent") or "Explicit plan"
+        if not isinstance(intent, str) or not intent.strip():
+            raise EscalationError("intent must be a non-empty string")
+        steps = _proposed_steps(args["steps"], catalogue)
+        counts = diagnostics.counts(diagnostics.detect(data, "standard"))
+        preflight = {"ran": False, "reason": "no adapter"}
+        if adapter is not None:
+            try:
+                preflight = PlanExecutor(adapter, catalogue=catalogue).run(
+                    [Step(step["tool"], dict(step["args"])) for step in steps]
+                )
+                preflight["ran"] = True
+            except PlanError as exc:
+                tool = (exc.detail or {}).get("tool") or "the plan"
+                raise EscalationError(
+                    "preflight failed for %s: %s" % (tool, exc.message)
+                ) from exc
+        plan = store.create(
+            intent=intent,
+            steps=steps,
+            effects={},
+            requires=_requirements(steps, catalogue),
+            unavailable=[],
+            truncated=[],
+            reversible=True,
+        )
+        return {
+            "plan_id": plan["plan_id"],
+            "intent": plan["intent"],
+            "explicit_steps": True,
+            "steps": plan["steps"],
+            "phases": [],
+            "effects": {},
+            "reversible": True,
+            "requires": plan["requires"],
+            "unavailable": [],
+            "truncated": [],
+            "needs_listening": [],
+            "matched_findings": 0,
+            "counts": counts,
+            "preflight": preflight,
+            "created_at": plan["created_at"],
+            "expires_at": plan["expires_at"],
+        }
+
+    intent = args.get("intent")
+    if not isinstance(intent, str) or not intent.strip():
+        raise EscalationError("intent must be a non-empty string")
+    unknown = sorted(set(context) - {"phases", "finding_ids", "mode"})
+    if unknown:
+        raise EscalationError("unknown context key(s): %s" % ", ".join(unknown))
 
     findings = diagnostics.detect(data, "standard")
     selected = _select(findings, intent, context)
@@ -327,5 +439,5 @@ def discard_plan(
 
 
 __all__ = [
-    "EscalationError", "apply_plan", "discard_plan", "escalate",
+    "EscalationError", "apply_plan", "discard_plan", "escalate", "validate_steps",
 ]

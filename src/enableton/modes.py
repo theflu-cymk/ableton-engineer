@@ -125,20 +125,74 @@ def load_modes(
     return ModeSet(modes=modes, default=default, max_tools=cap)
 
 
-def guide(catalogue: Dict[str, Tool], mode_name: Optional[str] = None) -> Dict[str, object]:
-    """Build the command sheet for one mode, shared by the tool and the CLI."""
+_PLAYBOOK = {
+    "discovery": (
+        "Call ableton_guide with scope='all' and detail='full' to see every tool and its input "
+        "schema, including tools outside the loaded mode."
+    ),
+    "reads": (
+        "Call ableton_inspect with a read-only tool name and args to read anything outside the "
+        "loaded mode. It never writes Live."
+    ),
+    "writes": (
+        "Compose any reversible write into ableton_escalate steps. It validates and preflights "
+        "the whole sequence; ableton_plan_apply executes it transactionally."
+    ),
+    "recipes": (
+        "Use recipe_list, recipe_show and recipe_save to keep a contract with its ingredients, "
+        "flavor, manual checkpoints and expected fingerprint. recipe_apply compiles it into a "
+        "stored ableton_escalate plan; a rhythm needs an explicit MIDI target and slot pitches, "
+        "and does not load sample slots. recipe_verify compares the current snapshot to the "
+        "fingerprint. Recipes never bypass the plan path."
+    ),
+    "novel": (
+        "Combine tools, modes and recipes freely. Prefer the smallest sequence that satisfies the "
+        "request; escalation is the normal route when the loaded mode lacks a tool."
+    ),
+    "manual": (
+        "If no tool can perform a step, tell the user the exact manual action and how to verify "
+        "it. Never claim the step happened and never invent a result."
+    ),
+}
+
+
+def guide(
+    catalogue: Dict[str, Tool],
+    mode_name: Optional[str] = None,
+    scope: str = "mode",
+    detail: str = "brief",
+) -> Dict[str, object]:
+    """Build a mode sheet or the full catalogue sheet, shared by the tool and the CLI."""
+    if scope not in ("mode", "all"):
+        raise ModeError("scope must be 'mode' or 'all'")
+    if detail not in ("brief", "full"):
+        raise ModeError("detail must be 'brief' or 'full'")
     modes = load_modes(catalogue)
     mode = modes.get(mode_name)
+    names = list(mode.tools) if scope == "mode" else list(catalogue)
+    rows = []
+    for name in names:
+        tool = catalogue[name]
+        row = {
+            "tool": name,
+            "domain": tool.domain,
+            "summary": tool.summary,
+            "examples": tool.examples,
+            "writes": tool.writes,
+            "reversible": tool.reversible,
+            "modes": [item.name for item in modes.modes.values() if name in item.tools],
+        }
+        if detail == "full":
+            row["input"] = tool.input
+            row["needs"] = tool.needs
+        rows.append(row)
     return {
         "mode": mode.name,
-        "tools": [
-            {
-                "tool": name,
-                "summary": catalogue[name].summary,
-                "examples": catalogue[name].examples,
-            }
-            for name in mode.tools
-        ],
+        "scope": scope,
+        "detail": detail,
+        "count": len(rows),
+        "tools": rows,
+        "playbook": dict(_PLAYBOOK),
     }
 
 

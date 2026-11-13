@@ -335,13 +335,19 @@ authored in `recipe` and consumed in `build`; mix snapshots are saved in `mix` a
 loads its read and use tools — consumption is the normal path, so it must never require escalation.
 Escalation is for surprises, not for the main road.
 
-**Modes never trap.** If the model needs something outside the mode, `ableton_escalate` reaches it
-(§7), and the mode's guide text says so. The mode chip in the UI always shows the current scope so
+**Modes never trap.** The full catalogue is discoverable with
+`ableton_guide({scope:"all", detail:"full"})`; `ableton_inspect({tool, args})` runs any read-only,
+non-core tool outside the loaded mode. Writes outside the mode go through `ableton_escalate` (§7),
+and the mode's guide text says so. The mode chip in the UI always shows the current scope so
 the user knows which vocabulary is live.
 
 ---
 
 ## 7. Escalation and plans
+
+`ableton_inspect({tool, args})` is the read-side escape hatch: it accepts any read-only, non-core
+catalogue tool, ignores mode membership, and never writes Live. Use `ableton_guide({scope:"all",
+detail:"full"})` to discover the tool names and schemas.
 
 `ableton_escalate({intent, context})` compiles a **bounded plan** against the *full* catalogue:
 
@@ -510,9 +516,20 @@ Derived audio (reverse, trim, crossfade, stretch) is written to
 
 ### 12.2 A recipe is data
 
-A **recipe** is a named, reusable way of building something, written as JSON: a pattern, the kind of
-sound each part needs, and where to look for those sounds. It is not code and not a prompt — it is a
-document you can read, edit, diff, and hand to someone else.
+A **recipe** is the umbrella for one named, recallable chunk of musical data or procedure. It is
+written as JSON, not code or a prompt: a document you can read, edit, diff, and hand to someone
+else. Its `kind` selects the payload:
+
+| `kind` | Payload | What it captures |
+|---|---|---|
+| `rhythm` | `tempo`, `length_bars`, `lanes`, `slots` | a drum or note pattern and the sounds it needs |
+| `workflow` | `steps` | a validated sequence of reversible tool calls |
+| `combination` | `ingredients` and/or `steps` | a recipe composed of existing recipes plus optional procedure |
+
+A `combination`'s ingredients are typed bindings; every recipe binding must exist when the
+combination is saved, so recall cannot silently produce a half-empty recipe. Its `flavor` profile
+names and constrains the style; a user can build a personal style from smaller recipes without a
+new handler or mode.
 
 ```json
 {
@@ -530,10 +547,10 @@ document you can read, edit, diff, and hand to someone else.
     {"slot": "stab",  "pattern": "..............x.", "velocity": 0.70}
   ],
   "slots": [
-    {"slot": "kick",  "mode": "hit", "from": "riddim/drums/one shots", "select": "lowest_centroid", "count": 1},
-    {"slot": "snare", "mode": "hit", "from": "riddim/drums/one shots", "select": "high_transient",  "count": 1},
-    {"slot": "hat",   "mode": "hit", "from": "riddim/drums/one shots", "select": "shortest_decay",  "count": 1},
-    {"slot": "stab",  "mode": "hit", "from": "riddim/drums/one shots", "select": "random",          "count": 1}
+    {"slot": "kick",  "mode": "hit", "from": "riddim/drums/one shots", "select": "lowest_centroid", "count": 1, "pitch": 36},
+    {"slot": "snare", "mode": "hit", "from": "riddim/drums/one shots", "select": "high_transient",  "count": 1, "pitch": 38},
+    {"slot": "hat",   "mode": "hit", "from": "riddim/drums/one shots", "select": "shortest_decay",  "count": 1, "pitch": 42},
+    {"slot": "stab",  "mode": "hit", "from": "riddim/drums/one shots", "select": "random",          "count": 1, "pitch": 60}
   ],
   "source": {"kind": "learned", "file": "…/refs/dubstep_140.wav", "window_s": [0, 8], "confidence": 0.81},
   "notes": "snare on 3, ghost hats on 16ths, kick doubles on the 1"
@@ -543,6 +560,77 @@ document you can read, edit, diff, and hand to someone else.
 A slot's `mode` is `hit` (one-shots placed at pattern positions) or `layer` (a whole loop placed
 underneath and trimmed to the pattern's length) — so a recipe can ask for "a loop" as easily as
 "a kick".
+
+A combination is still one recipe document:
+
+```json
+{
+  "id": "user.dubstep.roller",
+  "name": "My dubstep roller",
+  "version": 1,
+  "kind": "combination",
+  "status": "draft",
+  "flavor": {"name": "dubstep", "bpm": [138, 142], "feel": "half_time"},
+  "ingredients": [
+    {"role": "drums", "recipe": "dubstep.half_time"},
+    {"role": "bass", "kind": "instrument", "source": "Serum", "fallback": "Operator"}
+  ],
+  "steps": [
+    {"tool": "tracks_set_volume", "args": {"tracks": ["Bass"], "volume": 0.82}}
+  ],
+  "manual": [
+    {"instruction": "Load the Serum preset.", "when": "before_apply", "verify": "The preset name is visible in Live."}
+  ],
+  "expected": {"tempo_bpm": {"value": 140, "tolerance": 1}}
+}
+```
+
+`steps` are validated as reversible writes against the catalogue and remain data;
+`recipe_apply` compiles executable steps (recursively through recipe ingredients) into a stored
+`ableton_escalate` plan. It never writes Live; applying still goes through
+`ableton_plan_apply`. A rhythm ingredient compiles when the caller names an existing MIDI
+`target` and each slot has a `pitch` (or a `pitch_map` supplies one); the result is one
+`notes_replace` step. This is a MIDI render, not `recipe_build`'s sample placement. Sample,
+instrument and reference-only ingredients are reported unavailable rather than silently skipped.
+
+### 12.2.1 The recipe contract
+
+The optional contract fields turn a recipe from a description into something that can be compiled,
+checked and honestly refused:
+
+- **`flavor`** is either a legacy string or a profile `{name, bpm, feel, reference, tags, notes}`.
+  `bpm` is one number or a `[low, high]` range. The profile is what lets a recipe keep its style
+  when its ingredients change; it is still data, not an audio measurement.
+- **`ingredients`** are typed bindings. `kind: "recipe"` (or the legacy bare `recipe` key) names a
+  sub-recipe and is resolved at save/show time. `kind: "sample"` and `kind: "instrument"` carry a
+  `source`, optional `select`, `constraints` and `fallback`. They are declarations: this build does
+  not inspect the library offline and does not silently load them.
+- **`manual`** is a list of `{instruction, when, verify}` checkpoints. `when` is `before_apply`,
+  `after_apply` or `before_verify`. `recipe_apply` refuses to create a plan while a `before_apply`
+  checkpoint is unconfirmed; `recipe_verify` refuses to measure while a `before_verify` checkpoint
+  is unconfirmed. `after_apply` checkpoints are returned as the next action, never claimed as done.
+- **`expected`** is a structural fingerprint. Supported metrics are `tempo_bpm`, `track_count`,
+  `arrangement_clip_count`, `session_clip_count`, `clip_count`, `note_count`, `device_count` and
+  `bars`; each is a number or `{value, tolerance}`. `recipe_verify` returns `match`, `partial`,
+  `mismatch` or `unavailable` with expected, actual, delta and a reason per metric. It never treats
+  a missing metric as a pass.
+
+`recipe_apply` is strict: every recipe ingredient must itself compile to executable steps. A rhythm
+needs an existing MIDI `target` and a pitch for every slot; otherwise the compile is unavailable
+with the failing slot named. A sample/instrument binding or a reference-only combination also stays
+unavailable. `recipe_show` returns the contract summary plus resolved recipe ingredients and
+unresolved source bindings. `recipe_verify` is snapshot-only: it does not render audio and does not
+claim LUFS, spectral or meter measurements.
+
+**Verified on the fake suite and a real scratch Set (2026-11-11):** `583 passed, 63 subtests`. On
+real script `0.4.20` / build `a588792a3f40`, `recipe_apply` compiled `dubstep.half_time` into a
+stored plan targeting `DRUMS | Remix 808 kit` / `RMX | drums | 1`; `ableton_plan_apply` wrote 26
+notes (pitches `36`, `38`, `42`, `60`), and `ableton_undo` restored the original 44 notes. The Set
+was `SCRATCH fortnight` at 120 BPM, so the compiler warned that the recipe is 140 BPM; no
+transport change or save was made. The manual gates are fake-suite verified; no recipe with a
+`before_apply` checkpoint was applied on real Live. `recipe_verify` for the rhythm returned
+`unavailable` because it has no expected fingerprint. The M7 gates for `recipe_learn`,
+`recipe_build` and sample/instrument resolution remain open.
 
 ### 12.3 Patterns are text
 

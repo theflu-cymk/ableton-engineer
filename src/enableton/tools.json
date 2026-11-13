@@ -2,6 +2,74 @@
   "version": 1,
   "tools": [
     {
+      "name": "session_brief",
+      "domain": "session",
+      "summary": "A producer-readable map of sections, roles and next moves.",
+      "description": "Builds a read-only brief from the current snapshot: sections, track roles, clip density, sparse areas, duplicate names, empty tracks and a short list of producer actions. Roles are name-based inferences, not audio analysis. Use this before asking for an arrangement or take decision.",
+      "examples": ["give me the session brief", "what is missing before the drop", "map this set for me"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "focus": {"type": "string", "description": "Optional producer goal to echo in the brief."},
+          "include_tracks": {"type": "boolean", "default": true, "description": "Include the per-track role table."}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 6000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "reference_analyze",
+      "domain": "reference",
+      "summary": "Measure a WAV reference and optionally compare another file.",
+      "description": "Reads a WAV file without modifying it and reports duration, peak, RMS, crest factor, headroom, DC offset, channel count and stereo balance. If numpy, soundfile and pyloudnorm are installed, adds integrated LUFS, spectral-band balance, centroid and stereo correlation. Missing optional packages are reported as unavailable, not estimated. This is measurement, not an audition.",
+      "examples": ["analyze this reference track", "compare my drop to this reference", "what is the low-end balance of this WAV"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string", "description": "Absolute path to a WAV file."},
+          "compare_to": {"type": "string", "description": "Optional second WAV; deltas are reported against path."},
+          "window_s": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2, "description": "Optional [start, end] seconds."}
+        },
+        "required": ["path"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 15000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "takes_create",
+      "domain": "takes",
+      "summary": "Create named A/B track takes with a real duplicate and rollback report.",
+      "description": "Duplicates a track 1-8 times, gives the copies take names, leaves take 1 audible and lowers the source and other takes to fader zero. Dry-run by default. The takes begin as identical copies; edit each copy into a variation. Returns duplicate and volume undo tokens and attempts a rollback if a step fails.",
+      "examples": ["make two takes of the bass", "give me three A/B versions of the drums", "duplicate this track for a variation"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
+          "track_index": {"type": "integer", "minimum": 0, "description": "Use instead of track when names are duplicated."},
+          "count": {"type": "integer", "minimum": 1, "maximum": 8, "default": 2},
+          "name_prefix": {"type": "string", "description": "Base name for the copies; defaults to '<track> take'."},
+          "dry_run": {"type": "boolean", "default": true}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 30000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
       "name": "ableton_status",
       "domain": "core",
       "summary": "Connection state, Set summary and finding counts.",
@@ -18,15 +86,19 @@
     {
       "name": "ableton_guide",
       "domain": "core",
-      "summary": "The command sheet for the current mode.",
-      "description": "Lists the tools available in this session with a one-line description each, plus the producer-language examples they accept. Use it when the user asks what Enableton can do.",
-      "examples": ["what can you do", "show me the commands"],
+      "summary": "The command sheet for the current mode or the full catalogue.",
+      "description": "Lists the tools available in this session with a one-line description each, plus the producer-language examples they accept. Use scope='all' and detail='full' to discover every tool and its input schema, including tools outside the loaded mode. The playbook explains how to compose reads, writes, recipes and user handoffs.",
+      "examples": ["what can you do", "show me the commands", "show me the full catalogue"],
       "input": {
         "type": "object",
-        "properties": {"mode": {"type": "string", "description": "Mode to describe; defaults to the current one."}},
+        "properties": {
+          "mode": {"type": "string", "description": "Mode to describe; defaults to the current one."},
+          "scope": {"type": "string", "enum": ["mode", "all"], "default": "mode", "description": "mode lists the loaded tools; all lists the whole catalogue."},
+          "detail": {"type": "string", "enum": ["brief", "full"], "default": "brief", "description": "full adds each tool's input schema, needs and modes."}
+        },
         "additionalProperties": false
       },
-      "timeout_ms": 500,
+      "timeout_ms": 1000,
       "writes": false,
       "reversible": true,
       "needs": [],
@@ -36,13 +108,13 @@
     {
       "name": "ableton_escalate",
       "domain": "core",
-      "summary": "Compile a bounded plan from current findings when a mode needs a fix outside it.",
-      "description": "Compiles up to 12 steps across 3 phases from the current Set's findings. Intent is matched against finding titles, kinds, phases and locations; an explicit context.finding_ids or context.phases selects precisely. The compiler never invents tool arguments: an intent with no matching finding returns no plan and a reason. The plan is stored and expires after 10 minutes; it does not write Live. Call ableton_plan_apply with the returned plan_id to execute it.",
-      "examples": ["fix the gain issue outside this mode", "clean up the matching problem", "escalate the empty-track finding"],
+      "summary": "Compile a plan from findings, or validate explicit steps proposed by the caller.",
+      "description": "Two paths. With intent, compiles up to 12 steps across 3 phases from the current Set's findings; intent is matched lexically against finding titles, kinds, phases and locations, and no matching finding returns no plan. With steps, validates an explicit plan proposed by the caller against the full tool catalogue, requires every step to be a reversible write with a dry-run mode, and preflights every step against Live. Both paths store the plan for 10 minutes without writing Live. Call ableton_plan_apply with the returned plan_id to execute it transactionally.",
+      "examples": ["fix the gain issue outside this mode", "validate this three-step plan", "turn my idea into a checked plan"],
       "input": {
         "type": "object",
         "properties": {
-          "intent": {"type": "string", "description": "What the caller is trying to fix."},
+          "intent": {"type": "string", "description": "What the caller is trying to achieve. Required when steps are omitted."},
           "context": {
             "type": "object",
             "properties": {
@@ -51,12 +123,30 @@
               "mode": {"type": "string", "enum": ["auto", "inspect"]}
             },
             "additionalProperties": false
+          },
+          "steps": {
+            "type": "array",
+            "maxItems": 12,
+            "description": "An explicit plan. Each step names a catalogue tool and its arguments; the server validates and dry-runs it before storing.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tool": {"type": "string"},
+                "args": {"type": "object"},
+                "why": {"type": "string"}
+              },
+              "required": ["tool"],
+              "additionalProperties": false
+            }
           }
         },
-        "required": ["intent"],
+        "anyOf": [
+          {"required": ["intent"]},
+          {"required": ["steps"]}
+        ],
         "additionalProperties": false
       },
-      "timeout_ms": 5000,
+      "timeout_ms": 15000,
       "writes": false,
       "reversible": true,
       "needs": [],
@@ -280,6 +370,7 @@
         "properties": {
           "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
           "clip": {"type": "string", "description": "Exact clip name."},
+          "start": {"type": "number", "minimum": 0, "description": "Arrangement start beat, to disambiguate identical clip names."},
           "location": {"type": "string", "enum": ["arrangement", "session"]},
           "slot": {"type": "integer", "minimum": 0, "description": "Zero-based session slot."},
           "offset": {"type": "integer", "minimum": 0, "default": 0},
@@ -306,6 +397,7 @@
         "properties": {
           "track": {"type": "string"},
           "clip": {"type": "string"},
+          "start": {"type": "number", "minimum": 0, "description": "Arrangement start beat, to disambiguate identical clip names."},
           "location": {"type": "string", "enum": ["arrangement", "session"]},
           "slot": {"type": "integer", "minimum": 0},
           "grid": {"type": "number", "minimum": 0.03125, "maximum": 16, "default": 0.25, "description": "Grid step in beats; 0.25 is a sixteenth in 4/4."},
@@ -337,6 +429,47 @@
       "needs": [],
       "min_live": null,
       "cmd": "notes.quantize"
+    },
+    {
+      "name": "notes_align_track",
+      "domain": "notes",
+      "summary": "Align every MIDI clip on one track to a grid, with exact restore.",
+      "description": "Quantizes every note in every MIDI clip on one track, walking the track's clip list instead of resolving a clip by name. Duplicate clip names are therefore safe. Dry-run by default; applying returns one undo token per changed clip, and restore writes the exact original vectors back. Ties at half a grid step move later, matching notes_quantize.",
+      "examples": ["align every MIDI clip on this track", "snap the whole drum track to the grid"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "track_index": {"type": "integer", "minimum": 0},
+          "grid": {"type": "number", "minimum": 0.03125, "maximum": 16, "default": 0.25, "description": "Grid step in beats; 0.25 is a sixteenth in 4/4."},
+          "strength": {"type": "number", "minimum": 0, "maximum": 1, "default": 1},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "clip_index": {"type": "integer", "minimum": 0},
+                "location": {"type": "string", "enum": ["arrangement", "session"]},
+                "slot": {"type": ["integer", "null"], "minimum": 0},
+                "start": {"type": ["number", "null"]},
+                "clip": {"type": "string"},
+                "notes": {"type": "array", "items": {"type": "array"}}
+              },
+              "required": ["track_index", "location", "notes"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 12000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "notes.align_track"
     },
     {
       "name": "notes_transform",
@@ -748,6 +881,62 @@
       "cmd": "clips.duplicate_range"
     },
     {
+      "name": "clips_create_audio",
+      "domain": "clips",
+      "summary": "Import an audio file as an arrangement clip at a beat.",
+      "description": "Creates one arrangement audio clip from an absolute WAV/AIFF/MP3 path at start_beat, using Track.create_audio_clip when available and a Session clip slot plus duplicate-to-arrangement otherwise. Optionally names the clip, enables Warp and disables looping. Dry-run by default. Applying returns an undo token that deletes the exact clip it created.",
+      "examples": ["load this drum loop at bar 1", "import that bass sample at bar 9"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "track_index": {"type": "integer", "minimum": 0},
+          "file_path": {"type": "string", "description": "Absolute path to an audio file."},
+          "start_beat": {"type": "number", "minimum": 0},
+          "name": {"type": "string"},
+          "warping": {"type": "boolean", "description": "Set Warp after import."},
+          "looping": {"type": "boolean", "description": "Set clip Loop after import."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {"type": "array", "items": {"type": "object"}}
+        },
+        "required": ["file_path", "start_beat"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 15000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.create_audio"
+    },
+    {
+      "name": "clips_create_midi",
+      "domain": "clips",
+      "summary": "Create an empty arrangement MIDI clip.",
+      "description": "Creates one empty MIDI clip on an existing MIDI track at start_beat, with length_beats (default: one four-bar clip). Optionally names it. Dry-run by default. Applying returns an undo token that deletes the exact clip it created.",
+      "examples": ["create a four-bar MIDI clip at bar 1", "put an empty bass clip at bar 17"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "track_index": {"type": "integer", "minimum": 0},
+          "start_beat": {"type": "number", "minimum": 0},
+          "length_beats": {"type": "number", "minimum": 0.25, "default": 16},
+          "name": {"type": "string"},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {"type": "array", "items": {"type": "object"}}
+        },
+        "required": ["start_beat"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 5000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.create_midi"
+    },
+    {
       "name": "tracks_list",
       "domain": "tracks",
       "summary": "List tracks with name, colour, volume, pan and sends.",
@@ -767,6 +956,30 @@
       "needs": [],
       "min_live": null,
       "cmd": "track.list"
+    },
+    {
+      "name": "tracks_create",
+      "domain": "tracks",
+      "summary": "Create an empty audio or MIDI track.",
+      "description": "Creates one empty track at index (default: append) and optionally names and colours it. This build cannot restore a deleted track, so creation is not marked reversible even though the new empty track can be deleted manually.",
+      "examples": ["add an audio track for the bass", "create a MIDI track"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "kind": {"type": "string", "enum": ["audio", "midi"], "default": "audio"},
+          "index": {"type": "integer", "minimum": 0},
+          "name": {"type": "string"},
+          "color": {"type": "integer", "minimum": 0},
+          "dry_run": {"type": "boolean", "default": true}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": false,
+      "needs": [],
+      "min_live": null,
+      "cmd": "tracks.create"
     },
     {
       "name": "tracks_set_volume",
@@ -860,6 +1073,30 @@
       "cmd": null
     },
     {
+      "name": "devices_load",
+      "domain": "devices",
+      "summary": "Load one browser preset into a track's device chain.",
+      "description": "Selects the named track and loads one browser preset by its path, for example instruments/Bass/Bass/Sub Bass Drone.adv or drums/909 Core Kit.adg. The path is resolved through the same browser tree as library_browse. Loading is a write; dry_run defaults to true, and applying reports the before/after chain. This build has no exact device-restore token.",
+      "examples": ["load the Sub Bass Drone preset on the sub track", "load a drum kit on this MIDI track"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "track_index": {"type": "integer", "minimum": 0},
+          "path": {"type": "string", "description": "Browser path, e.g. instruments/Bass/Bass/Sub Bass Drone.adv."},
+          "dry_run": {"type": "boolean", "default": true}
+        },
+        "required": ["path"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 8000,
+      "writes": true,
+      "reversible": false,
+      "needs": [],
+      "min_live": null,
+      "cmd": "devices.load"
+    },
+    {
       "name": "master_chain_read",
       "domain": "master",
       "summary": "Read the master device chain.",
@@ -915,6 +1152,25 @@
       "needs": [],
       "min_live": null,
       "cmd": "transport.play"
+    },
+    {
+      "name": "transport_set_tempo",
+      "domain": "transport",
+      "summary": "Set the Set tempo in BPM.",
+      "description": "Sets Song.tempo through one typed write and returns the previous and new BPM.",
+      "examples": ["set the tempo to 140 BPM", "change the project tempo"],
+      "input": {
+        "type": "object",
+        "properties": {"tempo": {"type": "number", "minimum": 20, "maximum": 999}},
+        "required": ["tempo"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 1500,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "transport.set_tempo"
     },
     {
       "name": "transport_stop",
@@ -1197,6 +1453,193 @@
       "needs": [],
       "min_live": null,
       "cmd": "clips.set_warp_mode"
+    },
+    {
+      "name": "clips_set_warping",
+      "domain": "clips",
+      "summary": "Turn Warp on or off for an audio clip, with dry-run and exact restore.",
+      "description": "Changes one audio clip's Warp switch by boolean. Warp off plays the clip at its own tempo and ignores its warp markers; the warp mode and marker vector are left untouched. The clip is resolved by track and clip name, optionally constrained by location and session slot; duplicate matches are refused. MIDI clips are unavailable with a reason. Dry-run by default; applying returns an undo token that restores the exact previous state. Changing Warp is audible.",
+      "examples": ["turn warp off for the vocal", "disable warping on this clip", "turn warp back on"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "clip": {"type": "string"},
+          "location": {"type": "string", "enum": ["arrangement", "session"]},
+          "slot": {"type": "integer", "minimum": 0, "description": "Zero-based session slot."},
+          "enabled": {"type": "boolean", "description": "True turns Warp on, false turns it off."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "location": {"type": "string", "enum": ["arrangement", "session"]},
+                "slot": {"type": ["integer", "null"], "minimum": 0},
+                "start": {"type": ["number", "null"]},
+                "clip": {"type": "string"},
+                "warping": {"type": "boolean"}
+              },
+              "required": ["track_index", "location", "warping"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.set_warping"
+    },
+    {
+      "name": "clips_align_warp_markers",
+      "domain": "clips",
+      "summary": "Snap interior warp markers on warped audio clips to a grid, with exact undo.",
+      "description": "Walks every track and both clip locations itself, so duplicate clip names cannot block it. For each warped audio clip with at least three markers, it moves the interior markers toward the nearest grid line, never the first marker or the hidden final marker. A marker farther than max_shift from the grid is reported instead of being yanked. Dry-run by default; applying returns one undo token per moved marker, and restore moves each marker back by the exact distance. Clip timing changes are audible. If this Live build does not expose Clip.move_warp_marker, the command reports unsupported with the reason rather than pretending.",
+      "examples": ["fix my warp markers", "snap every warped audio clip to the grid", "align the warped loops"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Optional exact track name; omit for the whole Set."},
+          "track_index": {"type": "integer", "minimum": 0},
+          "grid": {"type": "number", "minimum": 0.03125, "maximum": 16, "default": 0.25, "description": "Grid step in beats; 0.25 is a sixteenth in 4/4."},
+          "max_shift": {"type": "number", "minimum": 0, "maximum": 4, "default": 0.25, "description": "Largest marker move in beats; larger misses are reported, not applied."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "clip_index": {"type": "integer", "minimum": 0},
+                "location": {"type": "string", "enum": ["arrangement", "session"]},
+                "slot": {"type": ["integer", "null"], "minimum": 0},
+                "start": {"type": ["number", "null"]},
+                "clip": {"type": "string"},
+                "marker_beat": {"type": "number"},
+                "distance": {"type": "number"}
+              },
+              "required": ["track_index", "location", "marker_beat", "distance"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 30000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.align_warp_markers"
+    },
+    {
+      "name": "clips_warp_map",
+      "domain": "clips",
+      "summary": "Read one audio clip's file, bounds and exact warp-marker map.",
+      "description": "Reads one audio clip's source path, arrangement start, clip start/end markers, sample length and rate, Warp state and every warp marker's beat_time and sample_time in seconds. It is read-only and is the measurement input for clips_apply_warp_map. MIDI clips are unavailable with a reason.",
+      "examples": ["read this clip's warp map", "show the exact warp markers", "where is this audio file"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "clip": {"type": "string"},
+          "location": {"type": "string", "enum": ["arrangement", "session"]},
+          "slot": {"type": "integer", "minimum": 0, "description": "Zero-based session slot."}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.warp_map"
+    },
+    {
+      "name": "clips_apply_warp_map",
+      "domain": "clips",
+      "summary": "Replace a clip's warp map and bounds, with exact restore.",
+      "description": "Applies a measured map to one warped audio clip: optionally replaces every interior warp marker, adds beat_time/sample_time pairs (sample_time is in seconds), and sets start_marker/end_marker in clip-relative beats. The first and last markers anchor the clip and are never removed; boundary entries are reported as skipped. Dry-run by default. Applying returns an undo token containing the old markers and bounds; restore removes the new map and rebuilds the old one. If any write fails, the handler attempts a rollback and reports both failures instead of claiming success. This changes clip timing and is audible.",
+      "examples": ["apply this warp map to the vocal", "replace the vocal warp markers", "fit this clip to the reference"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string"},
+          "clip": {"type": "string"},
+          "location": {"type": "string", "enum": ["arrangement", "session"]},
+          "slot": {"type": "integer", "minimum": 0},
+          "markers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "beat_time": {"type": "number"},
+                "sample_time": {"type": "number", "minimum": 0, "description": "Source seconds."}
+              },
+              "required": ["beat_time", "sample_time"],
+              "additionalProperties": false
+            }
+          },
+          "start_marker": {"type": "number", "minimum": 0, "description": "Clip-relative beats."},
+          "end_marker": {"type": "number", "minimum": 0, "description": "Clip-relative beats."},
+          "replace": {"type": "boolean", "default": true, "description": "Remove existing interior markers first."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {"type": "array", "items": {"type": "object"}}
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 15000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.apply_warp_map"
+    },
+    {
+      "name": "clips_warp_match",
+      "domain": "clips",
+      "summary": "Move audio warp markers onto another track's transients, with exact undo.",
+      "description": "Uses a reference track's warp markers as the timing truth: by default the first audio track whose name contains drum, kick, perc, beat or break and which has at least two readable markers. Each interior marker on every other arrangement audio clip moves to the nearest reference transient within max_shift, compared in arrangement beats so clips at different starts share one timeline. First and hidden last markers anchor each clip and are never moved; a move that would cross an adjacent marker is reported instead. Session clips are skipped with a reason because their launch position is not an arrangement timestamp. Dry-run by default; applying returns one undo token per moved marker and restore reverses each by its exact distance. Clip timing changes are audible. Name reference_track to choose the reference yourself, or reference_track_index when names are duplicated.",
+      "examples": ["match the layers to my drum transients", "align the audio to the kick", "use the drum track as the timing reference"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "reference_track": {"type": "string", "description": "Exact track name to use as the timing reference."},
+          "reference_track_index": {"type": "integer", "minimum": 0},
+          "max_shift": {"type": "number", "minimum": 0, "maximum": 4, "default": 0.25, "description": "Largest marker move in beats; markers with no reference transient this close are reported, not moved."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_index": {"type": "integer", "minimum": 0},
+                "clip_index": {"type": "integer", "minimum": 0},
+                "location": {"type": "string", "enum": ["arrangement", "session"]},
+                "slot": {"type": ["integer", "null"], "minimum": 0},
+                "start": {"type": ["number", "null"]},
+                "clip": {"type": "string"},
+                "marker_beat": {"type": "number"},
+                "distance": {"type": "number"}
+              },
+              "required": ["track_index", "location", "marker_beat", "distance"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 30000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.warp_match"
     },
     {
       "name": "clips_fix_loop_points",
@@ -1732,6 +2175,35 @@
       "cmd": "devices.set_parameter"
     },
     {
+      "name": "devices_set_active",
+      "domain": "devices",
+      "summary": "Bypass or restore one device, with an exact undo token.",
+      "description": "Sets Device.is_active on one resolved track and device. This is the portable way to keep a missing plug-in's slot and settings without letting it block the Set: disable it here, install the plug-in on the target machine, then restore the prior state. A dry run reports the current and target state without writing; Live's read-back must match before the result claims success. The undo token restores the exact prior boolean.",
+      "examples": ["disable the missing plug-in", "bypass this device without deleting it", "turn the analyser back on"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
+          "track_index": {"type": "integer", "minimum": 0},
+          "device": {"type": "string", "description": "Exact device name on that track."},
+          "device_index": {"type": "integer", "minimum": 0},
+          "active": {"type": "boolean", "description": "True enables the device, false bypasses it."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {
+            "type": "array",
+            "items": {"type": "object"}
+          }
+        },
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "devices.set_active"
+    },
+    {
       "name": "devices_set_macro",
       "domain": "devices",
       "summary": "Set a rack macro by number, with the same undo token as a parameter write.",
@@ -1921,6 +2393,132 @@
       "needs": [],
       "min_live": null,
       "cmd": "mix.snapshot_restore"
+    },
+    {
+      "name": "recipe_list",
+      "domain": "recipe",
+      "summary": "List shipped and user recipes by kind.",
+      "description": "Reads the recipe store and returns each recipe's id, name, kind, status and source. Recipes are JSON data; this does not touch Live and does not need a connection.",
+      "examples": ["what recipes do I have", "list my recipes"],
+      "input": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "timeout_ms": 1000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "recipe_show",
+      "domain": "recipe",
+      "summary": "Read one full recipe and resolve its typed ingredients.",
+      "description": "Returns the validated user override or shipped recipe for one id, plus whether it came from the user or shipped store. Recipe ingredients are resolved to their name, kind and flavor; sample and instrument bindings are returned unresolved with a reason because this build does not inspect the library offline. The contract summary includes flavor, expected fingerprint, manual checkpoints and step count. Does not touch Live.",
+      "examples": ["show recipe dubstep.half_time", "open my recipe"],
+      "input": {
+        "type": "object",
+        "properties": {"id": {"type": "string", "description": "Stable recipe id, such as dubstep.half_time."}},
+        "required": ["id"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 1000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "recipe_save",
+      "domain": "recipe",
+      "summary": "Validate and save an LLM-authored recipe contract.",
+      "description": "Validates a version-1 recipe (rhythm, workflow or combination) with optional flavor profile, typed ingredients, manual checkpoints and expected structural fingerprint, then writes it atomically to the user recipe directory (%APPDATA%\\Enableton\\recipes, or ~/.enableton/recipes). The shipped store is never modified. Recipe ingredients must already exist; sample and instrument bindings are declarations and are not resolved offline. Workflow steps are validated against the catalogue. A user recipe must not claim status 'shipped'; an existing user id requires overwrite: true and reports replaced: true. This writes a JSON file, not Live.",
+      "examples": ["save this pattern as a recipe", "capture this groove as a recipe"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "recipe": {"type": "object", "description": "A complete version-1 recipe object."},
+          "overwrite": {"type": "boolean", "default": false}
+        },
+        "required": ["recipe"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 5000,
+      "writes": true,
+      "reversible": false,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "recipe_apply",
+      "domain": "recipe",
+      "summary": "Compile a recipe into a stored reversible plan.",
+      "description": "Reads a recipe and recursively compiles every executable ingredient into the same bounded reversible steps used by ableton_escalate. A rhythm ingredient is rendered as MIDI notes into an existing MIDI target clip with one notes_replace step; the target must be supplied, and every slot needs a pitch (slots[].pitch or pitch_map). This is a MIDI render, not sample loading: source slots are reported unresolved. Sample and instrument bindings cannot be compiled. track_bindings can redirect names used by executable steps, such as a recipe's Drums role to the track that actually exists. It validates and preflights the plan against Live, then stores it for ableton_plan_apply; it never writes Live and never executes the plan. manual checkpoints with when='before_apply' stop plan creation until the caller repeats the call with manual_confirmed: true. The response includes the render summary, pending manual checkpoints, the expected fingerprint and the plan id.",
+      "examples": ["compile my roller recipe", "turn this recipe into a plan"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "description": "Stable recipe id to compile."},
+          "manual_confirmed": {"type": "boolean", "default": false, "description": "Set true only after the user has completed every before_apply manual checkpoint."},
+          "target": {
+            "type": "object",
+            "description": "Existing MIDI clip that a rhythm ingredient renders into. The clip is not created or renamed; notes_replace replaces its whole note vector.",
+            "properties": {
+              "track": {"type": "string", "description": "Exact track name."},
+              "clip": {"type": "string", "description": "Exact clip name."},
+              "location": {"type": "string", "enum": ["arrangement", "session"], "description": "Disambiguate a name that exists in both locations."},
+              "slot": {"type": "integer", "minimum": 0, "description": "Zero-based Session slot, when the target is a Session clip."}
+            },
+            "required": ["track", "clip"],
+            "additionalProperties": false
+          },
+          "pitch_map": {
+            "type": "object",
+            "description": "MIDI pitches keyed by recipe slot name, overriding slots[].pitch.",
+            "additionalProperties": {"type": "integer", "minimum": 0, "maximum": 127}
+          },
+          "track_bindings": {
+            "type": "object",
+            "description": "Exact track-name substitutions for executable steps, for example {'Drums': 'RMX | DRUMS'}.",
+            "additionalProperties": {"type": "string"}
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 15000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "recipe_verify",
+      "domain": "recipe",
+      "summary": "Compare the current Set to a recipe's expected fingerprint.",
+      "description": "Measures the snapshot-only structural fingerprint (tempo, track and clip counts, note count when readable, device count and arrangement bars) and compares it to the recipe's expected values with explicit tolerances. Returns match, partial, mismatch or unavailable plus each metric's expected value, actual value, delta and reason. A metric the snapshot cannot prove is unavailable, never a pass. manual checkpoints with when='before_verify' stop verification until the caller repeats the call with manual_confirmed: true. This is not an audio render, LUFS or spectral measurement and does not touch Live.",
+      "examples": ["verify the recipe landed", "did my recipe produce the expected result"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "description": "Stable recipe id to verify."},
+          "refresh": {"type": "boolean", "default": false, "description": "Read a fresh snapshot instead of the cached one."},
+          "manual_confirmed": {"type": "boolean", "default": false, "description": "Set true only after the user has completed every before_verify manual checkpoint."}
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 4000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
     }
   ]
 }

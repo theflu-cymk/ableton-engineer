@@ -272,6 +272,122 @@ def _restore_parameters(entries, song, dry_run):
     }
 
 
+@command("devices.set_active")
+def set_active(args, song):
+    """Bypass or restore one device without deleting it.
+
+    A missing plug-in is not a reason to delete its slot: disabling preserves the chain position
+    and the device's state for the machine that has it installed. The write is reversible with an
+    exact prior boolean, and Live's read-back is checked before the result claims success.
+    """
+    check_args(
+        args,
+        allowed=(
+            "track", "track_index", "device", "device_index",
+            "active", "dry_run", "restore",
+        ),
+    )
+    dry_run = bool(args.get("dry_run", True))
+    if args.get("restore") is not None:
+        overlapping = [
+            key for key in (
+                "track", "track_index", "device", "device_index", "active",
+            )
+            if key in args
+        ]
+        if overlapping:
+            raise ScriptError(
+                "BAD_ARGS", "restore cannot be combined with %s" % ", ".join(overlapping)
+            )
+        entries = args.get("restore")
+        if not isinstance(entries, list) or not entries:
+            raise ScriptError("BAD_ARGS", "restore must be a non-empty list")
+        changes, missing = [], []
+        for entry in reversed(entries):
+            if not isinstance(entry, dict):
+                raise ScriptError("BAD_ARGS", "restore entries must be objects")
+            try:
+                track_index = int(entry["track_index"])
+                device_index = int(entry["device_index"])
+                active = bool(entry["active"])
+            except (KeyError, TypeError, ValueError):
+                raise ScriptError(
+                    "BAD_ARGS",
+                    "restore entries need track_index, device_index and active",
+                )
+            tracks = list(_attr(song, "tracks", []) or [])
+            if track_index < 0 or track_index >= len(tracks):
+                missing.append({"track_index": track_index, "reason": "no track at that index"})
+                continue
+            track = tracks[track_index]
+            devices = _devices(track)
+            if device_index < 0 or device_index >= len(devices):
+                missing.append({"track_index": track_index, "device_index": device_index,
+                                "reason": "no device at that index"})
+                continue
+            device = devices[device_index]
+            wanted = entry.get("device")
+            if wanted is not None and str(_attr(device, "name", "") or "") != wanted:
+                missing.append({"track_index": track_index, "device_index": device_index,
+                                "reason": "the device at that index is now %r"
+                                          % (str(_attr(device, "name", "") or ""),)})
+                continue
+            if not dry_run:
+                _set_device_active(device, active)
+            changes.append({
+                "track": str(_attr(track, "name", "") or ""),
+                "track_index": track_index,
+                "device": str(_attr(device, "name", "") or ""),
+                "device_index": device_index,
+                "to": active,
+            })
+        return {"dry_run": dry_run, "restored": len(changes), "changes": changes,
+                "missing": missing}
+
+    if "active" not in args:
+        raise ScriptError("BAD_ARGS", "active is required")
+    if not isinstance(args.get("active"), bool):
+        raise ScriptError("BAD_ARGS", "active must be true or false")
+    active = args.get("active")
+    track_index, track = _track(song, args)
+    device_index, device = _device(track, args)
+    current = bool(_attr(device, "is_active", True))
+    change = {
+        "track": str(_attr(track, "name", "") or ""),
+        "track_index": track_index,
+        "device": str(_attr(device, "name", "") or ""),
+        "device_index": device_index,
+        "from": current,
+        "to": active,
+    }
+    undo = [{
+        "track_index": track_index,
+        "device_index": device_index,
+        "device": change["device"],
+        "active": current,
+    }]
+    if not dry_run:
+        _set_device_active(device, active)
+    return {"dry_run": dry_run, "changes": [change], "undo": undo}
+
+
+def _set_device_active(device, active):
+    try:
+        device.is_active = active
+    except Exception as exc:  # noqa: BLE001 - the Live reason belongs in the error
+        raise ScriptError(
+            "UNSUPPORTED",
+            "this Live build refused the device bypass write: %s" % (exc,),
+        )
+    read_back = bool(_attr(device, "is_active", active))
+    if read_back != active:
+        raise ScriptError(
+            "LIVE_ERROR",
+            "Live read back is_active=%s after being asked for %s on %r"
+            % (read_back, active, str(_attr(device, "name", "") or "")),
+        )
+
+
 @command("devices.set_parameter")
 def set_parameter(args, song):
     check_args(
@@ -794,6 +910,94 @@ def browse_presets(args, song):
         "next_offset": next_offset if next_offset < total else None,
         "missing": missing,
         "notes": problems,
+    }
+
+
+def _browser_item(song, path):
+    browser = _browser(song)
+    steps = [step for step in str(path).replace("\\", "/").split("/") if step]
+    if not steps:
+        raise ScriptError("BAD_ARGS", "path must name a browser item")
+    current = None
+    for step in steps:
+        if current is None:
+            matches = []
+            for name in (
+                "sounds", "drums", "instruments", "audio_effects", "midi_effects",
+                "samples", "plugins", "packs", "user_library", "max_for_live",
+                "current_project",
+            ):
+                try:
+                    item = getattr(browser, name)
+                except Exception:
+                    continue
+                if item is not None and (
+                    name == step or str(_attr(item, "name", "") or "") == step
+                ):
+                    matches.append(item)
+            if not matches:
+                raise ScriptError("NOT_FOUND", "no browser category named %r" % (step,))
+            current = matches[0]
+        else:
+            matches = [
+                child for child in _children(current)
+                if str(_attr(child, "name", "") or "") == step
+            ]
+            if not matches:
+                raise ScriptError(
+                    "NOT_FOUND", "no browser item named %r under %r"
+                    % (step, str(_attr(current, "name", "") or "")),
+                )
+            if len(matches) > 1:
+                raise ScriptError(
+                    "AMBIGUOUS_REF", "%d browser items are named %r" % (len(matches), step)
+                )
+            current = matches[0]
+    return current
+
+
+@command("devices.load")
+def load_device(args, song):
+    """Load one browser preset into the selected track's device chain."""
+    check_args(args, allowed=("track", "track_index", "path", "dry_run"))
+    index, track = _track(song, args)
+    path = args.get("path")
+    if not isinstance(path, str) or not path.strip():
+        raise ScriptError("BAD_ARGS", "path must be a non-empty browser path")
+    item = _browser_item(song, path)
+    if not bool(_attr(item, "is_loadable", False)):
+        raise ScriptError("UNSUPPORTED", "browser item %r is not loadable" % path)
+    dry_run = bool(args.get("dry_run", True))
+    if dry_run:
+        return {"dry_run": True, "track": str(_attr(track, "name", "")),
+                "track_index": index, "path": path,
+                "item": str(_attr(item, "name", ""))}
+    view = _attr(song, "view", None)
+    if view is None:
+        raise ScriptError("UNSUPPORTED", "this Live build has no Song.view to select a track")
+    try:
+        view.selected_track = track
+    except Exception as exc:  # noqa: BLE001 - the Live reason belongs in the error
+        raise ScriptError("LIVE_ERROR", "could not select track %r: %s" % (track.name, exc))
+    browser = _browser(song)
+    loader = getattr(browser, "load_item", None)
+    if not callable(loader):
+        raise ScriptError("UNSUPPORTED", "this Live build cannot load a browser item")
+    before = [str(_attr(device, "name", "")) for device in _devices(track)]
+    try:
+        loader(item)
+    except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
+        raise ScriptError("LIVE_ERROR", "could not load %r: %s" % (path, exc))
+    after = [str(_attr(device, "name", "")) for device in _devices(track)]
+    new = after[len(before):] if len(after) > len(before) else []
+    return {
+        "dry_run": False,
+        "track": str(_attr(track, "name", "")),
+        "track_index": index,
+        "path": path,
+        "devices_before": before,
+        "devices_after": after,
+        "loaded": new or [str(_attr(item, "name", ""))],
     }
 
 

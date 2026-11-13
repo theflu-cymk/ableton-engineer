@@ -1,0 +1,29 @@
+{
+  "id": "dubstep.roller",
+  "name": "Dubstep roller",
+  "version": 1,
+  "kind": "combination",
+  "status": "shipped",
+  "flavor": {"name": "dubstep", "bpm": [138, 142], "feel": "half_time", "tags": ["140"]},
+  "description": "Half-time drums with a little headroom left for a bass.",
+  "tags": ["dubstep", "140", "half_time"],
+  "ingredients": [
+    {"recipe": "dubstep.half_time", "role": "drums"}
+  ],
+  "steps": [
+    {
+      "tool": "tracks_set_volume",
+      "args": {"tracks": ["Drums"], "volume": 0.82},
+      "why": "leave room for the bass"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Audition the drop and confirm the kick is not masking the bass.",
+      "when": "after_apply",
+      "verify": "Play the drop; the kick and bass should stay distinct."
+    }
+  ],
+  "expected": {"tempo_bpm": {"value": 140, "tolerance": 1}},
+  "notes": "Start with the drums, then add the bass and a sparse stab."
+}

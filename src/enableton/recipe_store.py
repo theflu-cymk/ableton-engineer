@@ -64,7 +64,7 @@ class RecipeStore:
             raise RecipeStoreError(f"cannot list recipe directory {directory}: {exc}") from exc
 
     def list(self) -> list[dict[str, str]]:
-        """List recipe IDs and names, with user recipes overriding shipped IDs."""
+        """List recipe IDs, names and kinds, with user recipes overriding shipped IDs."""
         files = self._files(self.shipped_dir)
         files.update(self._files(self.user_dir))
         rows = []
@@ -75,6 +75,7 @@ class RecipeStore:
                 {
                     "id": recipe_id,
                     "name": recipe["name"],
+                    "kind": recipe["kind"],
                     "status": recipe["status"],
                     "source": "user" if path.parent == self.user_dir else "shipped",
                 }

@@ -7,6 +7,7 @@ dependencies = ["mcp>=2.3"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+analysis = ["numpy>=1.26", "soundfile>=0.12", "pyloudnorm>=0.1"]
 
 [project.scripts]
 enableton = "enableton.cli:main"

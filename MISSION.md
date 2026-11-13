@@ -35,6 +35,35 @@ test should assert that, or every count in the spec is wrong by 3×.
 
 `uv run pytest -q` is green as of `4d4978a`; the suite's count is deliberately not quoted here, because it changes with every test. Read-path reports committed through `78f8a8b`; `notes_overlaps` is live-verified on `0.2.0` against `fortnight`. The M2 acceptance gates are **real-Live verified on `0.2.3`**: duplicate dry-run matched apply, double-apply was a no-op, exact restore included the clip name, and a forced real mid-plan failure restored the arrangement object-for-object. M2 is complete. M3 is **complete and real-Live verified on `0.2.4`**: the three-fader autofix dropped findings from 25 to 22, a controlled count-rise probe halted and rolled back, `ableton_escalate` produced a stored plan that `ableton_plan_apply` executed from a separate CLI process, and `modes --findings` showed the per-mode counts before and after. All 14 needs-listening findings stayed out of every plan and apply. M4 is in progress: `ableton_guide` now returns the generated command sheet through the MCP tool surface, `enableton inspect`, `enableton plan` and `enableton run` are implemented, and `devices_read_chain`, `master_chain_read` and `sections_map` answer from one snapshot. The catalogue is now 65 tools in 7 modes (`auto 34`, `inspect 23`, `prep 22`, `edit 21`, `arrange 16`, `sound 15`, `mix 21`); the inspect domain has all 8 tools, the notes domain has all 8 (`notes_read` is **Verified on real `0.2.8`** from 46 notes in a real session clip plus an audio clip's unavailable reason; all six writes are **Verified on real `0.2.10`**: quantize, transform, humanize, strum, replace and scale-lock each changed the same 46-note clip and restored it exactly, and seeded humanize reproduced identically), the new `edit` mode loads them, and `tracks_set_pan` plus `clips_rename` are implemented and **Verified on real `0.2.7`**: pan `0.0 → 0.2` on `MUSIC | vOCALS` and a unique arrangement-clip rename both applied, read back from a fresh snapshot, restored exactly, and read back again. **Real `0.2.6` is verified**: `doctor` reported script `0.2.6`, build `d9d5fefaad68`, no `stale`; play/stop, locate (bar 10 → 36 beats, confirmed by the following snapshot), loop set/clear, and loop/playhead restoration all passed.
 
+### Conversational freedom layer (2026-11-11)
+
+**Verified on the fake suite and a real scratch apply.** The catalogue is now **76 tools in 8 modes**;
+the recipe mode has `recipe_list`, `recipe_show`, `recipe_save`, `recipe_apply` and `recipe_verify`.
+Recipes are the umbrella: `rhythm` stores pattern data, `workflow` stores validated reversible
+steps, and `combination` names existing recipes as ingredients. The contract is additive: a flavor
+profile, typed ingredients (`recipe`, `sample`, `instrument`), manual checkpoints and an expected
+structural fingerprint. `recipe_apply` recursively compiles executable recipe ingredients into a
+stored `ableton_escalate` plan and never writes Live; a rhythm ingredient needs an existing MIDI
+target and a pitch per slot, and becomes one `notes_replace` step without loading its sample slots.
+`recipe_verify` compares the current snapshot to the fingerprint and reports match, partial,
+mismatch or unavailable. `ableton_guide` now accepts
+`scope:"all"` and `detail:"full"` to expose every tool and schema, with a playbook for composition
+and manual handoff. `ableton_inspect` is a session-level, read-only escape hatch for tools outside
+the loaded mode; writes still go only through `ableton_escalate` and `ableton_plan_apply`.
+
+**Verified on the fake suite and a real scratch apply:** `uv run --extra dev pytest -q` — **583
+passed, 63 subtests**. A real MCP stdio call to `ableton_inspect` read 14 tracks from Live on script
+`0.4.20` / build `a588792a3f40`; no write was made. On `SCRATCH fortnight` (120 BPM), the rhythm
+compiler stored a plan for `dubstep.half_time` targeting `DRUMS | Remix 808 kit` / `RMX | drums |
+1`; `ableton_plan_apply` wrote 26 notes and `ableton_undo` restored the original 44. The compiler
+warned that the recipe is 140 BPM; no transport change or save was made. `recipe_verify` for the
+rhythm returned `unavailable` because it has no expected fingerprint. The manual gates are
+fake-suite verified; no recipe with a `before_apply` checkpoint was applied on real Live.
+`recipe_learn`, `recipe_build` and `recipe_refine` remain unimplemented; sample/instrument
+ingredients are still reported unavailable, and rhythm sample slots are reported unresolved rather
+than loaded. The 34-tool mode cap is unchanged because `ableton_inspect` is a session control, not
+a mode member.
+
 ### Device bypass unavailable; warp-mode write (2026-11-10, `0.2.14`)
 
 **Device bypass is unavailable on Live 12.2.5.** Real scratch attempts on `SCRATCH fortnight` failed because `Device.is_active` has no setter on both device classes tested: `PluginDevice` (`TDR Nova`) and `Eq8Device` (`Remove Mud`). Each attempt ran through the transactional scratch copy and rolled back (`restore.ok: true`); the working device remained active. The attempted `devices_bypass` tool was removed from the catalogue rather than shipped as a write that always fails. This is **Verified** for those two devices on real Live; whether any future Live build exposes a writable path is **Unverified**.

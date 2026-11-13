@@ -62,6 +62,23 @@ Rules only — the reasoning behind them lives in `SPEC.md` §3 and the module d
 - The installed script is a copy in the User Library, not this repo. Nothing here runs until step 2
   above.
 
+## Vocal repair
+
+"Repair a vocal track" means the workflow in
+[docs/vocal-repair-playbook.md](docs/vocal-repair-playbook.md), not the Live recipe store. Run:
+
+```bash
+uv run --with pedalboard --with librosa --with soundfile python scripts/vocal_repair.py --auto
+```
+
+It loads `%APPDATA%\Enableton\vocal-repair\recipes\vocal_repair.minimal.json`, takes the newest
+`*VOCALS*.wav` in the recorded bounce folder, selects RX modules from measured metrics, and applies
+the Nectar chain tuned to C# major at strength 35. It writes a new candidate and JSON report under
+`%APPDATA%\Enableton\vocal-repair`; it never modifies the source WAV. Read `auto_selection` in the
+report before describing what was done. The recipe's key is song-specific: for a different song pass
+a confirmed `--key`, or `--no-pitch`; never assume C# major. Nobody has auditioned the candidate, so
+never call it fixed, better or verified by ear.
+
 ## Invariants that must not be broken
 
 - An unavailable capability reports `unavailable` **with a reason**. Never fake it, never substitute

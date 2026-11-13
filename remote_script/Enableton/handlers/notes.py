@@ -22,7 +22,7 @@ MAX_NOTES_LIMIT = 1000
 
 @command("notes.read")
 def read(args, song):
-    check_args(args, allowed=("track", "clip", "location", "slot", "offset", "limit"))
+    check_args(args, allowed=("track", "clip", "location", "slot", "start", "offset", "limit"))
 
     track_name = args.get("track")
     clip_name = args.get("clip")
@@ -44,7 +44,7 @@ def read(args, song):
         raise ScriptError("BAD_ARGS", "limit must be an integer from 1 to %d" % MAX_NOTES_LIMIT)
 
     index, track, row = _resolve_clip(
-        song, track_name, clip_name, args.get("location"), args.get("slot")
+        song, track_name, clip_name, args.get("location"), args.get("slot"), args.get("start")
     )
     location, slot, clip, start = row
 
@@ -249,7 +249,7 @@ def _context(args, song):
     if not isinstance(clip_name, str) or not clip_name:
         raise ScriptError("BAD_ARGS", "clip must be a non-empty string")
     index, track, row = _resolve_clip(
-        song, track_name, clip_name, args.get("location"), args.get("slot")
+        song, track_name, clip_name, args.get("location"), args.get("slot"), args.get("start")
     )
     location, slot, clip, start = row
     if not bool(_attr(clip, "is_midi_clip", False)):
@@ -428,6 +428,199 @@ def quantize(args, song):
     )
 
 
+def _track_target(args, song):
+    """Resolve one track by name or index without guessing at duplicate names."""
+    has_name = "track" in args
+    has_index = "track_index" in args
+    if has_name == has_index:
+        raise ScriptError("BAD_ARGS", "give exactly one of track or track_index")
+    if has_name:
+        name = args.get("track")
+        if not isinstance(name, str) or not name:
+            raise ScriptError("BAD_ARGS", "track must be a non-empty string")
+        matches = [
+            (index, track) for index, track in enumerate(song.tracks)
+            if str(_attr(track, "name", "")) == name
+        ]
+        if not matches:
+            raise ScriptError("NOT_FOUND", "no track named %r" % (name,))
+        if len(matches) > 1:
+            raise ScriptError(
+                "AMBIGUOUS_REF",
+                "%d tracks are named %r; use track_index" % (len(matches), name),
+            )
+        return matches[0]
+    raw = args.get("track_index")
+    if isinstance(raw, bool) or not isinstance(raw, int) or raw < 0:
+        raise ScriptError("BAD_ARGS", "track_index must be a non-negative integer")
+    if raw >= len(song.tracks):
+        raise ScriptError("NOT_FOUND", "no track at index %s" % (raw,))
+    return raw, song.tracks[raw]
+
+
+def _find_align_clip(track, clip_index, location, slot, start, name):
+    """Find the clip a restore token names, using the fields that disambiguate duplicates."""
+    refs = _clip_refs(track)
+    if clip_index is not None:
+        try:
+            position = int(clip_index)
+        except (TypeError, ValueError):
+            position = -1
+        if 0 <= position < len(refs):
+            where, slot_index, clip, clip_start = refs[position]
+            if (
+                where == location
+                and (location != "session" or (slot is not None and int(slot) == slot_index))
+                and (location != "arrangement" or start is None
+                     or abs(clip_start - float(start)) <= 0.001)
+                and (name is None or str(_attr(clip, "name", "")) == str(name))
+            ):
+                return clip
+    for where, slot_index, clip, clip_start in refs:
+        if where != location:
+            continue
+        if location == "session":
+            if slot is None or int(slot) != slot_index:
+                continue
+        elif start is not None and abs(clip_start - float(start)) > 0.001:
+            continue
+        if name is not None and str(_attr(clip, "name", "")) != str(name):
+            continue
+        return clip
+    return None
+
+
+def _restore_align(args, song, dry_run):
+    entries = args.get("restore")
+    if not isinstance(entries, list) or not entries:
+        raise ScriptError("BAD_ARGS", "restore must be a non-empty list")
+    changes, missing = [], []
+    for entry in reversed(entries):
+        if not isinstance(entry, dict):
+            raise ScriptError("BAD_ARGS", "restore entries must be objects")
+        try:
+            index = int(entry["track_index"])
+            location = entry["location"]
+            notes = _validated_notes(entry.get("notes"))
+        except (KeyError, TypeError, ValueError):
+            raise ScriptError("BAD_ARGS", "restore entries need track_index, location and notes")
+        if location not in ("arrangement", "session"):
+            raise ScriptError("BAD_ARGS", "restore location must be arrangement or session")
+        if index < 0 or index >= len(song.tracks):
+            missing.append({"track_index": index, "reason": "no track at that index"})
+            continue
+        track = song.tracks[index]
+        clip = _find_align_clip(
+            track, entry.get("clip_index"), location, entry.get("slot"),
+            entry.get("start"), entry.get("clip"),
+        )
+        if clip is None:
+            missing.append({
+                "track_index": index,
+                "location": location,
+                "slot": entry.get("slot"),
+                "start": entry.get("start"),
+                "clip": entry.get("clip"),
+            })
+            continue
+        if not dry_run:
+            _write_notes(clip, notes)
+        changes.append({
+            "track": str(_attr(track, "name", "")),
+            "track_index": index,
+            "clip": str(_attr(clip, "name", "")),
+            "location": location,
+            "slot": entry.get("slot"),
+            "notes": len(notes),
+        })
+    return {"dry_run": dry_run, "restored": len(changes), "changes": changes, "missing": missing}
+
+
+@command("notes.align_track")
+def align_track(args, song):
+    """Quantize every MIDI clip on one track, without resolving clip names.
+
+    Duplicate clip names are normal in layered Arrangements and make the single-clip commands
+    ambiguous. This command walks the track's own clip list instead, so a one-click alignment
+    never has to ask which of two identically named clips was meant.
+    """
+    check_args(args, allowed=(
+        "track", "track_index", "grid", "strength", "dry_run", "restore",
+    ))
+    dry_run = bool(args.get("dry_run", True))
+    if args.get("restore") is not None:
+        if any(key in args for key in ("track", "track_index", "grid", "strength")):
+            raise ScriptError(
+                "BAD_ARGS", "restore cannot be combined with track, track_index, grid or strength"
+            )
+        return _restore_align(args, song, dry_run)
+
+    index, track = _track_target(args, song)
+    grid = _float_arg(args, "grid", 0.25, 0.03125, 16.0)
+    strength = _float_arg(args, "strength", 1.0, 0.0, 1.0)
+    try:
+        refs = _clip_refs(track)
+    except Exception as exc:  # noqa: BLE001 - group and return tracks have no clip list
+        raise ScriptError(
+            "UNSUPPORTED", "%r has no addressable clip list: %s" % (track.name, exc)
+        )
+
+    changes, undo, total_notes, total_moved = [], [], 0, 0
+    for clip_index, (location, slot, clip, start) in enumerate(refs):
+        if not bool(_attr(clip, "is_midi_clip", False)):
+            continue
+        raw, _source = _raw_notes(clip)
+        if not raw:
+            continue
+        notes, moved, largest = [], 0, 0.0
+        for pitch, note_start, duration, velocity, mute in raw:
+            target = math.floor(note_start / grid + 0.5) * grid
+            new_start = max(0.0, note_start + (target - note_start) * strength)
+            if abs(new_start - note_start) > 1e-9:
+                moved += 1
+                largest = max(largest, abs(new_start - note_start))
+            notes.append([pitch, new_start, duration, velocity, mute])
+        if moved == 0:
+            continue
+        name = str(_attr(clip, "name", ""))
+        changes.append({
+            "clip": name,
+            "clip_index": clip_index,
+            "location": location,
+            "slot": slot,
+            "start": None if start is None else round(start, 4),
+            "notes": len(raw),
+            "moved": moved,
+            "largest_shift": round(largest, 4),
+        })
+        undo.append({
+            "track_index": index,
+            "clip_index": clip_index,
+            "location": location,
+            "slot": slot,
+            "start": None if start is None else round(start, 4),
+            "clip": name,
+            "notes": raw,
+        })
+        total_notes += len(raw)
+        total_moved += moved
+        if not dry_run:
+            _write_notes(clip, notes)
+
+    return {
+        "dry_run": dry_run,
+        "track": str(_attr(track, "name", "")),
+        "track_index": index,
+        "grid": grid,
+        "strength": strength,
+        "clips": len(changes),
+        "notes": total_notes,
+        "moved": total_moved,
+        "changes": changes,
+        "undo": undo,
+    }
+
+
 @command("notes.transform")
 def transform(args, song):
     check_args(args, allowed=(
@@ -551,11 +744,11 @@ def strum(args, song):
 @command("notes.replace")
 def replace(args, song):
     check_args(args, allowed=(
-        "track", "clip", "location", "slot", "notes", "dry_run", "restore",
+        "track", "clip", "location", "slot", "start", "notes", "dry_run", "restore",
     ))
     dry_run = bool(args.get("dry_run", True))
     restored = _restore_requested(
-        args, song, dry_run, ("track", "clip", "location", "slot", "notes")
+        args, song, dry_run, ("track", "clip", "location", "slot", "start", "notes")
     )
     if restored is not None:
         return restored

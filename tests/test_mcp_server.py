@@ -28,7 +28,7 @@ class McpServerTests(unittest.TestCase):
         )
         self.assertEqual(
             set(listed_names) - set(mode_names),
-            {"ableton_start", "ableton_screen", "ableton_choose"},
+            {"ableton_start", "ableton_screen", "ableton_choose", "ableton_inspect"},
         )
 
     def test_read_only_call_matches_cli_json(self):
@@ -56,6 +56,42 @@ class McpServerTests(unittest.TestCase):
         mcp_result = asyncio.run(server.call_tool("ableton_guide", {"mode": "sound"}))
         self.assertFalse(mcp_result.is_error)
         self.assertEqual(mcp_result.structured_content, cli_result)
+
+    def test_inspect_reaches_a_read_only_tool_outside_the_mode(self):
+        server = create_server(mode="sound", adapter=FakeAdapter())
+        self.assertNotIn("tracks_list", server.mode.tools)
+
+        result = asyncio.run(
+            server.call_tool("ableton_inspect", {"tool": "tracks_list", "args": {}})
+        )
+
+        self.assertFalse(result.is_error)
+        self.assertEqual(result.structured_content["tool"], "tracks_list")
+        self.assertIn("items", result.structured_content["result"])
+
+    def test_inspect_refuses_writes_control_tools_and_unknown_tools(self):
+        server = create_server(mode="sound", adapter=FakeAdapter())
+
+        for target, code, text in (
+            ("tracks_set_volume", "BAD_ARGS", "writes"),
+            ("ableton_escalate", "BAD_ARGS", "core control"),
+            ("not_a_tool", "UNKNOWN_COMMAND", "not_a_tool"),
+        ):
+            with self.subTest(target=target):
+                result = asyncio.run(
+                    server.call_tool("ableton_inspect", {"tool": target, "args": {}})
+                )
+                self.assertTrue(result.is_error)
+                self.assertEqual(result.structured_content["error"]["code"], code)
+                self.assertIn(text, result.structured_content["error"]["message"])
+
+    def test_inspect_rejects_bad_arguments(self):
+        server = create_server(mode="sound", adapter=FakeAdapter())
+        result = asyncio.run(
+            server.call_tool("ableton_inspect", {"tool": "tracks_list", "args": []})
+        )
+        self.assertTrue(result.is_error)
+        self.assertEqual(result.structured_content["error"]["code"], "BAD_ARGS")
 
     def test_unknown_tool_returns_structured_error(self):
         server = create_server(mode="sound", adapter=FakeAdapter())

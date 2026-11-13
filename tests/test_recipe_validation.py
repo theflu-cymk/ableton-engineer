@@ -116,6 +116,15 @@ class RecipeValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(RecipeValidationError, "duplicates slot definition"):
             validate_recipe(recipe)
 
+    def test_accepts_a_slot_pitch_and_rejects_an_out_of_range_pitch(self):
+        recipe = example_recipe()
+        recipe["slots"][0]["pitch"] = 36
+        self.assertIsNone(validate_recipe(recipe))
+
+        recipe["slots"][0]["pitch"] = 128
+        with self.assertRaisesRegex(RecipeValidationError, "pitch"):
+            validate_recipe(recipe)
+
     def test_source_metadata_is_optional_and_accepts_the_documented_shape(self):
         without_source = example_recipe()
         del without_source["source"]
@@ -149,6 +158,58 @@ class RecipeValidationTests(unittest.TestCase):
                 recipe["source"]["confidence"] = confidence
                 with self.assertRaisesRegex(RecipeValidationError, "source.confidence"):
                     validate_recipe(recipe)
+
+    def test_accepts_a_combination_without_rhythm_fields(self):
+        recipe = {
+            "id": "user.roller",
+            "name": "Roller",
+            "version": 1,
+            "kind": "combination",
+            "status": "draft",
+            "flavor": "dubstep",
+            "description": "A composed style",
+            "tags": ["dubstep", "140"],
+            "ingredients": [{"recipe": "dubstep.half_time", "role": "drums"}],
+            "steps": [
+                {
+                    "tool": "tracks_set_volume",
+                    "args": {"tracks": ["Drums"], "volume": 0.82},
+                    "why": "leave headroom",
+                }
+            ],
+        }
+
+        self.assertIsNone(validate_recipe(recipe))
+
+    def test_combination_needs_ingredients_or_steps(self):
+        recipe = {
+            "id": "user.empty",
+            "name": "Empty",
+            "version": 1,
+            "kind": "combination",
+            "status": "draft",
+        }
+
+        with self.assertRaisesRegex(RecipeValidationError, "ingredients or steps"):
+            validate_recipe(recipe)
+
+    def test_workflow_steps_are_bounded_and_cannot_set_transport_flags(self):
+        recipe = {
+            "id": "user.workflow",
+            "name": "Workflow",
+            "version": 1,
+            "kind": "workflow",
+            "status": "draft",
+            "steps": [
+                {
+                    "tool": "tracks_set_volume",
+                    "args": {"tracks": ["Drums"], "volume": 0.8, "dry_run": True},
+                }
+            ],
+        }
+
+        with self.assertRaisesRegex(RecipeValidationError, "dry_run or restore"):
+            validate_recipe(recipe)
 
 
 if __name__ == "__main__":

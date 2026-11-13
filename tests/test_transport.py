@@ -44,6 +44,17 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(result["position_beats"], 8.0)
         self.assertEqual(song.pending_position, 8.0)
 
+    def test_set_tempo_reports_previous_and_new_bpm(self):
+        result = run_tool("transport_set_tempo", {"tempo": 140}, self.adapter)
+        self.assertEqual(result["from"], 140.0)
+        self.assertEqual(result["to"], 140.0)
+        self.assertEqual(self.adapter.song.tempo, 140.0)
+
+    def test_set_tempo_rejects_out_of_range(self):
+        with self.assertRaises(ScriptError) as ctx:
+            run_tool("transport_set_tempo", {"tempo": 10}, self.adapter)
+        self.assertEqual(ctx.exception.code, "BAD_ARGS")
+
     def test_set_loop_updates_bounds_and_can_disable_the_loop(self):
         result = run_tool(
             "transport_set_loop",

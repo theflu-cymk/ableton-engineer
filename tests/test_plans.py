@@ -86,6 +86,83 @@ class EscalationTests(unittest.TestCase):
         self.assertEqual(result["steps"], [])
         self.assertIn("nothing was fabricated", result["reason"])
 
+    def test_explicit_steps_are_preflighted_and_stored(self):
+        plan = run_tool(
+            "ableton_escalate",
+            {
+                "intent": "widen the drums",
+                "steps": [
+                    {"tool": "tracks_set_volume",
+                     "args": {"tracks": ["Drums"], "volume": 0.8},
+                     "why": "balance"},
+                    {"tool": "tracks_set_pan",
+                     "args": {"tracks": ["Drums"], "pan": -0.2},
+                     "why": "width"},
+                ],
+            },
+            self.adapter,
+            plan_root=self.plan_root,
+        )
+        self.assertTrue(plan["plan_id"].startswith("p_"))
+        self.assertTrue(plan["explicit_steps"])
+        self.assertEqual(
+            [step["tool"] for step in plan["steps"]],
+            ["tracks_set_volume", "tracks_set_pan"],
+        )
+        self.assertEqual(plan["steps"][0]["why"], "balance")
+        self.assertTrue(plan["preflight"]["ran"])
+        self.assertEqual(len(plan["preflight"]["trace"]), 2)
+        self.assertEqual(self.adapter.song.tracks[0].volume, 1.0)
+        self.assertEqual(self.adapter.song.tracks[0].pan, 0.0)
+
+        applied = run_tool(
+            "ableton_plan_apply", {"plan_id": plan["plan_id"]}, self.adapter,
+            plan_root=self.plan_root, backup_root=str(self.root / "backups"),
+            transaction_root=str(self.root / "transactions"),
+        )
+        self.assertTrue(applied["applied"])
+        self.assertAlmostEqual(self.adapter.song.tracks[0].volume, 0.8)
+        self.assertAlmostEqual(self.adapter.song.tracks[0].pan, -0.2)
+
+    def test_explicit_steps_reject_unsafe_or_unknown_tools(self):
+        cases = [
+            ([{"tool": "tracks_list", "args": {}}], "read-only"),
+            ([{"tool": "devices_delete", "args": {
+                "track": "Drums", "device": "EQ Eight", "confirm": True,
+            }}], "not reversible"),
+            ([{"tool": "not_a_tool", "args": {}}], "unknown tool"),
+            ([{"tool": "tracks_set_volume", "args": {
+                "volume": 0.8, "dry_run": True,
+            }}], "must not set dry_run"),
+        ]
+        for steps, text in cases:
+            with self.subTest(text=text):
+                with self.assertRaises(LiveError) as ctx:
+                    run_tool("ableton_escalate", {"steps": steps}, self.adapter,
+                             plan_root=self.plan_root)
+                self.assertEqual(ctx.exception.code, "BAD_ARGS")
+                self.assertIn(text, ctx.exception.message)
+
+    def test_explicit_steps_are_bounded_and_preflighted(self):
+        too_many = [
+            {"tool": "tracks_set_volume", "args": {"volume": 0.9}}
+            for _ in range(13)
+        ]
+        with self.assertRaises(LiveError) as ctx:
+            run_tool("ableton_escalate", {"steps": too_many}, self.adapter,
+                     plan_root=self.plan_root)
+        self.assertIn("limited to 12", ctx.exception.message)
+
+        with self.assertRaises(LiveError) as ctx:
+            run_tool(
+                "ableton_escalate",
+                {"steps": [{"tool": "tracks_set_volume",
+                            "args": {"volume": 1.5}}]},
+                self.adapter,
+                plan_root=self.plan_root,
+            )
+        self.assertIn("preflight failed", ctx.exception.message)
+
     def test_discard_removes_the_plan(self):
         plan = run_tool("ableton_escalate", {"intent": "gain"}, self.adapter,
                         plan_root=self.plan_root)

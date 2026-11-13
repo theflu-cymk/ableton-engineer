@@ -64,6 +64,7 @@ class RecipeStoreTests(unittest.TestCase):
                 {
                     "id": "dubstep.half_time",
                     "name": "Dubstep half-time step",
+                    "kind": "rhythm",
                     "status": "shipped",
                     "source": "shipped",
                 }

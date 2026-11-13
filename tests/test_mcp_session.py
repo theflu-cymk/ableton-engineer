@@ -48,7 +48,8 @@ class McpSessionTests(unittest.TestCase):
 
         back = self.call_tool("ableton_choose", {"id": "back:modes"})
         self.assertEqual(back.structured_content["screen"], "modes")
-        selected = self.call_tool("ableton_choose", {"id": "7"})
+        sound_number = str(self.server.modes.names().index("sound") + 1)
+        selected = self.call_tool("ableton_choose", {"id": sound_number})
         self.assertEqual(selected.structured_content["screen"], "mode:sound")
 
     def test_unavailable_screens_explain_why(self):

@@ -50,6 +50,43 @@ class NotesWriteTests(unittest.TestCase):
         self.assertEqual(restored["restored"], 1)
         self.assertEqual(self.read(), before)
 
+    def test_align_track_quantizes_duplicate_clip_names_and_restores(self):
+        self.add_clip("gate midi", [FakeNote(50, 0.41, 0.2, 90)])
+
+        def state():
+            return [
+                [
+                    (note.pitch, round(note.start_time, 6), note.duration, note.velocity, note.mute)
+                    for note in clip.notes
+                ]
+                for clip in self.song.tracks[0].arrangement_clips
+            ]
+
+        before = state()
+        preview = self.adapter.call(
+            "notes.align_track", {"track": self.track, "grid": 0.25, "dry_run": True}
+        )
+        self.assertTrue(preview["dry_run"])
+        self.assertEqual(preview["clips"], 2)
+        self.assertEqual(state(), before)
+
+        applied = self.adapter.call(
+            "notes.align_track", {"track": self.track, "grid": 0.25, "dry_run": False}
+        )
+        self.assertEqual(applied["clips"], 2)
+        starts = sorted(
+            note.start_time
+            for clip in self.song.tracks[0].arrangement_clips
+            for note in clip.notes
+        )
+        self.assertEqual(starts, [0.25, 0.25, 0.5, 0.5])
+
+        restored = self.adapter.call(
+            "notes.align_track", {"restore": applied["undo"], "dry_run": False}
+        )
+        self.assertEqual(restored["restored"], 2)
+        self.assertEqual(state(), before)
+
     def test_quantize_strength_blends_toward_the_grid(self):
         applied = self.write("notes.quantize", grid=0.25, strength=0.5, dry_run=False)
         starts = [round(note["start"], 4) for note in self.read()["notes"]]

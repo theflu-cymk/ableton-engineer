@@ -21,8 +21,12 @@ _SERVER_INSTRUCTIONS = (
     "Enableton serves one static, mode-scoped catalogue per session. "
     "Screen controls are ableton_start with no arguments, ableton_screen with a screen "
     "name, and ableton_choose with a displayed choice id; they return text and structured "
-    "screen data. They are session controls, separate from the mode catalogue. Calls outside "
-    "the loaded mode return UNKNOWN_COMMAND."
+    "screen data. They are session controls, separate from the mode catalogue. "
+    "Use ableton_guide with scope='all' and detail='full' to discover the whole catalogue. "
+    "Use ableton_inspect to run any read-only, non-core tool outside the loaded mode; it "
+    "never writes Live. Use ableton_escalate with explicit steps for any reversible write "
+    "outside the mode, then ableton_plan_apply. If no tool can perform a step, tell the user "
+    "the exact manual action and how to verify it; never claim it happened."
 )
 
 
@@ -96,7 +100,41 @@ class EnabletonServer(MCPServer):
             )
             for item in projected
         ]
-        return catalogue_tools + self._screen_tools()
+        return catalogue_tools + self._screen_tools() + [self._inspect_tool()]
+
+    @staticmethod
+    def _inspect_tool() -> mcp_types.Tool:
+        annotations = mcp_types.ToolAnnotations(
+            readOnlyHint=True,
+            destructiveHint=False,
+            idempotentHint=True,
+        )
+        return mcp_types.Tool(
+            name="ableton_inspect",
+            description=(
+                "Run any read-only, non-core catalogue tool outside the loaded mode. Use "
+                "ableton_guide with scope='all' to discover names and schemas. This never "
+                "writes Live; use ableton_escalate for writes."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "tool": {
+                        "type": "string",
+                        "description": "Read-only catalogue tool name.",
+                    },
+                    "args": {
+                        "type": "object",
+                        "default": {},
+                        "description": "Arguments for that tool.",
+                    },
+                },
+                "required": ["tool"],
+                "additionalProperties": False,
+            },
+            annotations=annotations,
+            _meta={"enableton": {"scope": "session_control"}},
+        )
 
     @staticmethod
     def _screen_tools() -> list[mcp_types.Tool]:
@@ -155,6 +193,8 @@ class EnabletonServer(MCPServer):
 
         if name in _SCREEN_TOOLS:
             return self._screen_call(name, arguments)
+        if name == "ableton_inspect":
+            return self._inspect_call(arguments)
         if name not in self._tool_names:
             if name in self.catalogue:
                 message = f"tool {name!r} is not available in mode {self.mode.name!r}"
@@ -186,6 +226,47 @@ class EnabletonServer(MCPServer):
         ):
             self.session.plan = None
         return self._success(result)
+
+    def _inspect_call(
+        self,
+        arguments: dict[str, Any],
+    ) -> mcp_types.CallToolResult:
+        unknown = sorted(set(arguments) - {"tool", "args"})
+        if unknown:
+            return self._error(
+                "BAD_ARGS",
+                "ableton_inspect has unknown argument(s): %s" % ", ".join(unknown),
+            )
+        tool_name = arguments.get("tool")
+        if not isinstance(tool_name, str) or not tool_name:
+            return self._error("BAD_ARGS", "tool must be a non-empty string")
+        target_args = arguments.get("args", {})
+        if not isinstance(target_args, dict):
+            return self._error("BAD_ARGS", "args must be an object")
+        target = self.catalogue.get(tool_name)
+        if target is None:
+            return self._error("UNKNOWN_COMMAND", "Enableton has no tool %r" % (tool_name,))
+        if target.writes:
+            return self._error(
+                "BAD_ARGS",
+                "tool %r writes; use ableton_escalate with explicit steps instead" % (tool_name,),
+            )
+        if target.domain == "core":
+            return self._error(
+                "BAD_ARGS",
+                "core control tools are not available through ableton_inspect",
+            )
+        try:
+            result = run_tool(
+                tool_name,
+                target_args,
+                self.adapter,
+                catalogue=self.catalogue,
+                cache=self.cache,
+            )
+        except LiveError as exc:
+            return self._error(exc.code, exc.message, exc.detail)
+        return self._success({"tool": tool_name, "args": target_args, "result": result})
 
     def _screen_call(
         self,

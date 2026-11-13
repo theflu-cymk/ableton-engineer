@@ -61,6 +61,12 @@ class FakeNote:
 
 
 @dataclass
+class FakeWarpMarker:
+    beat_time: float
+    sample_time: float = 0.0
+
+
+@dataclass
 class FakeClip:
     name: str
     start_time: float = 0.0
@@ -74,6 +80,10 @@ class FakeClip:
     looping: bool = True
     notes: List[FakeNote] = field(default_factory=list)
     file_path: str = ""
+    start_marker: float = 0.0
+    end_marker: float = 0.0
+    sample_length: float = 0.0
+    sample_rate: float = 0.0
     _next_note_id: int = field(default=1, init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -120,6 +130,36 @@ class FakeClip:
                 and from_time <= note.start_time < from_time + time_span
             )
         ]
+
+    def move_warp_marker(self, beat_time: float, distance: float) -> None:
+        """Move the marker at ``beat_time`` by ``distance`` beats."""
+        for marker in self.warp_markers:
+            if abs(float(marker.beat_time) - float(beat_time)) <= 1e-6:
+                marker.beat_time = float(beat_time) + float(distance)
+                return
+        raise RuntimeError("no warp marker at %s" % beat_time)
+
+    def add_warp_marker(self, marker) -> None:
+        """Add one marker; Live refuses a duplicate or an out-of-order beat."""
+        if isinstance(marker, dict):
+            beat = float(marker["beat_time"])
+            sample = float(marker.get("sample_time", 0.0))
+        else:
+            beat = float(marker.beat_time)
+            sample = float(marker.sample_time)
+        if any(abs(float(row.beat_time) - beat) <= 1e-6 for row in self.warp_markers):
+            raise RuntimeError("warp marker already exists at %s" % beat)
+        self.warp_markers.append(FakeWarpMarker(beat, sample))
+        self.warp_markers.sort(key=lambda row: float(row.beat_time))
+
+    def remove_warp_marker(self, beat_time: float) -> None:
+        before = len(self.warp_markers)
+        self.warp_markers = [
+            row for row in self.warp_markers
+            if abs(float(row.beat_time) - float(beat_time)) > 1e-6
+        ]
+        if len(self.warp_markers) == before:
+            raise RuntimeError("no warp marker at %s" % beat_time)
 
 
 @dataclass
@@ -237,6 +277,30 @@ class FakeTrack:
         self.arrangement_clips.append(duplicate)
         self.arrangement_clips.sort(key=lambda item: item.start_time)
         return duplicate
+
+    def create_audio_clip(self, file_path: str, start_time: float):
+        """Live 12.2.5's arrangement audio import primitive."""
+        name = str(file_path).replace("\\", "/").rsplit("/", 1)[-1]
+        clip = FakeClip(
+            name=name,
+            start_time=float(start_time),
+            end_time=float(start_time) + 4.0,
+            file_path=str(file_path),
+        )
+        self.arrangement_clips.append(clip)
+        self.arrangement_clips.sort(key=lambda item: item.start_time)
+        return clip
+
+    def create_midi_clip(self, start_time: float, length: float):
+        clip = FakeClip(
+            name="MIDI",
+            start_time=float(start_time),
+            end_time=float(start_time) + float(length),
+            is_midi_clip=True,
+        )
+        self.arrangement_clips.append(clip)
+        self.arrangement_clips.sort(key=lambda item: item.start_time)
+        return clip
 
     def delete_clip(self, clip: "FakeClip") -> None:
         self.arrangement_clips.remove(clip)
@@ -379,6 +443,22 @@ class FakeSong:
         else:
             self.scenes.insert(index, scene)
         return scene
+
+    def create_audio_track(self, index: int = -1) -> FakeTrack:
+        track = FakeTrack("Audio", is_midi=False)
+        if index < 0 or index >= len(self.tracks):
+            self.tracks.append(track)
+        else:
+            self.tracks.insert(index, track)
+        return track
+
+    def create_midi_track(self, index: int = -1) -> FakeTrack:
+        track = FakeTrack("MIDI", is_midi=True)
+        if index < 0 or index >= len(self.tracks):
+            self.tracks.append(track)
+        else:
+            self.tracks.insert(index, track)
+        return track
 
     def delete_scene(self, index: int) -> None:
         del self.scenes[index]

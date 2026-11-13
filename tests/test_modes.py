@@ -24,7 +24,7 @@ class ModeTests(unittest.TestCase):
         self.assertEqual(modes.default, "auto")
         self.assertEqual(
             sorted(modes.names()),
-            ["arrange", "auto", "edit", "inspect", "mix", "prep", "sound"],
+            ["arrange", "auto", "edit", "inspect", "mix", "prep", "produce", "recipe", "sound"],
         )
         self.assertIn("ableton_status", modes.get("auto").tools)  # core injected
         self.assertIn("tracks_gain_stage", modes.get("auto").tools)
@@ -32,6 +32,13 @@ class ModeTests(unittest.TestCase):
         self.assertIn("tracks_name_and_color", modes.get("auto").tools)
         self.assertIn("clips_set_warp_mode", modes.get("auto").tools)
         self.assertIn("clips_set_warp_mode", modes.get("edit").tools)
+        self.assertIn("clips_set_warping", modes.get("prep").tools)
+        self.assertIn("clips_set_warping", modes.get("edit").tools)
+        self.assertIn("clips_warp_map", modes.get("prep").tools)
+        self.assertIn("clips_apply_warp_map", modes.get("prep").tools)
+        self.assertIn("clips_apply_warp_map", modes.get("edit").tools)
+        self.assertIn("clips_warp_match", modes.get("prep").tools)
+        self.assertIn("clips_warp_match", modes.get("edit").tools)
         self.assertIn("clips_fix_loop_points", modes.get("auto").tools)
         self.assertIn("clips_fix_loop_points", modes.get("edit").tools)
         self.assertIn("notes_quantize", modes.get("edit").tools)
@@ -42,7 +49,16 @@ class ModeTests(unittest.TestCase):
         self.assertIn("sections_move", modes.get("arrange").tools)
         self.assertIn("ableton_undo", modes.get("prep").tools)
         self.assertIn("clips_copy", modes.get("edit").tools)
+        self.assertIn("clips_create_audio", modes.get("edit").tools)
+        self.assertIn("clips_create_audio", modes.get("prep").tools)
+        self.assertIn("tracks_create", modes.get("edit").tools)
+        self.assertIn("tracks_create", modes.get("prep").tools)
         self.assertIn("library_browse", modes.get("sound").tools)
+        self.assertIn("recipe_list", modes.get("recipe").tools)
+        self.assertIn("recipe_save", modes.get("recipe").tools)
+        self.assertIn("session_brief", modes.get("produce").tools)
+        self.assertIn("reference_analyze", modes.get("produce").tools)
+        self.assertIn("takes_create", modes.get("produce").tools)
 
     def test_unknown_mode_is_a_clear_error(self):
         modes = load_modes(self.catalogue)

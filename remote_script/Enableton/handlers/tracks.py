@@ -96,6 +96,55 @@ def list_tracks(args, song):
     }
 
 
+@command("tracks.create")
+def create_track(args, song):
+    """Create one empty audio or MIDI track at an explicit index."""
+    check_args(args, allowed=("kind", "index", "name", "color", "dry_run"))
+    kind = args.get("kind", "audio")
+    if kind not in ("audio", "midi"):
+        raise ScriptError("BAD_ARGS", "kind must be 'audio' or 'midi'")
+    tracks = list(getattr(song, "tracks", []) or [])
+    index = args.get("index", len(tracks))
+    if isinstance(index, bool) or not isinstance(index, int) or index < 0 or index > len(tracks):
+        raise ScriptError("BAD_ARGS", "index must be between 0 and the track count")
+    name = args.get("name")
+    if name is not None and (not isinstance(name, str) or not name):
+        raise ScriptError("BAD_ARGS", "name must be a non-empty string when given")
+    dry_run = bool(args.get("dry_run", True))
+    if dry_run:
+        return {"dry_run": True, "kind": kind, "index": index, "name": name}
+    creator = getattr(song, "create_audio_track" if kind == "audio" else "create_midi_track", None)
+    if not callable(creator):
+        raise ScriptError("UNSUPPORTED", "this Live build cannot create a %s track" % kind)
+    try:
+        created = creator(index)
+    except Exception as exc:  # noqa: BLE001 - Live's reason is the answer
+        raise ScriptError("LIVE_ERROR", "could not create %s track: %s" % (kind, exc))
+    if created is None:
+        current = list(getattr(song, "tracks", []) or [])
+        created = current[index] if index < len(current) else None
+    if created is None:
+        raise ScriptError("LIVE_ERROR", "Live did not report the created track")
+    try:
+        if name is not None:
+            created.name = name
+        if args.get("color") is not None:
+            created.color = int(args["color"])
+    except Exception as exc:  # noqa: BLE001 - do not leave a half-named track
+        try:
+            song.delete_track(index)
+        except Exception:
+            pass
+        raise ScriptError("LIVE_ERROR", "track created but could not be configured: %s" % (exc,))
+    return {
+        "dry_run": False,
+        "kind": kind,
+        "index": index,
+        "name": str(getattr(created, "name", "") or ""),
+        "tracks": len(list(getattr(song, "tracks", []) or [])),
+    }
+
+
 @command("tracks.set_volume")
 def set_volume(args, song):
     check_args(args, allowed=("tracks", "volume", "dry_run", "restore"))

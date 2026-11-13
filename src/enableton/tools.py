@@ -18,14 +18,23 @@ from .manifest import load_manifest
 from .modes import ModeError, guide as build_guide
 from .plans import PlanStore, PlanStoreError, TransactionStore, undo_transaction
 from .plans.executor import PlanError, PlanExecutor, Step
+from .producer import session_brief
 from .protocol.codes import LiveError
+from .recipe_store import RecipeStore
+from .recipe_tools import (
+    apply_recipe, list_recipes, save_recipe, show_recipe, verify_recipe,
+)
+from .reference import reference_analyze
 from .reports import (
     ReportError, devices_read_chain, levels, master_chain_read, mix_headroom, notes_overlaps,
     sections_map, structure, summary_from_snapshot, unused, warp_check,
 )
 from .state.snapshot import SnapshotCache
+from .takes import create_takes
 
 LOCAL = {
+    "session_brief": session_brief,
+    "reference_analyze": lambda _snapshot, args: reference_analyze(args),
     "inspect_structure": structure,
     "inspect_unused": unused,
     "mix_levels_report": levels,
@@ -101,6 +110,7 @@ def run_tool(
     backup_root: Optional[str] = None,
     plan_root: Optional[str] = None,
     transaction_root: Optional[str] = None,
+    recipe_store: Optional[RecipeStore] = None,
 ) -> Dict[str, Any]:
     """Run one tool by name, local or remote, with the manifest's own timeout."""
     catalogue = catalogue or load_manifest()
@@ -113,15 +123,48 @@ def run_tool(
         raise LiveError("BAD_ARGS", "arguments must be an object")
 
     if name == "ableton_guide":
-        unknown = sorted(set(args) - {"mode"})
+        unknown = sorted(set(args) - {"mode", "scope", "detail"})
         if unknown:
             raise LiveError("BAD_ARGS", "unknown argument(s): %s" % ", ".join(unknown))
         try:
-            return build_guide(catalogue, args.get("mode"))
+            return build_guide(
+                catalogue,
+                args.get("mode"),
+                scope=args.get("scope", "mode"),
+                detail=args.get("detail", "brief"),
+            )
         except ModeError as exc:
             raise LiveError("BAD_ARGS", str(exc))
 
+    if name == "reference_analyze":
+        # File measurement must work even when Live is closed.
+        return reference_analyze(args)
+
     cache = cache or SnapshotCache(adapter)
+
+    if name in ("recipe_list", "recipe_show", "recipe_save"):
+        return {
+            "recipe_list": list_recipes,
+            "recipe_show": show_recipe,
+            "recipe_save": save_recipe,
+        }[name](args, store=recipe_store)
+
+    if name == "recipe_apply":
+        return apply_recipe(
+            args,
+            store=recipe_store,
+            adapter=adapter,
+            cache=cache,
+            plan_root=plan_root,
+            catalogue=catalogue,
+        )
+
+    if name == "recipe_verify":
+        return verify_recipe(
+            args,
+            store=recipe_store,
+            cache=cache if adapter is not None else None,
+        )
 
     if name == "ableton_status":
         snapshot = adapter.call(tool.cmd, args, timeout_ms=tool.timeout_ms)
@@ -140,6 +183,14 @@ def run_tool(
         if not args.get("dry_run", True):
             cache.invalidate()
         return _with_analysis(result)
+
+    if name == "takes_create":
+        if adapter is None:
+            raise LiveError("UNSUPPORTED", "takes_create needs a connected Live adapter")
+        try:
+            return create_takes(adapter, cache, args)
+        except LiveError:
+            raise
 
     if tool.local:
         try:
@@ -163,7 +214,7 @@ def run_tool(
                 return diagnostics.plan(cache.get(), args, catalogue)
             if name == "ableton_escalate":
                 return escalation.escalate(
-                    cache.get(), args, catalogue, PlanStore(root=plan_root)
+                    cache.get(), args, catalogue, PlanStore(root=plan_root), adapter=adapter
                 )
             if name == "ableton_plan_apply":
                 return escalation.apply_plan(

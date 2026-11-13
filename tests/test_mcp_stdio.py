@@ -27,7 +27,7 @@ class McpStdioTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(listed_names.intersection(mode_names), mode_names)
             self.assertEqual(
                 listed_names - mode_names,
-                {"ableton_start", "ableton_screen", "ableton_choose"},
+                {"ableton_start", "ableton_screen", "ableton_choose", "ableton_inspect"},
             )
 
             start = await session.call_tool("ableton_start", {})

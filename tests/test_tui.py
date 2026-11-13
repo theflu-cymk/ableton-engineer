@@ -96,6 +96,161 @@ class ToolSearchTests(unittest.TestCase):
         self.assertTrue(clipped.endswith("\u2026"))
 
 
+class ModeScreenTests(unittest.TestCase):
+    def test_the_first_action_is_one_click_cleanup(self):
+        first = tui._first_action()
+        self.assertEqual(tui.MENU[first].action, "cleanup")
+        actions = [item.action for item in tui.MENU if item.kind == "action"]
+        for expected in (
+            "mode:triage",
+            "mode:organise",
+            "mode:mix",
+            "mode:edit",
+            "mode:arrange",
+            "mode:sound",
+        ):
+            self.assertIn(expected, actions)
+
+    def test_every_mode_page_ends_with_back(self):
+        for key, page in tui.MODE_PAGES.items():
+            self.assertTrue(page.options, key)
+            self.assertEqual(page.options[-1].special, "back", key)
+            self.assertTrue(all(option.label for option in page.options), key)
+            self.assertTrue(all(option.detail for option in page.options[:-1]), key)
+
+    def test_triage_offers_real_repair_paths(self):
+        actions = {option.label: option for option in tui.MODE_PAGES["triage"].options}
+        self.assertEqual(actions["Clean up everything"].special, "cleanup")
+        self.assertTrue(actions["Clean up everything"].writes)
+        self.assertEqual(actions["Duplicate or unclear names"].special, "autofix")
+        self.assertEqual(actions["Duplicate or unclear names"].phases, ("hygiene",))
+        self.assertEqual(actions["Misaligned layers"].special, "align")
+        self.assertEqual(actions["Unclear track structure"].special, "colour")
+        self.assertEqual(actions["Unbalanced levels"].phases, ("gain",))
+        self.assertEqual(actions["Bad warp markers"].special, "warp")
+        self.assertEqual(actions["Match layers to drum transients"].special, "warp_match")
+        self.assertEqual(actions["Audio layer alignment"].special, "guide")
+        self.assertEqual(actions["Routing and send confusion"].tool, "mix_routing_report")
+        self.assertEqual(actions["Phase problems"].special, "guide")
+        self.assertIn("Configure", actions["Phase problems"].guide)
+        self.assertIn("devices_set_active", actions["Plugin or device dependencies"].guide)
+        self.assertIn("Collect All", actions["Missing or uncollected media"].guide)
+
+    def test_mode_screen_uses_the_wordmark_and_main_menu_rows(self):
+        page = tui.MODE_PAGES["triage"]
+        lines = tui._mode_lines(page, 0, (100, 30))
+        self.assertEqual(lines[:5], tui.logo("TRIAGE"))
+        self.assertTrue(any("? What should I do?" in line for line in lines))
+        selected = next(line for line in lines if "Clean up everything" in line)
+        self.assertTrue(
+            selected.startswith(" " + tui.ORANGE + "\u276f" + tui.RESET + " " + tui.BOLD)
+        )
+        self.assertTrue(any("Rename duplicates, colour tracks" in line for line in lines))
+
+    def test_guide_rows_contain_exact_steps(self):
+        page = tui.MODE_PAGES["triage"]
+        phase = next(option for option in page.options if option.label == "Phase problems")
+        self.assertEqual(phase.special, "guide")
+        steps = tui._guide_text(phase.guide, 100)
+        self.assertTrue(any("Configure" in line for line in steps))
+        self.assertTrue(any("Utility" in line for line in steps))
+
+    def test_sound_exposes_plugin_surfaces_and_bypass(self):
+        actions = {option.label: option for option in tui.MODE_PAGES["sound"].options}
+        self.assertEqual(actions["Read plugin parameters"].tool, "devices_read_parameters")
+        self.assertEqual(actions["Disable or enable a device"].tool, "devices_set_active")
+        self.assertTrue(actions["Disable or enable a device"].writes)
+        self.assertEqual(
+            next(field for field in actions["Disable or enable a device"].fields
+                 if field.key == "active").kind,
+            "bool",
+        )
+
+    def test_track_colours_follow_role(self):
+        self.assertEqual(tui._track_colour("midi", False), tui.COLOURS["green"])
+        self.assertEqual(tui._track_colour("audio", False), tui.COLOURS["blue"])
+        self.assertEqual(tui._track_colour("group", False), tui.COLOURS["grey"])
+        self.assertEqual(tui._track_colour("return", False), tui.COLOURS["purple"])
+
+    def test_bulk_result_names_every_count(self):
+        lines = tui._bulk_result_lines(
+            "CLEAN", 2, 20, 5, [], audible=True, warped=3, markers=8, size=(100, 30)
+        )
+        self.assertEqual(lines[:5], tui.logo("CLEAN"))
+        joined = "\n".join(lines)
+        self.assertIn("Renamed duplicate tracks   2", joined)
+        self.assertIn("Coloured tracks            20", joined)
+        self.assertIn("MIDI clips aligned         5", joined)
+        self.assertIn("Warped clips               3", joined)
+        self.assertIn("Warp markers moved         8", joined)
+        self.assertIn("Audible: gain faders or clip timing", joined)
+
+    def test_warp_match_result_names_the_reference(self):
+        lines = tui._warp_result_lines(
+            {"reference": {"track": "Drum bus", "source": "auto"}, "clips": 1,
+             "moved": 2, "skipped": []},
+            [],
+            (100, 30),
+        )
+        joined = "\n".join(lines)
+        self.assertIn("Reference track            Drum bus (auto)", joined)
+        self.assertIn("Markers matched", joined)
+
+    def test_mode_wordmarks_are_five_rows_of_one_width(self):
+        for title in ("TRIAGE", "ORGANISE", "MIX", "EDIT", "ARRANGE", "SOUND"):
+            rows = tui.logo(title)
+            self.assertEqual(len(rows), 5, title)
+            self.assertEqual(len({tui.visible_width(row) for row in rows}), 1, title)
+            self.assertTrue(all(BLOCK in row for row in rows), title)
+
+    def test_colour_palette_is_valid_rgb(self):
+        self.assertTrue(tui.COLOURS)
+        for name, value in tui.COLOURS.items():
+            self.assertIsInstance(value, int, name)
+            self.assertGreaterEqual(value, 0, name)
+            self.assertLessEqual(value, 0xFFFFFF, name)
+
+
+class CatalogueScreenTests(unittest.TestCase):
+    def test_catalogue_wordmark_is_the_same_width_as_the_logo(self):
+        rows = tui.logo("CATALOGUE")
+        self.assertEqual(len(rows), 5)
+        self.assertEqual(
+            {tui.visible_width(row) for row in rows},
+            {tui.visible_width(tui.logo()[0])},
+        )
+        self.assertTrue(all(BLOCK in row for row in rows))
+
+    def test_browser_header_is_the_catalogue_wordmark(self):
+        from enableton.manifest import load_manifest
+
+        catalogue = load_manifest()
+        matches = tui.filter_tools("meter", catalogue)
+        lines = tui._browser_lines("meter", matches, 0, catalogue, (100, 30))
+        self.assertEqual(lines[:5], tui.logo("CATALOGUE"))
+        self.assertTrue(any("? Which tool?" in line for line in lines))
+
+    def test_selected_tool_uses_the_main_menu_marker(self):
+        from enableton.manifest import load_manifest
+
+        catalogue = load_manifest()
+        matches = tui.filter_tools("meter", catalogue)
+        lines = tui._browser_lines("meter", matches, 0, catalogue, (100, 30))
+        row = next(line for line in lines if "mix_meter_poll" in line)
+        self.assertTrue(
+            row.startswith(" " + tui.ORANGE + "\u276f" + tui.RESET + " " + tui.BOLD)
+        )
+
+    def test_narrow_terminal_uses_a_plain_catalogue_header(self):
+        from enableton.manifest import load_manifest
+
+        catalogue = load_manifest()
+        matches = tui.filter_tools("meter", catalogue)
+        lines = tui._browser_lines("meter", matches, 0, catalogue, (59, 24))
+        self.assertEqual(lines[0], tui.ORANGE + tui.BOLD + "CATALOGUE" + tui.RESET)
+        self.assertFalse(any(BLOCK in line for line in lines))
+
+
 class MenuVersionTests(unittest.TestCase):
     def test_the_banner_uses_the_shipped_script_version(self):
         shipped = script_version()

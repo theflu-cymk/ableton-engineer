@@ -3,7 +3,7 @@
 import unittest
 
 import support  # noqa: F401
-from enableton.live.fake import FakeAdapter, FakeClip, build_song
+from enableton.live.fake import FakeAdapter, FakeClip, FakeNote, build_song
 
 from Enableton.errors import ScriptError
 
@@ -88,6 +88,14 @@ class NotesReadTests(unittest.TestCase):
         with self.assertRaises(ScriptError) as ctx:
             self.read(track="Drums", clip="drums 1")
         self.assertEqual(ctx.exception.code, "AMBIGUOUS_REF")
+
+    def test_start_disambiguates_duplicate_clip_names(self):
+        self.song.tracks[0].arrangement_clips.append(FakeClip(
+            "drums 1", 100.0, 116.0, True, notes=[FakeNote(42, 0.0, 1.0)]
+        ))
+        result = self.read(track="Drums", clip="drums 1", start=100.0)
+        self.assertEqual(result["start"], 100.0)
+        self.assertEqual(result["notes"][0]["pitch"], 42)
 
     def test_unknown_clip_and_bad_arguments_are_typed(self):
         with self.assertRaises(ScriptError) as ctx:

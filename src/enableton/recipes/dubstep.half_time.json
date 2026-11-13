@@ -1,0 +1,23 @@
+{
+  "id": "dubstep.half_time",
+  "name": "Dubstep - half-time step",
+  "version": 1,
+  "kind": "rhythm",
+  "status": "shipped",
+  "flavor": {"name": "dubstep", "bpm": [138, 142], "feel": "half_time", "tags": ["140"]},
+  "tempo": {"bpm": 140, "feel": "half_time", "grid": "1/16"},
+  "length_bars": 2,
+  "lanes": [
+    {"slot": "kick", "pattern": "x.......x.......", "velocity": 1.0, "swing": 0.0},
+    {"slot": "snare", "pattern": "....x.......x...", "velocity": 0.92, "humanize": 0.04},
+    {"slot": "hat", "pattern": "x.x.x.x.x.x.x.x.", "velocity": 0.5, "humanize": 0.12},
+    {"slot": "stab", "pattern": "..............x.", "velocity": 0.7}
+  ],
+  "slots": [
+    {"slot": "kick", "mode": "hit", "from": "riddim/drums/one shots", "select": "lowest_centroid", "count": 1, "pitch": 36},
+    {"slot": "snare", "mode": "hit", "from": "riddim/drums/one shots", "select": "high_transient", "count": 1, "pitch": 38},
+    {"slot": "hat", "mode": "hit", "from": "riddim/drums/one shots", "select": "shortest_decay", "count": 1, "pitch": 42},
+    {"slot": "stab", "mode": "hit", "from": "riddim/drums/one shots", "select": "random", "count": 1, "pitch": 60}
+  ],
+  "notes": "snare on 3, ghost hats on 16ths, kick doubles on the 1"
+}

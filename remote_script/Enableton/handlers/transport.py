@@ -60,6 +60,17 @@ def locate(args, song):
     }
 
 
+@command("transport.set_tempo")
+def set_tempo(args, song):
+    check_args(args, allowed=("tempo",), required=("tempo",))
+    tempo = _number(args["tempo"], "tempo")
+    if tempo < 20.0 or tempo > 999.0:
+        raise ScriptError("BAD_ARGS", "tempo must be between 20 and 999 BPM")
+    previous = float(getattr(song, "tempo", 120.0) or 120.0)
+    song.tempo = tempo
+    return {"from": round(previous, 4), "to": round(tempo, 4), "tempo": round(tempo, 4)}
+
+
 @command("transport.set_loop")
 def set_loop(args, song):
     check_args(args, allowed=("enabled", "start_bar", "end_bar"), required=("enabled",))
