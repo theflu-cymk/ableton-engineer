@@ -50,9 +50,10 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(
             remote_commands(catalogue),
             ["clips.align_warp_markers", "clips.apply_warp_map", "clips.clear", "clips.copy", "clips.create_audio", "clips.create_midi",
-             "clips.duplicate_range",
+             "clips.create_session_audio", "clips.create_session_midi", "clips.delete",
+             "clips.duplicate_range", "clips.duplicate_to_arrangement", "clips.fire",
              "clips.fix_loop_points", "clips.rename", "clips.set_warp_mode", "clips.set_warping",
-             "clips.transpose", "clips.warp_map", "clips.warp_match",
+             "clips.stop", "clips.transpose", "clips.warp_map", "clips.warp_match",
              "devices.browse_presets", "devices.delete", "devices.load", "devices.move",
              "devices.read_parameters", "devices.set_active", "devices.set_macro",
              "devices.set_parameter",
@@ -69,7 +70,8 @@ class ManifestTests(unittest.TestCase):
              "tracks.duplicate", "tracks.gain_stage",
              "tracks.name_and_color", "tracks.set_pan", "tracks.set_routing",
              "tracks.set_sends", "tracks.set_volume", "transport.locate",
-             "transport.play", "transport.set_loop", "transport.set_tempo", "transport.stop"],
+             "transport.play", "transport.set_loop", "transport.set_tempo", "transport.stop",
+             "transport.switch_view"],
         )
 
     def test_rejects_duplicate_names(self):

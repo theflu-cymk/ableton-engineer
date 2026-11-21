@@ -2581,6 +2581,212 @@
       "needs": [],
       "min_live": null,
       "cmd": null
+    },
+    {
+      "name": "tracks_inspect",
+      "domain": "tracks",
+      "summary": "One track's full Session, Arrangement, device and mixer detail.",
+      "description": "Returns the cached snapshot row for exactly one track: mixer values and flags, every Session slot, every Arrangement clip, and the device chain. Resolve the track by exact name or by index; duplicate names are refused rather than guessed. Read-only and answered without asking Live, so refresh with ableton_status after a write. This is the per-track detail read the structure report deliberately leaves out.",
+      "examples": ["show me everything on the drums track", "what clips and devices are on track 2"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
+          "track_index": {"type": "integer", "minimum": 0}
+        },
+        "oneOf": [{"required": ["track"]}, {"required": ["track_index"]}],
+        "additionalProperties": false
+      },
+      "timeout_ms": 1000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": null
+    },
+    {
+      "name": "clips_fire",
+      "domain": "clips",
+      "summary": "Fire one Session clip slot immediately.",
+      "description": "Launches the clip in exactly one Session slot on one track. The slot must contain a clip; an empty slot is refused rather than starting a recording. Firing is a transport action, not a Set-data write, so it has no dry run and no undo token: use clips_stop to stop the slot. The result acknowledges the launch; Live applies it at its launch quantization, so this tool does not claim an immediate playing state.",
+      "examples": ["launch the drums clip", "fire scene slot 2 on the bass"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
+          "track_index": {"type": "integer", "minimum": 0},
+          "slot": {"type": "integer", "minimum": 0, "description": "Zero-based Session slot."}
+        },
+        "required": ["slot"],
+        "oneOf": [{"required": ["track"]}, {"required": ["track_index"]}],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.fire"
+    },
+    {
+      "name": "clips_stop",
+      "domain": "clips",
+      "summary": "Stop one Session clip slot immediately.",
+      "description": "Stops the clip in exactly one Session slot on one track. Stopping an already empty or stopped slot is a no-op and still reports success. Like firing, this is a transport action with no dry run and no undo token; it does not delete the clip.",
+      "examples": ["stop the drums clip", "stop session slot 1 on the bass"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
+          "track_index": {"type": "integer", "minimum": 0},
+          "slot": {"type": "integer", "minimum": 0, "description": "Zero-based Session slot."}
+        },
+        "required": ["slot"],
+        "oneOf": [{"required": ["track"]}, {"required": ["track_index"]}],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.stop"
+    },
+    {
+      "name": "clips_delete",
+      "domain": "clips",
+      "summary": "Delete one Session or Arrangement clip; irreversible, so it needs confirm.",
+      "description": "Deletes one clip by Session slot or by exact Arrangement clip name, optionally with its start beat. This Live build has no exact clip-delete undo, so the tool declares reversible false and an apply refuses without confirm: true; dry-run is the default. Deleting an empty Session slot is a reported no-op. To preserve material, copy it first with clips_copy or clips_duplicate_to_arrangement.",
+      "examples": ["delete the unused clip in slot 3", "remove the duplicate arrangement clip"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
+          "track_index": {"type": "integer", "minimum": 0},
+          "location": {"type": "string", "enum": ["session", "arrangement"], "description": "Which clip reference this is."},
+          "slot": {"type": "integer", "minimum": 0, "description": "Zero-based Session slot; required when location is session."},
+          "clip": {"type": "string", "description": "Exact Arrangement clip name, or an optional Session clip-name check."},
+          "start": {"type": "number", "description": "Arrangement start beat, when duplicate clip names need disambiguating."},
+          "confirm": {"type": "boolean", "description": "Must be true to apply; this cannot be undone."},
+          "dry_run": {"type": "boolean", "default": true}
+        },
+        "required": ["location"],
+        "oneOf": [{"required": ["track"]}, {"required": ["track_index"]}],
+        "additionalProperties": false
+      },
+      "timeout_ms": 5000,
+      "writes": true,
+      "reversible": false,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.delete"
+    },
+    {
+      "name": "clips_duplicate_to_arrangement",
+      "domain": "clips",
+      "summary": "Duplicate one Session clip onto the Arrangement at a bar.",
+      "description": "Uses Track.duplicate_clip_to_arrangement to create an Arrangement copy of one Session clip at to_bar, preserving its length. An occupied destination start is refused rather than overlapped. Dry-run by default; applying returns an undo token that deletes the exact Arrangement clip it created. This is the supported bridge that clips_copy deliberately does not approximate.",
+      "examples": ["put this loop at bar 33", "move the bass clip into the arrangement"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
+          "track_index": {"type": "integer", "minimum": 0},
+          "slot": {"type": "integer", "minimum": 0, "description": "Zero-based source Session slot."},
+          "to_bar": {"type": "number", "minimum": 1, "description": "Arrangement destination bar."},
+          "name": {"type": "string", "description": "Optional new name for the Arrangement copy."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {"type": "array", "items": {"type": "object"}}
+        },
+        "required": ["slot", "to_bar"],
+        "oneOf": [{"required": ["track"]}, {"required": ["track_index"]}],
+        "additionalProperties": false
+      },
+      "timeout_ms": 5000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.duplicate_to_arrangement"
+    },
+    {
+      "name": "clips_create_session_midi",
+      "domain": "clips",
+      "summary": "Create an empty MIDI clip in a Session slot.",
+      "description": "Creates one empty MIDI clip in an empty Session slot on a MIDI track, with length_beats (default 4). The slot must be empty; an occupied slot is refused. Dry-run by default; applying names the clip and returns an undo token that deletes exactly that Session clip. This creates a Session clip, unlike clips_create_midi which creates an Arrangement clip.",
+      "examples": ["make a 4-bar clip in slot 2", "create a session MIDI clip on the bass"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
+          "track_index": {"type": "integer", "minimum": 0},
+          "slot": {"type": "integer", "minimum": 0, "description": "Zero-based Session slot."},
+          "length_beats": {"type": "number", "exclusiveMinimum": 0, "default": 4},
+          "name": {"type": "string", "description": "Optional clip name."},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {"type": "array", "items": {"type": "object"}}
+        },
+        "required": ["slot"],
+        "oneOf": [{"required": ["track"]}, {"required": ["track_index"]}],
+        "additionalProperties": false
+      },
+      "timeout_ms": 5000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.create_session_midi"
+    },
+    {
+      "name": "clips_create_session_audio",
+      "domain": "clips",
+      "summary": "Import an audio file into an empty Session slot.",
+      "description": "Creates one Session audio clip from an absolute WAV/AIFF/MP3 path in an empty slot on an audio track. Optionally names the clip, sets Warp, and sets looping. The slot must be empty. Dry-run by default; applying returns an undo token that deletes exactly that Session clip. This creates a Session clip, unlike clips_create_audio which creates an Arrangement clip.",
+      "examples": ["load this vocal into slot 1", "create a session audio clip from the kick file"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "track": {"type": "string", "description": "Exact track name; duplicates are rejected."},
+          "track_index": {"type": "integer", "minimum": 0},
+          "slot": {"type": "integer", "minimum": 0, "description": "Zero-based Session slot."},
+          "file_path": {"type": "string", "description": "Absolute audio file path."},
+          "name": {"type": "string", "description": "Optional clip name; defaults to the file name."},
+          "warping": {"type": "boolean"},
+          "looping": {"type": "boolean"},
+          "dry_run": {"type": "boolean", "default": true},
+          "restore": {"type": "array", "items": {"type": "object"}}
+        },
+        "required": ["slot", "file_path"],
+        "oneOf": [{"required": ["track"]}, {"required": ["track_index"]}],
+        "additionalProperties": false
+      },
+      "timeout_ms": 15000,
+      "writes": true,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "clips.create_session_audio"
+    },
+    {
+      "name": "transport_switch_view",
+      "domain": "transport",
+      "summary": "Switch Live's main view between Session and Arrangement.",
+      "description": "Changes the visible Live view only; it does not alter transport position, playback, or Set data. It uses Live's application view when available and the Song view on builds that expose view switching there. Reversible by switching back.",
+      "examples": ["show the arrangement view", "switch back to session view"],
+      "input": {
+        "type": "object",
+        "properties": {
+          "view": {"type": "string", "enum": ["session", "arrangement"]}
+        },
+        "required": ["view"],
+        "additionalProperties": false
+      },
+      "timeout_ms": 3000,
+      "writes": false,
+      "reversible": true,
+      "needs": [],
+      "min_live": null,
+      "cmd": "transport.switch_view"
     }
   ]
 }

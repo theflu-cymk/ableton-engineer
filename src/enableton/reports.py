@@ -246,6 +246,45 @@ def structure(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Di
     }
 
 
+def track_inspect(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """One track's full snapshot row, for callers that need more than the structure list."""
+    args = dict(args or {})
+    _only(args, ("track", "track_index"))
+    has_name, has_index = "track" in args, "track_index" in args
+    if has_name == has_index:
+        raise ReportError("give exactly one of track or track_index")
+
+    tracks = data.get("tracks") or []
+    if has_name:
+        name = args["track"]
+        if not isinstance(name, str) or not name:
+            raise ReportError("track must be a non-empty string")
+        matches = [row for row in tracks if row.get("name") == name]
+        if not matches:
+            raise ReportError("no track named %r" % (name,))
+        if len(matches) > 1:
+            raise ReportError("%d tracks are named %r; use track_index" % (len(matches), name))
+        row = matches[0]
+    else:
+        index = args["track_index"]
+        if isinstance(index, bool) or not isinstance(index, int) or index < 0:
+            raise ReportError("track_index must be a non-negative integer")
+        if index >= len(tracks):
+            raise ReportError("no track at index %s" % (index,))
+        row = tracks[index]
+
+    song = data.get("song") or {}
+    return {
+        "track": row,
+        "counts": data.get("counts") or {},
+        "set": {
+            "name": song.get("name"),
+            "tempo": song.get("tempo"),
+            "signature": song.get("signature"),
+        },
+    }
+
+
 def unused(data: Dict[str, Any], args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Material that is doing nothing: empty tracks, empty scenes, duplicate names.
 

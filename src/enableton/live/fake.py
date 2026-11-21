@@ -78,6 +78,7 @@ class FakeClip:
     loop_start: float = 0.0
     loop_end: float = 4.0
     looping: bool = True
+    is_playing: bool = False
     notes: List[FakeNote] = field(default_factory=list)
     file_path: str = ""
     start_marker: float = 0.0
@@ -180,6 +181,31 @@ class FakeClipSlot:
         """Live starts recording when an empty slot on an armed audio track is fired."""
         if self.clip is None:
             self.is_recording = True
+        else:
+            self.clip.is_playing = True
+
+    def stop(self) -> None:
+        if self.clip is not None:
+            self.clip.is_playing = False
+        self.is_recording = False
+
+    def create_clip(self, length: float) -> FakeClip:
+        if self.clip is not None:
+            raise RuntimeError("slot already has a clip")
+        self.clip = FakeClip(
+            name="MIDI",
+            is_midi_clip=True,
+            end_time=float(length),
+            loop_end=float(length),
+        )
+        return self.clip
+
+    def create_audio_clip(self, file_path: str) -> FakeClip:
+        if self.clip is not None:
+            raise RuntimeError("slot already has a clip")
+        name = str(file_path).replace("\\", "/").rsplit("/", 1)[-1]
+        self.clip = FakeClip(name=name, file_path=str(file_path))
+        return self.clip
 
     def delete_clip(self) -> None:
         self.clip = None
@@ -212,6 +238,16 @@ class FakeScene:
 class FakeLocator:
     name: str = ""
     time: float = 0.0
+
+
+@dataclass
+class FakeView:
+    current: str = "Session"
+
+    def show_view(self, name: str) -> None:
+        if name not in ("Session", "Arranger"):
+            raise RuntimeError("unknown view %r" % (name,))
+        self.current = name
 
 
 @dataclass
@@ -385,6 +421,7 @@ class FakeSong:
     return_tracks: List[FakeTrack] = field(default_factory=list)
     scenes: List[FakeScene] = field(default_factory=list)
     locators: List[FakeLocator] = field(default_factory=list)
+    view: FakeView = field(default_factory=FakeView)
     browser: FakeBrowser = field(default_factory=FakeBrowser)
     #: The path a resample capture's finalized clip reports; tests point it at a real WAV.
     recorded_file: str = ""
@@ -400,6 +437,8 @@ class FakeSong:
             slots = list(getattr(track, "clip_slots", []) or [])
             if index < len(slots) and getattr(track, "arm", False) and not slots[index].has_clip:
                 slots[index].is_recording = True
+            elif index < len(slots) and slots[index].clip is not None:
+                slots[index].clip.is_playing = True
 
     def start_playing(self) -> None:
         self.is_playing = True
@@ -408,6 +447,8 @@ class FakeSong:
         self.is_playing = False
         for track in self.tracks:
             for slot in list(getattr(track, "clip_slots", []) or []):
+                if slot.clip is not None:
+                    slot.clip.is_playing = False
                 if getattr(slot, "is_recording", False):
                     slot.is_recording = False
                     slot.clip = FakeClip("Recording", file_path=self.recorded_file)

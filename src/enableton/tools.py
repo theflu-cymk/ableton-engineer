@@ -27,7 +27,7 @@ from .recipe_tools import (
 from .reference import reference_analyze
 from .reports import (
     ReportError, devices_read_chain, levels, master_chain_read, mix_headroom, notes_overlaps,
-    sections_map, structure, summary_from_snapshot, unused, warp_check,
+    sections_map, structure, summary_from_snapshot, track_inspect, unused, warp_check,
 )
 from .state.snapshot import SnapshotCache
 from .takes import create_takes, discard_takes, select_takes
@@ -36,6 +36,7 @@ LOCAL = {
     "session_brief": session_brief,
     "reference_analyze": lambda _snapshot, args: reference_analyze(args),
     "inspect_structure": structure,
+    "tracks_inspect": track_inspect,
     "inspect_unused": unused,
     "mix_levels_report": levels,
     "mix_headroom": mix_headroom,
@@ -50,9 +51,25 @@ LOCAL = {
     "inspect_finding": diagnostics.get,
 }  # type: Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, Any]]]
 
+def _launch_acknowledgement(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Drop Live's pre-quantization Clip.is_playing readback.
+
+    Fire and stop are command acknowledgements. On real Live the clip's is_playing flag can still
+    describe the state before the launch or stop quantum, so returning it next to ``fired`` or
+    ``stopped`` reads as a contradiction. The acknowledgement is what the tool promises.
+    """
+    projected = dict(result)
+    projected.pop("is_playing", None)
+    return projected
+
+
 #: Tools whose script command returns more than the tool promises. A tool's output must match its
 #: description, so projection happens here rather than in every caller.
-PROJECT = {"ableton_status": summary_from_snapshot}
+PROJECT = {
+    "ableton_status": summary_from_snapshot,
+    "clips_fire": _launch_acknowledgement,
+    "clips_stop": _launch_acknowledgement,
+}
 
 #: One applied outcome per (adapter, Set), used to recognise an immediate retry. A different
 #: successful write replaces the slot, and a successful undo clears it, so an intentional repeat

@@ -60,6 +60,33 @@ def locate(args, song):
     }
 
 
+@command("transport.switch_view")
+def switch_view(args, song):
+    check_args(args, allowed=("view",), required=("view",))
+    wanted = args["view"]
+    if wanted not in ("session", "arrangement"):
+        raise ScriptError("BAD_ARGS", "view must be 'session' or 'arrangement'")
+    live_view = "Session" if wanted == "session" else "Arranger"
+
+    view = None
+    try:
+        import Live  # type: ignore  # only importable inside Live
+        application = Live.Application.get_application()
+        view = getattr(application, "view", None)
+    except Exception:
+        view = None
+    if view is None:
+        view = getattr(song, "view", None)
+    show = getattr(view, "show_view", None)
+    if not callable(show):
+        raise ScriptError("UNSUPPORTED", "this Live build cannot switch the main view")
+    try:
+        show(live_view)
+    except Exception as exc:  # noqa: BLE001 - the Live reason is the answer
+        raise ScriptError("LIVE_ERROR", "could not switch to %s view: %s" % (wanted, exc))
+    return {"view": wanted, "live_view": live_view}
+
+
 @command("transport.set_tempo")
 def set_tempo(args, song):
     check_args(args, allowed=("tempo",), required=("tempo",))

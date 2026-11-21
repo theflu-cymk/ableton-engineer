@@ -24,7 +24,10 @@ class ModeTests(unittest.TestCase):
         self.assertEqual(modes.default, "auto")
         self.assertEqual(
             sorted(modes.names()),
-            ["arrange", "auto", "edit", "inspect", "mix", "prep", "produce", "recipe", "sound"],
+            [
+                "arrange", "auto", "edit", "inspect", "mix", "prep", "produce",
+                "recipe", "session", "sound",
+            ],
         )
         self.assertIn("ableton_status", modes.get("auto").tools)  # core injected
         self.assertIn("tracks_gain_stage", modes.get("auto").tools)
@@ -61,6 +64,14 @@ class ModeTests(unittest.TestCase):
         self.assertIn("takes_create", modes.get("produce").tools)
         self.assertIn("takes_select", modes.get("produce").tools)
         self.assertIn("takes_discard", modes.get("produce").tools)
+        self.assertIn("clips_fire", modes.get("session").tools)
+        self.assertIn("clips_stop", modes.get("session").tools)
+        self.assertIn("clips_delete", modes.get("session").tools)
+        self.assertIn("clips_create_session_midi", modes.get("session").tools)
+        self.assertIn("clips_create_session_audio", modes.get("session").tools)
+        self.assertIn("clips_duplicate_to_arrangement", modes.get("session").tools)
+        self.assertIn("transport_switch_view", modes.get("session").tools)
+        self.assertIn("tracks_inspect", modes.get("session").tools)
 
     def test_unknown_mode_is_a_clear_error(self):
         modes = load_modes(self.catalogue)
