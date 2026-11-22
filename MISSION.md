@@ -90,12 +90,28 @@ The whole protocol was repeated after resetting all six targets by hand (`Amount
 `Dry/Wet 0.5`, `Filter Type` Bell, `80.0 Hz`, `Gain 0.0`): apply then device readback again produced
 `80 %`, `5.0 dB`, `100 %`, `High Pass 12dB`, `30.0 Hz`, `-1.50 dB`. Extra names were observed too:
 `Saturator Type` raw `0` = `Analog Clip`, `Drive` raw `0.5833` = `6.0 dB`, `Output` raw `0.5` =
-`0.0 dB` (no `-3 dB` step exists near unity), `Multiband Dynamics Amount` raw `0.25` = `25 %`, and
-the Operator instance exposes `Filter 1 Freq` / `Filter 1 Type` / `Filter 1 Slope` / `Filter 1 Res` /
-`Glide` but no `Voices`, `Coarse` or `Filter Freq`. `bass.loud_rack` is the only recipe in the repo
-with `device_moves`; the technique doc now carries no `Assumed` tag for any parameter name or value,
-only **Verified** readbacks or **Unverifiable here** with a reason. `RECIPE GATE` was deleted after
-the gate and the Set finished at 5 tracks, 5 arrangement clips, 0 session clips and 4 devices.
+`0.0 dB` (no `-3 dB` step exists near unity), `Multiband Dynamics Amount` raw `0.25` = `25 %`.
+
+A second pass loaded Wavetable, Drift, Redux, Compressor, Corpus, Simpler and the real Operator on
+disposable tracks. Every load/write kept reporting `PRECONDITION_FAILED: applied trace did not match
+the dry-run trace` while landing, so the evidence is the readback: Operator `Osc-A Level` `1.0` =
+`0.0 dB`, `Filter Circuit - LP/HP` `1` = `OSR`, `Filter Slope` `1` = `24 dB`, `Filter Freq`
+`0.185-0.19` = `98.5-102 Hz`, `Filter Res` `0.3` = `30 %`, `B Coarse` `3-8` = `3-8`, `Glide Time`
+`0.46-0.5` = `20.0-31.6 ms`; Wavetable `Osc 1 Effect 1` `0.65` = `30 %`, `Filter 1 Freq` `0.3322`
+= `200 Hz`, `Filter 1 Res` `0.2` = `25 %`, `Filter 1 Slope` `1` = `24 dB`, `LFO 1 S. Rate`
+`15`/`17` = `1/8`/`1/16`; Drift `LP Freq` `0` = `20.0 Hz`, `LFO Ratio` `0.04762` = `1.00`; Redux
+`Sample Rate` `0.743`/`0.857` = `14.9`/`23.9 kHz`; Compressor `Ratio` `0.75` = `4.00 : 1`; Corpus
+`Resonance Type` `5`/`6` = `Pipe`/`Tube`, `Dry Wet` `0.1-0.2` = `10-20 %`, `Decay` `0.5` = `1.32 s`,
+`Radius` `0.5` = `50 %`, `MIDI Frequency`/`Note Off` = `On`, `Off Decay` `0.3` = `30 %`; Simpler
+`Filter Type` `2` = `Bandpass`, `Filter Slope` `0` = `12 dB`, `Filter Freq` `0.183` = `100 Hz`,
+`Fe < Env` `-20` = `-20`, `L Sync Rate` `6` = `1/8`. `device_load` on a track replaces that track's
+existing instrument instead of appending, so instruments need one track each. The LFO device is
+**not installed** (the Max MIDI Effect category lists only Max MIDI Effect, ConChord and Seq8), and
+modulation routing, voice count, compressor key source and Corpus's limiter are not exposed as
+parameters, which is the reason recorded for those remaining unverifiable claims. `bass.loud_rack`
+is the only recipe in the repo with `device_moves`; the technique doc carries no `Assumed` tag and no
+"absent from the Set" reason. The gate tracks were deleted and the Set finished at 5 tracks,
+5 arrangement clips, 0 session clips and 4 devices.
 
 ### Device bypass unavailable; warp-mode write (2026-11-10, `0.2.14`)
 
