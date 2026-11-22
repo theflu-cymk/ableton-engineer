@@ -86,6 +86,17 @@ no save was issued, and the Set file on disk was not written.
 had landed (the arrangement clip had not). `doctor` showed `errors` rise from 2 to 4 across the
 gate. The recipe apply path did not use those tools and was unaffected.
 
+The whole protocol was repeated after resetting all six targets by hand (`Amount 1.0`, `Drive 0.5`,
+`Dry/Wet 0.5`, `Filter Type` Bell, `80.0 Hz`, `Gain 0.0`): apply then device readback again produced
+`80 %`, `5.0 dB`, `100 %`, `High Pass 12dB`, `30.0 Hz`, `-1.50 dB`. Extra names were observed too:
+`Saturator Type` raw `0` = `Analog Clip`, `Drive` raw `0.5833` = `6.0 dB`, `Output` raw `0.5` =
+`0.0 dB` (no `-3 dB` step exists near unity), `Multiband Dynamics Amount` raw `0.25` = `25 %`, and
+the Operator instance exposes `Filter 1 Freq` / `Filter 1 Type` / `Filter 1 Slope` / `Filter 1 Res` /
+`Glide` but no `Voices`, `Coarse` or `Filter Freq`. `bass.loud_rack` is the only recipe in the repo
+with `device_moves`; the technique doc now carries no `Assumed` tag for any parameter name or value,
+only **Verified** readbacks or **Unverifiable here** with a reason. `RECIPE GATE` was deleted after
+the gate and the Set finished at 5 tracks, 5 arrangement clips, 0 session clips and 4 devices.
+
 ### Device bypass unavailable; warp-mode write (2026-11-10, `0.2.14`)
 
 **Device bypass is unavailable on Live 12.2.5.** Real scratch attempts on `SCRATCH fortnight` failed because `Device.is_active` has no setter on both device classes tested: `PluginDevice` (`TDR Nova`) and `Eq8Device` (`Remove Mud`). Each attempt ran through the transactional scratch copy and rolled back (`restore.ok: true`); the working device remained active. The attempted `devices_bypass` tool was removed from the catalogue rather than shipped as a write that always fails. This is **Verified** for those two devices on real Live; whether any future Live build exposes a writable path is **Unverified**.

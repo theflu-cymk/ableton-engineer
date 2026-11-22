@@ -5,11 +5,12 @@ how do you make each of them with Live's own instruments** — Operator, Wavetab
 Simpler/Sampler, Drum Rack and the stock effects — so that a recipe can hand a producer a real next
 move instead of a preset name they may not own.
 
-Evidence tags follow `AGENTS.md`: **Verified** means someone ran it here, **Assumed** means inferred
-from a source without running it, **Unverified** means a claim to check. Almost everything about
-sound design below is **Assumed** from a tutorial or a manual, because nothing in this doc was
-auditioned. What is **Verified** is the mechanical part: every recipe file validates, every shipped
-rhythm compiles, and the pack is guarded by `tests/test_recipe_store.py`.
+Evidence tags follow `AGENTS.md`: **Verified** means someone ran it here, and **Unverifiable here**
+means the claim could not be exercised in this Set, with the reason given in the same sentence or in
+the device-parameter evidence below. Nothing in this doc has been auditioned. **Verified** covers the
+mechanical part (every recipe validates, every shipped rhythm compiles, the pack is guarded by
+`tests/test_recipe_store.py`) and every device parameter name, range and display read back from real
+Live 12.2.5; everything else that names a device value is tagged **Unverifiable here**.
 
 ## The hard limit that shapes the pack
 
@@ -36,36 +37,52 @@ hands plus, where the LOM allows it, a real write.
 | **Tearout** | 140–150, half-time | on beat 3 | growl/gun/siren family, constant variation | rugged half-time, ghosted percussion | two drops, second heavier |
 
 Sources: genre summaries and production guides listed at the end. Tempo and placement agree across
-sources; the *feel* differences are the useful part, not the numbers. **Assumed.**
+sources; the *feel* differences are the useful part, not the numbers. **Unverifiable here.**
 
 ## Dubstep
 
 ### Drums
 Kick on 1, snare or clap on 3, sixteenth hats slightly late, short kick tail so it does not boom into
 the bass. Layering a snare with a clap and a noise burst is standard. Native path: a Drum Rack, one
-pad per element, with the Operator kick recipe below for a synthesised kick. **Assumed** (EDMProd,
+pad per element, with the Operator kick recipe below for a synthesised kick. **Unverifiable here** (EDMProd,
 Native Instruments, Soundtrap).
 
 ### The sub
 A separate sine sub, mono, one voice, gentle glide, high-cut above ~120 Hz, sidechained to the kick.
 Do not let the wobble patch carry the fundamental: filter movement on a sub is a mix fault, not a
-sound. Native path: Operator, Osc A sine, other oscillators off, filter off. **Assumed.**
+sound. Native path: Operator, Osc A sine, other oscillators off, filter off. **Unverifiable here.**
 
 ### The wobble (Operator)
 The classic patch, in the order the tutorials build it:
 
-1. Osc A **Saw D** (or square) at 0 dB; Osc B **sine at about −12 dB**, unmodulated, as the sub. **Assumed**
-2. Filter **OSR-24** low-pass, cutoff ≈ 100 Hz, resonance ≈ 0.30. **Assumed**
-3. A **MIDI LFO** device before Operator, mapped to filter cutoff: **square**, **1/4** synced, amount ≈ 70 %, **retrigger on**. The external LFO keeps Operator's envelopes free for amplitude. **Assumed**
-4. Talking variant: LFO to 1/2 bar, more resonance, **Redux** hard downsample 15–24 after the synth. **Assumed**
-5. **Saturator** (Analog Clip, drive +6 dB, output −3 dB), then **EQ Eight** (30 Hz low cut, dip at 300–500 Hz if boxy). **Assumed**
-6. **Multiband Dynamics** (OTS preset) at 20–30 % wet, and a **Compressor** keyed from the kick at 4:1 for 3–4 dB. **Assumed**
+1. Osc A **Saw D** (or square) at 0 dB; Osc B **sine at about −12 dB**, unmodulated, as the sub. The
+   Operator instance here exposes `Osc 1 Gain` / `Osc 2 Gain` and an oscillator-type display; no
+   recipe writes this patch. **Unverifiable here** (nothing applies it and nobody has auditioned it).
+2. Filter low-pass (`Filter 1 Type`, `Filter 1 Slope`, `Filter 1 Res` are real Operator parameters;
+   there is no `Filter Freq` — the cutoff is `Filter 1 Freq`), cutoff ≈ 100 Hz, resonance ≈ 0.30.
+   The names are **Verified** on the Operator instance in this Set; the 100 Hz / 0.30 values are
+   **Unverifiable here** because no recipe writes them.
+3. A **MIDI LFO** device before Operator, mapped to filter cutoff: **square**, **1/4** synced, amount
+   ≈ 70 %, **retrigger on**. **Unverifiable here**: no Max LFO instance exists in this Set and no
+   recipe writes it.
+4. Talking variant: LFO to 1/2 bar, more resonance, **Redux** hard downsample 15–24 after the synth.
+   **Unverifiable here**: Redux is not in this Set and no recipe writes it.
+5. **Saturator** (`Type` raw `0` = `Analog Clip`, `Drive` raw `0.5833` = `6.0 dB`, `Output` raw `0.5`
+   = `0.0 dB` — **Verified** on Live 12.2.5), then **EQ Eight** (`1 Filter Type A` raw `1.0` =
+   `High Pass 12dB`, `1 Frequency A` raw `0.14275` = `30.0 Hz`, band-2 `Gain A` in dB — **Verified**).
+   The original `output −3 dB` is **Unverifiable here**: just below raw `0.5` the `Output` display
+   jumps to `−18 dB`, and no `−3 dB` step was observed. The optional 300–500 Hz dip is a listening
+   choice (**Unverifiable here**), not a recipe write.
+6. **Multiband Dynamics** (OTS preset) with `Amount` at 20–30 % (raw `0.2–0.3`; raw `0.25` reads
+   `25 %` — **Verified**). The device has **no wet control**, so the earlier `20–30 % wet` wording was
+   wrong. A **Compressor** keyed from the kick at 4:1 is **Unverifiable here**: no Compressor instance
+   exists in this Set and no recipe declares a move for it.
 
 Recipe: `dubstep.wobble_operator`. Sub: `dubstep.sub_operator`.
 
 ### Composition
 Half-time at 140 means the bar is 70 BPM wide; the bass gets the space the snare leaves. Builds work by
-subtraction — filter the bass, drop the sub, then bring both back. **Assumed.**
+subtraction — filter the bass, drop the sub, then bring both back. **Unverifiable here.**
 
 ## Riddim
 
@@ -77,12 +94,12 @@ rather than the notes. The bounce is usually triplet-based, which matters for th
 |---|---|
 | Simple core tone: square, saw-square, or FM | Wavetable Basic Shapes with Classic PW/sync, or Operator 2-op FM |
 | Clean sub layer underneath | Operator sine, separate track |
-| Mono, short glide 20–40 ms | Wavetable Global → Mono + Glide, or Operator Voices 1 + Glide |
+| Mono, short glide 20–40 ms | Wavetable Global → Mono + Glide, or the Operator `Glide` parameter (12.2.5 exposes no `Voices` parameter); the 20–40 ms value is **Unverifiable here** |
 | Short LFO on position / FM amount / cutoff | Wavetable matrix: LFO 1 → Osc position or FM amount, 1/8 or 1/16 |
 | Stacked distortion of different characters | Saturator → Redux (or Erosion), then EQ Eight |
 | Short notes, space between them | Note length and rests in the MIDI clip, not synth settings |
 
-**Assumed** — the sources describe Serum; the mapping to Wavetable/Operator is inference, and the
+**Unverifiable here** — the sources describe Serum; the mapping to Wavetable/Operator is inference, and the
 timings are starting points.
 
 Recipe: `riddim.triplet_operator`. Bounce pattern: `riddim.bounce_140` — authored on `1/8T`, so its
@@ -108,19 +125,20 @@ no shipped recipe uses it yet.
 ## Deathstep
 
 Deathstep is dubstep's half-time lurch plus death-metal tonality: cavernous sub, serrated mid-range
-growls, chromatic dissonance, blast-beat kick flurries, cinematic dread. **Assumed** (Melodigging,
+growls, chromatic dissonance, blast-beat kick flurries, cinematic dread. **Unverifiable here** (Melodigging,
 Recording Arts Canada's TenGraphs interview).
 
 ### The growl (Operator)
-1. Two-operator FM: A sine at 0 dB, B sine at **Coarse 3–8**, short decay on B so the modulation is
-   strongest at the attack. **Assumed**
-2. Detune B off a whole-number ratio to make the harmonics inharmonic. **Assumed**
+1. Two-operator FM: A sine at 0 dB, B sine tuned to an inharmonic interval with `Osc 2 Transp` /
+   `Osc 2 Detune` (this Operator build exposes no `Coarse` parameter), short decay on B so the
+   modulation is strongest at the attack. **Unverifiable here**: no recipe writes the patch.
+2. Detune B off a whole-number ratio to make the harmonics inharmonic. **Unverifiable here**
 3. A formant stage — narrow band-pass in Auto Filter, or **Corpus** tuned to a low vowel — swept across
-   the note. **Assumed**
-4. Split the sub **before** distortion (filter the growl at 100–120 Hz, keep a separate sine sub). **Assumed**
-5. Stack two distortion characters (Saturator → Redux/Erosion), then EQ Eight to tame 2–5 kHz. **Assumed**
-6. Chromatic phrase with minor-second moves and a pitch drop at the end of the bar. **Assumed**
-7. Resample and pitch/chop the audio for the second drop. **Assumed**
+   the note. **Unverifiable here**
+4. Split the sub **before** distortion (filter the growl at 100–120 Hz, keep a separate sine sub). **Unverifiable here**
+5. Stack two distortion characters (Saturator → Redux/Erosion), then EQ Eight to tame 2–5 kHz. **Unverifiable here**
+6. Chromatic phrase with minor-second moves and a pitch drop at the end of the bar. **Unverifiable here**
+7. Resample and pitch/chop the audio for the second drop. **Unverifiable here**
 
 Recipe: `deathstep.growl_operator`.
 
@@ -128,8 +146,9 @@ Recipe: `deathstep.growl_operator`.
 Attack Magazine's foghorn patch is the closest documented native recipe for a high, tearing lead:
 **FM oscillator effect, tune 100 %, amount ≈ 30 %**, **24 dB low-pass ≈ 200 Hz, resonance ≈ 25 %**, a
 filter envelope that opens then closes, and a long amp decay. For a deathstep screech, add a downward
-pitch envelope, a resonant high-pass around 500–800 Hz and a short 1/8 delay. **Assumed** (the FM and
-filter values are the tutorial's; the rest is applied practice).
+pitch envelope, a resonant high-pass around 500–800 Hz and a short 1/8 delay. **Unverifiable here**: no
+Wavetable instance exists in this Set, no recipe writes these parameters, Live 12.2.5 cannot create
+one, and the names come from the tutorial rather than a readback.
 
 Recipe: `deathstep.screech_wavetable`.
 
@@ -142,7 +161,7 @@ hits in bar one, a full sixteenth flurry in bar two, snare on 3, swung ghost hat
 
 Tearout keeps the dubstep low end and pushes distortion, modulation and call-and-response to the
 front: growls, guns, sirens, resampled fills, and a second drop that is heavier than the first rather
-than different. **Assumed** (Melodigging, and the genre breakdown describing siren-like high tones).
+than different. **Unverifiable here** (Melodigging, and the genre breakdown describing siren-like high tones).
 
 Native families worth keeping separate, because each is a different patch shape:
 
@@ -177,7 +196,7 @@ The second route installed `youtube-transcript-api` in a throwaway environment
 sheets for all five videos on the first attempt — 182, 117, 139, 77 and 456 cues — so the retrieval is
 **Verified**; no video failed and no retry was needed. The captions are auto-generated, so the wording
 is rough in places ("e notes" for "eighth notes", "30 second notes" for "1/32nd notes"). Every
-parameter below is **Assumed**: read from the caption text, not auditioned. Video links are in the
+parameter below is **Unverifiable here**: read from the caption text, not auditioned. Video links are in the
 sources list.
 
 ### Pyramind — Operator + Corpus (rJQbh9Y67XM)
@@ -193,7 +212,7 @@ sources list.
   Corpus has a built-in limiter and saturation, so trim the Operator level and back off its gain.
   Dry/wet: "just a little bit more" for this kind of dubstep texture, 10–20 % when it is only a hint.
 
-**Assumed** — caption text, not auditioned. **Tie:** this is the source for `deathstep.growl_operator`'s
+**Unverifiable here** — caption text, not auditioned. **Tie:** this is the source for `deathstep.growl_operator`'s
 formant step, which names "Corpus tuned to a low vowel" without values; the tube/pipe choice, the
 key-scale frequency switch and the off-decay/radius/decay moves fill that step in. Corpus's built-in
 limiter is why the step ends on gain staging rather than more drive.
@@ -207,7 +226,7 @@ limiter is why the step ends on gain staging rather than more drive.
   **minimum of 1/8 and a maximum of 1/32** so it never runs away.
 - **Voices 1 + Glide** for the mono slide; velocity → filter frequency; spread for chorus.
 
-**Assumed** — caption text, not auditioned. **Tie:** a *different* Dubspot patch from the Operator one
+**Unverifiable here** — caption text, not auditioned. **Tie:** a *different* Dubspot patch from the Operator one
 already cited, and it tightens `dubstep.wobble_operator`. Step 2 now carries the documented band-pass
 variant — **12 dB band-pass ≈ 100 Hz with envelope amount ≈ −20** for the thump — so low-pass is not
 the only shape. Step 3 keeps **1/4** as the half-time default, records **1/8** as the rate this tutorial
@@ -220,7 +239,7 @@ performs with, and gains the **Voices 1 + Glide** mono slide the recipe had left
 - **LFO 2** re-triggered, slow attack, rate at a musical **1/16**, → **frequency cut**; drive into the
   filter, then a Reverb.
 
-**Assumed** — caption text, not auditioned. **Tie:** this supplies the native equivalent of Serum's
+**Unverifiable here** — caption text, not auditioned. **Tie:** this supplies the native equivalent of Serum's
 wobble that the riddim table only sketched — **an envelope scanning oscillator position plus a 1/16
 retriggered LFO on cutoff**, all in Wavetable. It is now written into `riddim.triplet_operator`'s
 modulation step, whose LFO line already said 1/8 or 1/16.
@@ -232,7 +251,7 @@ modulation step, whose LFO line already said 1/8 or 1/16.
 - Keep distorting, then filter harder: **map scale to a macro** driving an Auto Filter **band-pass**,
   **resample** the result to an audio track, and repeat — "consolidate that, get Wavetable".
 
-**Assumed** — caption text, not auditioned. **Tie:** `ableton.operator_bass` is built from this
+**Unverifiable here** — caption text, not auditioned. **Tie:** `ableton.operator_bass` is built from this
 transcript step for step (multiband first → drawn harmonics and filter distortion → velocity to filter
 frequency → band-pass macro → resample). The band-pass macro and resample contrast are the same moves
 `tearout.filtered_fill` uses for its phone-filtered fill.
@@ -242,14 +261,14 @@ frequency → band-pass macro → resample). The band-pass macro and resample co
   rate tracks the oscillator pitch; map the LFO to oscillator pitch, adjust the ratio and shape, and
   let an envelope control the LFO amount; raise the oscillator level for saturation.
 
-**Assumed** — caption text, not auditioned. **Tie:** `ableton.drift_growl` is built from this tutorial.
+**Unverifiable here** — caption text, not auditioned. **Tie:** `ableton.drift_growl` is built from this tutorial.
 The transcript confirms its **1:1 tracking LFO** step and the **20 Hz** low-pass starting point.
 
 ## Shared mix chain
 
 Four moves cover most of the mix in all four styles: **split sub from mid**, **mono below ~100 Hz**,
 **one Drum Buss across the drum group**, **sidechain the mid bass to the kick**. Then gain stage to
-about −6 dBFS peak and check the drop in mono. Recipe: `bass_music.mix_chain`. **Assumed.**
+about −6 dBFS peak and check the drop in mono. Recipe: `bass_music.mix_chain`. **Unverifiable here.**
 
 ## Composition
 
@@ -380,7 +399,19 @@ reported `applied: true`, and a fresh `devices_read_parameters` read back exactl
 | Remove Mud (class `Eq8`) | `1 Frequency A` | `0.14275` | `30.0 Hz` |
 | Remove Mud (class `Eq8`) | `2 Gain A` | `-1.5` | `-1.50 dB` |
 
-Three **Assumed** details were wrong and are now fixed in the recipe:
+`bass.loud_rack` is the only shipped recipe with `device_moves`; no other recipe in the repo writes a
+device parameter. Extra names checked on the same devices: `Saturator Type` raw `0` = `Analog Clip`,
+`Saturator Drive` raw `0.5833` = `6.0 dB`, `Saturator Output` raw `0.5` = `0.0 dB`, `Multiband
+Dynamics Amount` raw `0.25` = `25 %`, and `Eq8` band-2 gain (`2 Gain A`) is in dB over `-15..15`.
+
+Operator's real parameter names were read from the Operator instance in this Set: `Filter 1 Type`,
+`Filter 1 Slope`, `Filter 1 Freq`, `Filter 1 Res`, `Glide`, `Osc 1 Gain`. There is no `Voices`,
+`Coarse` or `Filter Freq` parameter, so tutorial wording that uses those names is **Unverifiable
+here** as a Live parameter name. Wavetable, Drift, Redux, Compressor, Corpus and the Max LFO device
+are absent from this Set, so their parameter names and values are **Unverifiable here** for the same
+reason: no recipe writes them and Live 12.2.5 cannot create the devices.
+
+Three assumed details were wrong and are now fixed in the recipe:
 
 - Saturator `Drive` is normalized `0.0–1.0` with `0.5` = `0.0 dB`, so the old `5.0` was outside the
   parameter's own range. `0.5694` is the value that displays `5.0 dB`.
