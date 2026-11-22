@@ -90,5 +90,42 @@
       "why": "A loud rack can hide phase and low-end problems; the tutorials repeatedly check the sound in context rather than soloed."
     }
   ],
-  "notes": "Source: Dripment, '2 TEAROUT Serum 2 BASS ROUTINES EVERY BEGINNER Should Know' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summary, not quotes. Reference-only because the engine has no OTT, Saturator, EQ or clipper chain."
+  "notes": "Source: Dripment, '2 TEAROUT Serum 2 BASS ROUTINES EVERY BEGINNER Should Know' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summary, not quotes. Reference-only because the engine has no OTT, Saturator, EQ or clipper chain.",
+  "device_moves": [
+    {
+      "role": "ott",
+      "device": "Multiband Dynamics",
+      "parameter": "Amount",
+      "value": 0.8,
+      "why": "OTT-style density at roughly 80% depth, per the recipe manual"
+    },
+    {
+      "role": "saturation",
+      "device": "Saturator",
+      "parameter": "Drive",
+      "value": 5.0,
+      "why": "about 5 dB of drive on the first stage"
+    },
+    {
+      "role": "saturation",
+      "device": "Saturator",
+      "parameter": "Dry/Wet",
+      "value": 1.0,
+      "why": "fully wet, as the recipe manual states"
+    },
+    {
+      "role": "eq",
+      "device": "EQ Eight",
+      "parameter": "Frequency",
+      "value": 30.0,
+      "why": "corrective low cut before the clipper"
+    },
+    {
+      "role": "eq",
+      "device": "EQ Eight",
+      "parameter": "Gain",
+      "value": -1.5,
+      "why": "small corrective cut, not a tone move"
+    }
+  ]
 }

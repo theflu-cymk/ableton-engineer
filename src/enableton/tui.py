@@ -47,6 +47,7 @@ _FONT = {
     "M": ("#...#", "##.##", "#.#.#", "#...#", "#...#"),
     "N": ("#...#", "##..#", "#.#.#", "#..##", "#...#"),
     "O": (".###.", "#...#", "#...#", "#...#", ".###."),
+    "P": ("####.", "#...#", "####.", "#....", "#...."),
     "R": ("####.", "#...#", "####.", "#.#..", "#..#."),
     "S": (".####", "#....", ".###.", "....#", "####."),
     "T": ("#####", "..#..", "..#..", "..#..", "..#.."),
@@ -523,6 +524,8 @@ MENU: Tuple[Item, ...] = (
     Item("action", "\u270f   Edit \u2014 notes and clip timing", "mode:edit"),
     Item("action", "\U0001f3d7   Arrange \u2014 sections and bar ranges", "mode:arrange"),
     Item("action", "\U0001f50a   Sound \u2014 devices and parameters", "mode:sound"),
+    Item("section", "Recipes"),
+    Item("action", "\U0001f9ea  Recipes \u2014 list, compile and apply to this Set", "recipes"),
     Item("section", "Live"),
     Item("action", "\U0001f50c  Doctor \u2014 connection, version, queue", "doctor"),
     Item("action", "\U0001f4ca  Set summary", "status"),
@@ -824,6 +827,366 @@ def browse_tools(cli_main: Callable[[Optional[Sequence[str]]], int]) -> None:
         elif len(key) == 1 and key.isprintable():
             query += key
             selected = 0
+
+
+def _cli_payload(
+    cli_main: Callable[[Optional[Sequence[str]]], int], argv: Sequence[str]
+) -> Tuple[Optional[Dict[str, Any]], str]:
+    """Run a CLI verb and read its JSON answer, or the message it printed instead."""
+    code, out, err = _capture_cli(cli_main, argv)
+    payload = _json_payload(out)
+    if payload is None:
+        return None, (err.strip() or out.strip() or "command exited %d" % code)
+    return payload, ""
+
+
+def _recipe_bpm(row: Dict[str, Any]) -> str:
+    """A recipe's declared BPM, or the range it accepts, on one line."""
+    bpm = row.get("bpm")
+    if not isinstance(bpm, (list, tuple)) or len(bpm) != 2:
+        return ""
+    try:
+        low, high = float(bpm[0]), float(bpm[1])
+    except (TypeError, ValueError):
+        return ""
+    return "%g" % low if abs(low - high) < 0.01 else "%g-%g" % (low, high)
+
+
+def recipe_flag(row: Dict[str, Any]) -> str:
+    """What the chooser can honestly promise about a recipe before it is compiled."""
+    if row.get("status") == "invalid":
+        return "broken file"
+    if not row.get("compilable"):
+        return "reference only"
+    return "needs a target" if row.get("needs_target") else "ready"
+
+
+def recipe_argv(
+    recipe_id: str,
+    track: str = "",
+    clip: str = "",
+    location: str = "",
+    confirmed: bool = False,
+) -> List[str]:
+    """The CLI call a chosen recipe becomes; a target is sent only when both halves were named."""
+    argv = ["recipe", recipe_id]
+    if track and clip:
+        argv += ["--target-track", track, "--target-clip", clip]
+        spot = location.strip().lower()
+        if spot in ("arrangement", "session"):
+            argv += ["--location", spot]
+    if confirmed:
+        argv.append("--manual-confirmed")
+    return argv
+
+
+def sort_recipes(rows: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Usable recipes first, broken files last, alphabetical inside each group."""
+    return sorted(
+        rows,
+        key=lambda row: (
+            row.get("status") == "invalid",
+            not row.get("compilable"),
+            str(row.get("name") or row.get("id") or "").casefold(),
+        ),
+    )
+
+
+def _recipe_lines(
+    rows: Sequence[Dict[str, Any]], selected: int, size: Optional[Tuple[int, int]] = None
+) -> List[str]:
+    """The chooser: every shipped and user recipe, and what each one can do to this Set."""
+    columns, terminal_rows = size if size is not None else shutil.get_terminal_size((80, 24))
+    lines: List[str] = []
+    if columns >= 60:
+        lines.extend(logo("RECIPES"))
+    else:
+        lines.append(ORANGE + BOLD + "RECIPES" + RESET)
+    lines.append("")
+    lines.append(
+        _VERSION_PREFIX
+        + GREY
+        + "Enableton"
+        + RESET
+        + " "
+        + WHITE
+        + _version()
+        + RESET
+        + DIM
+        + "  recipes / apply one to this Set"
+        + RESET
+    )
+    lines.append(
+        _VERSION_PREFIX
+        + BOLD
+        + "? Which recipe?"
+        + RESET
+        + DIM
+        + "  (arrow keys, enter to select)"
+        + RESET
+    )
+    usable = sum(1 for row in rows if row.get("compilable"))
+    lines.append(
+        "  " + DIM + "%d recipes \u00b7 %d can change this Set" % (len(rows), usable) + RESET
+    )
+    lines.append("")
+
+    visible = max(1, (terminal_rows - len(lines) - 2) // 2)
+    start = max(0, min(selected - visible // 2, len(rows) - visible))
+    for index in range(start, min(len(rows), start + visible)):
+        row = rows[index]
+        name = _clip(str(row.get("name") or row.get("id") or "?"), max(16, columns - 6))
+        bits = [str(row.get("kind") or "?")]
+        status = str(row.get("status") or "")
+        if status and status not in ("shipped", "user") and status != row.get("kind"):
+            bits.append(status)
+        bpm = _recipe_bpm(row)
+        if bpm:
+            bits.append(bpm + " BPM")
+        flag = recipe_flag(row)
+        bits.append(flag)
+        meta = _clip(" \u00b7 ".join(bits), max(16, columns - 8))
+        if index == selected:
+            lines.append(" " + ORANGE + "\u276f" + RESET + " " + BOLD + name + RESET)
+        else:
+            lines.append("   " + name)
+        lines.append(
+            "     "
+            + (ORANGE if flag in ("broken file", "reference only") else DIM)
+            + meta
+            + RESET
+        )
+    lines.append(
+        "  " + DIM + "\u2191\u2193 move \u00b7 enter open \u00b7 esc back" + RESET
+    )
+    return lines
+
+
+def _recipe_result_lines(
+    payload: Dict[str, Any], title: str, size: Optional[Tuple[int, int]] = None
+) -> List[str]:
+    """What the compiler would write, shown before anything is applied."""
+    columns, terminal_rows = size if size is not None else shutil.get_terminal_size((80, 24))
+    lines: List[str] = []
+    if columns >= 60:
+        lines.extend(logo("RECIPES"))
+    else:
+        lines.append(ORANGE + BOLD + "RECIPES" + RESET)
+    lines.append("")
+    name = str(payload.get("recipe_name") or payload.get("recipe_id") or title)
+    status = str(payload.get("status") or "unavailable").replace("_", " ")
+    lines.append(
+        _VERSION_PREFIX
+        + BOLD
+        + _clip(name, max(20, columns - 8))
+        + RESET
+        + DIM
+        + "  "
+        + status
+        + RESET
+    )
+    reason = payload.get("reason")
+    if reason:
+        for line in textwrap.wrap(str(reason), max(20, columns - 4))[:3]:
+            lines.append("  " + ORANGE + line + RESET)
+
+    render = payload.get("render") or {}
+    if isinstance(render, dict):
+        bits: List[str] = []
+        if render.get("bars"):
+            bits.append(
+                "%s bar%s" % (render["bars"], "" if render["bars"] == 1 else "s")
+            )
+        target = render.get("target") or {}
+        if isinstance(target, dict) and target.get("track"):
+            bits.append("%s / %s" % (target.get("track"), target.get("clip")))
+        if render.get("note_count"):
+            bits.append("%d notes" % render["note_count"])
+        if bits:
+            lines.append(
+                "  " + GREY + " \u00b7 ".join(str(bit) for bit in bits) + RESET
+            )
+        for warning in render.get("warnings") or []:
+            lines.append("  " + ORANGE + _clip(str(warning), max(20, columns - 4)) + RESET)
+
+    steps = [step for step in payload.get("steps") or [] if isinstance(step, dict)]
+    if steps:
+        lines.append("")
+        lines.append("  " + GREY + "\u2500\u2500 Steps \u2500\u2500" + RESET)
+        room = max(1, terminal_rows - len(lines) - 3)
+        for step in steps[:room]:
+            lines.append(
+                "  %s  %s%s%s" % (step.get("n", "?"), BOLD, step.get("tool", "?"), RESET)
+            )
+            why = step.get("why")
+            if why:
+                lines.append("     " + DIM + _clip(str(why), max(20, columns - 8)) + RESET)
+
+    manual = [row for row in payload.get("manual") or [] if isinstance(row, dict)]
+    if manual:
+        lines.append("")
+        lines.append(
+            "  " + GREY + "\u2500\u2500 Manual checkpoints \u2500\u2500" + RESET
+        )
+        room = max(1, terminal_rows - len(lines) - 2)
+        for row in manual[:room]:
+            lines.append(
+                "  "
+                + ORANGE
+                + str(row.get("when", "?"))
+                + RESET
+                + "  "
+                + _clip(str(row.get("instruction", "")), max(16, columns - 22))
+            )
+    return lines
+
+
+def _recipe_apply_lines(
+    payload: Dict[str, Any], title: str, size: Optional[Tuple[int, int]] = None
+) -> List[str]:
+    """The applied outcome, including a rollback when the plan refused to finish."""
+    columns, terminal_rows = size if size is not None else shutil.get_terminal_size((80, 24))
+    lines: List[str] = []
+    if columns >= 60:
+        lines.extend(logo("RECIPES"))
+    else:
+        lines.append(ORANGE + BOLD + "RECIPES" + RESET)
+    lines.append("")
+    applied = bool(payload.get("applied"))
+    lines.append(
+        _VERSION_PREFIX
+        + (GREEN + "Applied to the current Set." if applied else RED + "Nothing was applied.")
+        + RESET
+        + DIM
+        + "  "
+        + _clip(title, max(16, columns - 30))
+        + RESET
+    )
+    error = payload.get("error")
+    if isinstance(error, dict) and error.get("message"):
+        for line in textwrap.wrap(str(error["message"]), max(20, columns - 4))[:3]:
+            lines.append("  " + RED + line + RESET)
+    before = (payload.get("counts_before") or {}).get("total")
+    after = (payload.get("counts_after") or {}).get("total")
+    if before is not None and after is not None:
+        lines.append(
+            "  " + GREY + "Findings %s \u2192 %s" % (before, after) + RESET
+        )
+    steps = [step for step in payload.get("steps") or [] if isinstance(step, dict)]
+    if steps:
+        lines.append("")
+        lines.append("  " + GREY + "\u2500\u2500 Wrote \u2500\u2500" + RESET)
+        room = max(1, terminal_rows - len(lines) - 3)
+        for step in steps[:room]:
+            result = step.get("result") if isinstance(step.get("result"), dict) else {}
+            note = ""
+            if result.get("undo"):
+                note = "  undo ready"
+            elif result.get("unavailable"):
+                note = "  unavailable"
+            lines.append("  " + str(step.get("tool", "?")) + DIM + note + RESET)
+    restore = payload.get("restore")
+    if isinstance(restore, dict) and not restore.get("ok", True):
+        lines.append("  " + RED + "Rollback needs attention." + RESET)
+    scratch = payload.get("scratch_copy")
+    if scratch:
+        lines.append(
+            "  " + DIM + "scratch copy " + _clip(str(scratch), max(16, columns - 16)) + RESET
+        )
+    lines.append("  " + DIM + "press any key to return" + RESET)
+    return lines
+
+
+def _confirm(question: str) -> bool:
+    """A y/N answer; anything else, including Ctrl-C, is a no."""
+    try:
+        answer = input("\n  %s [y/N] " % question).strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return False
+    return answer == "y"
+
+
+def browse_recipes(cli_main: Callable[[Optional[Sequence[str]]], int]) -> None:
+    """List the recipes, compile the chosen one, and apply it after an explicit confirmation."""
+    payload, error = _cli_payload(cli_main, ["recipes"])
+    if payload is None:
+        _message(error)
+        return
+    rows = sort_recipes(
+        [row for row in payload.get("recipes") or [] if isinstance(row, dict)]
+    )
+    if not rows:
+        _message("No recipes found in the shipped pack or the user recipe folder.")
+        return
+
+    selected = 0
+    while True:
+        selected = max(0, min(selected, len(rows) - 1))
+        _draw(_recipe_lines(rows, selected))
+        key = _read_key()
+        if key in ("escape", "q", "ctrl-c"):
+            return
+        if key == "up":
+            selected = (selected - 1) % len(rows)
+            continue
+        if key == "down":
+            selected = (selected + 1) % len(rows)
+            continue
+        if key != "enter":
+            continue
+
+        row = rows[selected]
+        name = str(row.get("name") or row.get("id"))
+        if row.get("status") == "invalid":
+            _message(str(row.get("error") or "This recipe file is invalid."))
+            continue
+
+        track = clip = location = ""
+        if row.get("needs_target"):
+            track = _ask("MIDI track the rhythm renders into (exact name)")
+            if not track:
+                continue
+            clip = _ask("MIDI clip on that track (exact name)")
+            if not clip:
+                continue
+            location = _ask("Location (arrangement/session, blank for either)")
+
+        recipe_id = str(row.get("id"))
+        compiled, error = _cli_payload(
+            cli_main, recipe_argv(recipe_id, track, clip, location)
+        )
+        if compiled is None:
+            _message(error)
+            continue
+
+        if compiled.get("status") == "manual_required":
+            _draw(_recipe_result_lines(compiled, name))
+            if not _confirm("Done these checkpoints?"):
+                continue
+            compiled, error = _cli_payload(
+                cli_main, recipe_argv(recipe_id, track, clip, location, confirmed=True)
+            )
+            if compiled is None:
+                _message(error)
+                continue
+
+        plan_id = compiled.get("plan_id")
+        if not plan_id:
+            _draw(_recipe_result_lines(compiled, name))
+            _pause()
+            continue
+
+        _draw(_recipe_result_lines(compiled, name))
+        if not _confirm("Apply this recipe to the Set?"):
+            _message("Not applied. `enableton run %s` applies this plan later." % plan_id)
+            continue
+
+        applied, error = _cli_payload(cli_main, ["run", plan_id])
+        if applied is None:
+            _message(error)
+            continue
+        _draw(_recipe_apply_lines(applied, name))
+        _pause()
 
 
 def _draw(lines: Sequence[str]) -> None:
@@ -1851,6 +2214,10 @@ def run(cli_main: Callable[[Optional[Sequence[str]]], int]) -> int:
             if action == "cleanup":
                 _run_bulk("CLEAN", autofix=True, colour=True, align=True, warp=True)
                 status, stale = _status_lines()
+                continue
+
+            if action == "recipes":
+                browse_recipes(cli_main)
                 continue
 
             if action == "browse":

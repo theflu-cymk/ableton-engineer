@@ -68,5 +68,35 @@
       "why": "Push Patterns loads a user sample as a custom wavetable."
     }
   ],
-  "notes": "Source: Push Patterns, 'How To Make DUBSTEP BASS Sounds with WAVETABLE In Ableton Live' (https://www.youtube.com/watch?v=nbmxDxKji9M). Transcript summary, not quotes. Reference-only because the engine cannot create or verify Wavetable patches."
+  "notes": "Source: Push Patterns, 'How To Make DUBSTEP BASS Sounds with WAVETABLE In Ableton Live' (https://www.youtube.com/watch?v=nbmxDxKji9M). Transcript summary, not quotes. Reference-only because the engine cannot create or verify Wavetable patches.",
+  "audition": {
+    "role": "synth",
+    "length_beats": 4,
+    "notes": [
+      {
+        "pitch": 36,
+        "start": 0.0,
+        "duration": 0.75,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 1.5,
+        "duration": 0.5,
+        "velocity": 110
+      },
+      {
+        "pitch": 39,
+        "start": 2.0,
+        "duration": 0.5,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 3.0,
+        "duration": 0.75,
+        "velocity": 110
+      }
+    ]
+  }
 }

@@ -129,5 +129,54 @@ class RecipeStoreTests(unittest.TestCase):
         self.assertFalse(os.path.exists(self.user))
 
 
+class ShippedPackTests(unittest.TestCase):
+    """The shipped pack is data the menu offers to run, so it is guarded like code."""
+
+    def setUp(self):
+        from enableton.recipe_tools import default_store
+
+        self.store = default_store()
+
+    def _recipes(self):
+        return [
+            json.loads(path.read_text(encoding="utf-8"))
+            for path in sorted(self.store.shipped_dir.glob("*.json"))
+        ]
+
+    def test_every_shipped_recipe_validates_and_matches_its_filename(self):
+        from enableton.recipe_validation import validate_recipe
+
+        recipes = self._recipes()
+        self.assertGreaterEqual(len(recipes), 20)
+        for recipe in recipes:
+            with self.subTest(recipe.get("id")):
+                validate_recipe(recipe)
+                self.assertTrue(
+                    (self.store.shipped_dir / (recipe["id"] + ".json")).is_file()
+                )
+                self.assertEqual(recipe["status"], "shipped")
+
+    def test_every_shipped_rhythm_compiles_on_the_supported_grid(self):
+        from enableton.recipe_rhythm import SUPPORTED_GRIDS, render_rhythm
+
+        rhythms = [recipe for recipe in self._recipes() if recipe["kind"] == "rhythm"]
+        self.assertTrue(rhythms)
+        for recipe in rhythms:
+            with self.subTest(recipe["id"]):
+                # A shipped rhythm the compiler cannot render would be a menu row that writes nothing.
+                self.assertIn(recipe["tempo"]["grid"], SUPPORTED_GRIDS)
+                rendered = render_rhythm(recipe, {"track": "T", "clip": "C"})
+                self.assertGreater(rendered["note_count"], 0)
+
+    def test_every_bass_genre_ships_a_recipe(self):
+        flavors = {
+            (recipe.get("flavor") or {}).get("name")
+            for recipe in self._recipes()
+            if isinstance(recipe.get("flavor"), dict)
+        }
+        for genre in ("dubstep", "riddim", "deathstep", "tearout"):
+            self.assertIn(genre, flavors)
+
+
 if __name__ == "__main__":
     unittest.main()

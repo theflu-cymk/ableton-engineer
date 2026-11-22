@@ -1,0 +1,117 @@
+{
+  "id": "tearout.siren_lead",
+  "name": "Tearout - siren lead (native)",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "tearout",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "140",
+      "native",
+      "siren",
+      "tearout"
+    ]
+  },
+  "description": "Reference checklist for the high siren whine that answers a tearout growl: a thin high oscillator, long glide and pitch bends, a resonant band-pass, a short delay and resampling. Not executable: the engine cannot create synth patches on Live 12.2.5.",
+  "tags": [
+    "ableton",
+    "bass_music",
+    "checklist",
+    "native",
+    "reference",
+    "siren",
+    "sound_design",
+    "tearout"
+  ],
+  "ingredients": [
+    {
+      "role": "synth",
+      "kind": "instrument",
+      "source": "Ableton Operator or Wavetable"
+    },
+    {
+      "role": "filter",
+      "kind": "instrument",
+      "source": "Auto Filter"
+    },
+    {
+      "role": "space",
+      "kind": "instrument",
+      "source": "Ableton Echo or Delay"
+    },
+    {
+      "role": "grit",
+      "kind": "instrument",
+      "source": "Saturator"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Use a single oscillator an octave or two above the growl, with a narrow pulse or a metallic wavetable and a little FM. Set Voices to 1 and glide to 100-300 ms.",
+      "when": "before_apply",
+      "verify": "A thin, piercing tone that is clearly separate from the bass.",
+      "why": "The siren layer in tearout is a high, narrow voice that sits above the mid bass, not a second growl."
+    },
+    {
+      "instruction": "Automate pitch over long notes: a slow rise into a drop, or a fall out of one. Keep the automation in the MIDI clip so the pitch move travels with the phrase.",
+      "when": "before_apply",
+      "verify": "The pitch move lands on the section boundary, not before it.",
+      "why": "The siren exists to mark transitions; its pitch movement is the transition."
+    },
+    {
+      "instruction": "Filter with a resonant band-pass around 1-3 kHz and sweep the centre slowly. Add Saturator after the filter so the resonance has harmonics to work with.",
+      "when": "after_apply",
+      "verify": "The sweep is audible as movement rather than as a level change.",
+      "why": "A band-pass plus drive is the cheapest way to make a sine-like high voice sound aggressive."
+    },
+    {
+      "instruction": "Add a tempo-synced echo at 1/8 or dotted 1/8 with low feedback, then resample the result and trim it to the last bar before the drop.",
+      "when": "after_apply",
+      "verify": "The siren tail is part of the arrangement, not reverb across the whole drop.",
+      "why": "Resampled transition effects are how these styles keep the drop itself clean."
+    },
+    {
+      "instruction": "Keep one siren per section boundary. Two sirens in the same eight bars stop reading as a warning and start reading as noise.",
+      "when": "after_apply",
+      "verify": "The second drop still has a distinct siren moment.",
+      "why": "The effect works by contrast; using it everywhere removes the contrast."
+    }
+  ],
+  "notes": "Sources: Melodigging's tearout notes (https://www.melodigging.com/genre/tearout) and the genre breakdown describing high siren-like tones in tearout (https://coldhearted-sirius-alpha-22.tistory.com/87). The filter and echo values are standard practice applied to the genre description, not transcript quotes. Reference-only.",
+  "audition": {
+    "role": "synth",
+    "length_beats": 4,
+    "notes": [
+      {
+        "pitch": 36,
+        "start": 0.0,
+        "duration": 1.5,
+        "velocity": 110
+      },
+      {
+        "pitch": 43,
+        "start": 2.0,
+        "duration": 0.25,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 2.5,
+        "duration": 0.25,
+        "velocity": 110
+      },
+      {
+        "pitch": 31,
+        "start": 3.25,
+        "duration": 0.5,
+        "velocity": 110
+      }
+    ]
+  }
+}

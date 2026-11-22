@@ -1,0 +1,28 @@
+{
+  "id": "deathstep.kick_flurry_140",
+  "name": "Deathstep - kick flurry and half-time snare",
+  "version": 1,
+  "kind": "rhythm",
+  "status": "shipped",
+  "tempo": {"bpm": 145, "feel": "half_time", "grid": "1/16"},
+  "length_bars": 2,
+  "lanes": [
+    {"slot": "kick", "pattern": "x...x...x.....x.|x.x.x.x.x.x.x.x.", "velocity": 0.98, "humanize": 0.01},
+    {"slot": "snare", "pattern": "........x.......|........x.......", "velocity": 0.95},
+    {"slot": "hat", "pattern": "..x...x...x...x.|x.x.x.x.x.x.x.x.", "velocity": 0.5, "swing": 0.15}
+  ],
+  "slots": [
+    {"slot": "kick", "mode": "hit", "from": "ableton/drums/kick", "select": "lowest_centroid", "count": 1, "pitch": 36},
+    {"slot": "snare", "mode": "hit", "from": "ableton/drums/snare", "select": "high_transient", "count": 1, "pitch": 38},
+    {"slot": "hat", "mode": "hit", "from": "ableton/drums/hat", "select": "shortest_decay", "count": 1, "pitch": 42}
+  ],
+  "flavor": {
+    "name": "deathstep",
+    "bpm": [140, 150],
+    "feel": "half_time",
+    "tags": ["blast_beat", "deathstep", "drums", "executable"]
+  },
+  "description": "A two-bar deathstep drum pattern for a Drum Rack clip: isolated kick hits and a pickup in bar one, then a full sixteenth kick flurry in bar two against the half-time snare on beat three, with swung ghosts on the hats. Renders MIDI into an existing clip; it does not load drum samples.",
+  "tags": ["bass_music", "blast_beat", "deathstep", "drums", "executable", "rhythm"],
+  "notes": "Deathstep borrows death-metal blast beats as kick flurries between drops; the flurry is placed in the second bar so the first bar still reads as half-time. Aim the clip at a Drum Rack whose pads are tuned to the Set. Sources: Melodigging deathstep notes (https://www.melodigging.com/genre/deathstep), Recording Arts Canada's TenGraphs interview (https://recordingarts.com/record/introduction-of-deathstep)."
+}

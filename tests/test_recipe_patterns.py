@@ -29,6 +29,32 @@ class RecipePatternTests(unittest.TestCase):
         with self.assertRaises(RecipePatternError):
             parse_step_pattern("x.......x...... .")
 
+    def test_triplet_grids_use_their_own_bar_length(self):
+        self.assertEqual(
+            parse_step_pattern("x..x..x..x..", steps_per_bar=12),
+            (tuple("x..x..x..x.."),),
+        )
+        bar24 = "x....." * 4
+        self.assertEqual(len(parse_step_pattern(bar24, steps_per_bar=24)), 1)
+        self.assertEqual(len(parse_step_pattern(bar24 * 2, steps_per_bar=24)), 2)
+        self.assertEqual(
+            parse_step_pattern("x..x..x..x..|" + "x..x..x..x..", steps_per_bar=12),
+            (tuple("x..x..x..x.."), tuple("x..x..x..x..")),
+        )
+
+    def test_a_bar_of_the_wrong_grid_length_is_refused(self):
+        with self.assertRaisesRegex(RecipePatternError, "exactly 12 steps"):
+            parse_step_pattern("x.......x.......", steps_per_bar=12)
+        with self.assertRaisesRegex(RecipePatternError, "exactly 24 steps"):
+            parse_step_pattern("x..x..x..x..", steps_per_bar=24)
+
+    def test_steps_per_bar_must_be_a_positive_integer(self):
+        for value in (0, -12, 12.0, True, "12"):
+            with self.subTest(value=value), self.assertRaisesRegex(
+                RecipePatternError, "positive integer"
+            ):
+                parse_step_pattern("xxxxxxxxxxxx", steps_per_bar=value)
+
 
 if __name__ == "__main__":
     unittest.main()

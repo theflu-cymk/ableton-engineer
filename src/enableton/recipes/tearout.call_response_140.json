@@ -1,0 +1,28 @@
+{
+  "id": "tearout.call_response_140",
+  "name": "Tearout - call and response bass",
+  "version": 1,
+  "kind": "rhythm",
+  "status": "shipped",
+  "tempo": {"bpm": 140, "feel": "half_time", "grid": "1/16"},
+  "length_bars": 2,
+  "lanes": [
+    {"slot": "bass", "pattern": "x.....x...x.....|..x.....x...x...", "velocity": 0.95},
+    {"slot": "sub", "pattern": "x...............|..x.............", "velocity": 0.9},
+    {"slot": "stab", "pattern": "..............x.|..............x.", "velocity": 0.75, "humanize": 0.03}
+  ],
+  "slots": [
+    {"slot": "bass", "mode": "hit", "from": "tearout/bass/growls", "select": "highest_transient", "count": 1, "pitch": 36},
+    {"slot": "sub", "mode": "hit", "from": "tearout/bass/sub", "select": "lowest_centroid", "count": 1, "pitch": 24},
+    {"slot": "stab", "mode": "hit", "from": "tearout/synth/stabs", "select": "random", "count": 1, "pitch": 48}
+  ],
+  "flavor": {
+    "name": "tearout",
+    "bpm": [140, 150],
+    "feel": "half_time",
+    "tags": ["call_response", "executable", "tearout"]
+  },
+  "description": "A two-bar tearout bass figure built as a call and an answer: three spaced growl hits in bar one, the answer displaced later in bar two, a sub only under the first hit of each phrase and a stab in the last sixteenth of each bar. Renders MIDI into an existing clip; it does not load samples or design the growl.",
+  "tags": ["bass_music", "call_response", "executable", "rhythm", "tearout"],
+  "notes": "The gap between the call and the answer is the point: it gives the growl a tail to decay into and keeps the drop from turning into a wall. Pair it with tearout.growl for the sound and ableton.operator_bass for the patch. Sources: Melodigging tearout notes (https://www.melodigging.com/genre/tearout) and the style's call-and-response description."
+}

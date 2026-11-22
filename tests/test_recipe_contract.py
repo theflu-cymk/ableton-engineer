@@ -339,7 +339,7 @@ class RecipeCompileTests(unittest.TestCase):
         self.assertEqual(result["status"], "unavailable")
         self.assertIn("no expected fingerprint", result["reason"])
 
-    def test_sample_binding_is_reported_unresolved_and_not_compiled(self):
+    def test_sample_binding_is_reported_unresolved_and_never_loaded(self):
         recipe = workflow_recipe(
             "test.sample",
             ingredients=[
@@ -355,6 +355,8 @@ class RecipeCompileTests(unittest.TestCase):
         self.assertFalse(shown["ingredients"][0]["resolved"])
         self.assertIn("does not resolve library sources", shown["unresolved"][0]["reason"])
 
+        # A declaration no longer blocks a workflow that has its own executable steps: the plan
+        # carries exactly those steps and never pretends to have loaded the sample.
         result = apply_recipe(
             {"id": "test.sample"},
             store=self.store,
@@ -363,8 +365,12 @@ class RecipeCompileTests(unittest.TestCase):
             plan_root=self.plan_root,
             catalogue=self.catalogue,
         )
-        self.assertEqual(result["status"], "unavailable")
-        self.assertIn("cannot load library sources", result["reason"])
+        self.assertEqual(result["status"], "plan_ready", result.get("reason"))
+        self.assertEqual(
+            [step["args"] for step in result["steps"]],
+            [step["args"] for step in recipe["steps"]],
+        )
+        self.assertNotIn("kick", str(result["steps"]))
 
     def test_rhythm_ingredient_needs_a_target_and_then_compiles(self):
         rhythm = {

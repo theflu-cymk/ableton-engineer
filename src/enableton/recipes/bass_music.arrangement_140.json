@@ -1,0 +1,61 @@
+{
+  "id": "bass_music.arrangement_140",
+  "name": "Bass music - 140 half-time arrangement map",
+  "version": 1,
+  "kind": "workflow",
+  "status": "shipped",
+  "flavor": {
+    "name": "bass_music",
+    "bpm": [138, 145],
+    "feel": "half_time",
+    "tags": ["arrangement", "deathstep", "dubstep", "reference", "riddim", "tearout"]
+  },
+  "description": "Lays named section locators for a 140 BPM half-time bass track: intro, build, three eight-bar drop blocks, break, second build, second drop and outro. One reversible write with a dry-run preview; move or trim the markers afterwards with sections_move. Drop blocks are eight bars so the map fits the compact structure the style guides describe, not the 32-bar radio form.",
+  "tags": ["ableton", "arrangement", "bass_music", "deathstep", "dubstep", "executable", "native", "riddim", "tearout"],
+  "steps": [
+    {
+      "tool": "sections_create_locators",
+      "args": {
+        "sections": [
+          {"name": "INTRO", "bar": 1},
+          {"name": "BUILD 1", "bar": 9},
+          {"name": "DROP 1A", "bar": 17},
+          {"name": "DROP 1B", "bar": 25},
+          {"name": "DROP 1C", "bar": 33},
+          {"name": "BREAK", "bar": 41},
+          {"name": "BUILD 2", "bar": 49},
+          {"name": "DROP 2", "bar": 57},
+          {"name": "OUTRO", "bar": 81}
+        ]
+      },
+      "why": "Name the eight-bar blocks so 'make the second drop heavier' has a target the tools can address."
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Clear or move any locator already sitting on these bars before applying; sections_create_locators refuses an occupied bar rather than replacing a marker. Save the Set first so the scratch copy has something to recover.",
+      "when": "before_apply",
+      "verify": "The dry-run shows nine markers created and none refused.",
+      "why": "The handler refuses occupied destinations, and the anchor Set must exist before the first applied write."
+    },
+    {
+      "instruction": "For riddim, keep drops to one or two eight-bar loops and repeat the same motif; the drop blocks can be shortened and the second drop made a variation rather than a new part.",
+      "when": "after_apply",
+      "verify": "The riddim drop repeats one motif instead of introducing a new bassline per block.",
+      "why": "Riddim is defined by a single short motif repeated; the block map is a container, not a reason to change the riff."
+    },
+    {
+      "instruction": "For tearout, make DROP 1B and DROP 2 the loudest, most layered blocks and use the last bar of each build for a siren or riser. Deathstep usually wants a longer, quieter intro and blast-beat kick fills at the eight-bar seams.",
+      "when": "after_apply",
+      "verify": "The loudest block is the second drop, and the builds have a transition, not just a filter sweep.",
+      "why": "Both styles build tension by contrast: a quieter build makes the drop read as heavier."
+    },
+    {
+      "instruction": "Move the markers to match the actual material rather than moving the music to the markers. sections_move is the reversible way to do it, and the before/after is visible in sections_map.",
+      "when": "after_apply",
+      "verify": "sections_map lists the sections where the clips actually change.",
+      "why": "Locators that do not line up with the arrangement make every later structural tool act on the wrong bars."
+    }
+  ],
+  "notes": "Sources: EDMProd's eight-bar UK dubstep structure (https://www.edmprod.com/how-to-make-dubstep); KAN Samples' longer 32/16-bar arrangement map (https://kansamples.com/blogs/learn/dubstep-track-arrangement); Melodigging's deathstep and tearout genre notes for the per-style differences (https://www.melodigging.com/genre/deathstep, https://www.melodigging.com/genre/tearout). The two arrangement guides disagree on block length; this map uses the compact one and says so. Executable through the normal plan path: dry-run, scratch copy, locator rollback."
+}

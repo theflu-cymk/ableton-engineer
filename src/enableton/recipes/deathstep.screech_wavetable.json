@@ -1,0 +1,138 @@
+{
+  "id": "deathstep.screech_wavetable",
+  "name": "Deathstep - Wavetable FM screech",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "deathstep",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "deathstep",
+      "fm",
+      "native",
+      "screech",
+      "wavetable"
+    ]
+  },
+  "description": "Reference checklist for a high screech lead on Ableton Wavetable: FM oscillator effect tuned an octave or two up, a 24 dB low-pass around 200 Hz with modest resonance, a hard filter envelope, a resonant high-pass and a short delay. Not executable: the engine cannot create Wavetable patches on Live 12.2.5.",
+  "tags": [
+    "ableton",
+    "bass_music",
+    "checklist",
+    "deathstep",
+    "fm",
+    "native",
+    "reference",
+    "screech",
+    "tearout",
+    "wavetable"
+  ],
+  "ingredients": [
+    {
+      "role": "synth",
+      "kind": "instrument",
+      "source": "Ableton Wavetable"
+    },
+    {
+      "role": "grit",
+      "kind": "instrument",
+      "source": "Redux or Erosion"
+    },
+    {
+      "role": "space",
+      "kind": "instrument",
+      "source": "Ableton Delay"
+    },
+    {
+      "role": "cleanup",
+      "kind": "instrument",
+      "source": "EQ Eight"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "In Wavetable's oscillator effects, choose FM, set the tune to 100% (the modulator goes two octaves up) and bring the amount up to roughly 25-35%. Start from a plain table so the FM is the sound.",
+      "when": "before_apply",
+      "verify": "A bright, glassy tone with a clear sideband character rather than a plain saw.",
+      "why": "Attack Magazine's Wavetable foghorn patch uses exactly these FM tune and amount values as its starting point."
+    },
+    {
+      "instruction": "Set the filter to a 24 dB low-pass, cutoff near 200 Hz and resonance around 25%. Shape Env 2 to open quickly and close slowly so the screech has a bite and then a tail.",
+      "when": "before_apply",
+      "verify": "The attack is sharp and the note settles into a narrower tone.",
+      "why": "The same patch uses a 24 dB filter near 200 Hz and about 25% resonance, with an envelope that opens then closes."
+    },
+    {
+      "instruction": "Turn the pitch envelope on and give it a downward move of several semitones over a short decay. A screech that sits still reads as a synth note; a falling one reads as a scream.",
+      "when": "before_apply",
+      "verify": "The note bends down at the front without losing its pitch centre.",
+      "why": "Pitch drops are the standard way to turn a bright tone into a screech or siren in this family of styles."
+    },
+    {
+      "instruction": "Add a resonant high-pass after the synth, around 500-800 Hz, and sweep it only on transitions. Then push Redux or Erosion lightly for aliasing grit.",
+      "when": "after_apply",
+      "verify": "The screech cuts through a full drop without being boosted in level.",
+      "why": "A thin, bright layer sits above the bass instead of competing with it for the same band."
+    },
+    {
+      "instruction": "Add a short tempo-synced delay at 1/8 with the feedback low and the filter high, so the screech answers itself between the main hits.",
+      "when": "after_apply",
+      "verify": "The delay is audible as an answer, not as wash.",
+      "why": "Short delays on a high layer are how these styles imply a second voice without writing another part."
+    },
+    {
+      "instruction": "Resample the screech once it works, then pitch and chop the audio for the second drop. Keep one instance of the live patch for edits.",
+      "when": "after_apply",
+      "verify": "The second drop has a variant of the sound without a second synth instance.",
+      "why": "Resampling is the standard way to build variants while keeping CPU and tuning under control."
+    }
+  ],
+  "notes": "Sources: Attack Magazine's Wavetable foghorn tutorial for the FM/filter/envelope values (https://www.attackmagazine.com/technique/synth-secrets/drum-n-bass-foghorn-bass-with-wavetable); Melodigging's deathstep notes for the genre use of FM and wavetable sources (https://www.melodigging.com/genre/deathstep). The high-pass and delay steps are standard practice applied to the genre, not transcript quotes. Reference-only.",
+  "audition": {
+    "role": "synth",
+    "length_beats": 4,
+    "notes": [
+      {
+        "pitch": 33,
+        "start": 0.0,
+        "duration": 0.4,
+        "velocity": 110
+      },
+      {
+        "pitch": 33,
+        "start": 0.5,
+        "duration": 0.4,
+        "velocity": 110
+      },
+      {
+        "pitch": 33,
+        "start": 1.0,
+        "duration": 0.4,
+        "velocity": 110
+      },
+      {
+        "pitch": 30,
+        "start": 1.5,
+        "duration": 0.6,
+        "velocity": 110
+      },
+      {
+        "pitch": 33,
+        "start": 2.5,
+        "duration": 0.4,
+        "velocity": 110
+      },
+      {
+        "pitch": 30,
+        "start": 3.0,
+        "duration": 0.75,
+        "velocity": 110
+      }
+    ]
+  }
+}

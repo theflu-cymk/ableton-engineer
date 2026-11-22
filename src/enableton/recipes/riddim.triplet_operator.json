@@ -1,0 +1,152 @@
+{
+  "id": "riddim.triplet_operator",
+  "name": "Riddim - triplet motif bass (native)",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "riddim",
+    "bpm": [
+      140,
+      145
+    ],
+    "feel": "half_time",
+    "tags": [
+      "140",
+      "native",
+      "operator",
+      "triplet",
+      "wavetable"
+    ]
+  },
+  "description": "Reference checklist for a riddim bass motif: one short core tone, a separate clean sub, mono glide, short modulation, stacked saturation, and a two-to-three-note phrase repeated with tiny variations. Not executable: the engine cannot create synth patches on Live 12.2.5.",
+  "tags": [
+    "ableton",
+    "bass_music",
+    "checklist",
+    "native",
+    "reference",
+    "riddim",
+    "sound_design",
+    "triplet"
+  ],
+  "ingredients": [
+    {
+      "role": "core",
+      "kind": "instrument",
+      "source": "Ableton Wavetable or Operator"
+    },
+    {
+      "role": "sub",
+      "kind": "instrument",
+      "source": "Ableton Operator (sine)"
+    },
+    {
+      "role": "drive",
+      "kind": "instrument",
+      "source": "Ableton Saturator"
+    },
+    {
+      "role": "grit",
+      "kind": "instrument",
+      "source": "Redux"
+    },
+    {
+      "role": "filter",
+      "kind": "instrument",
+      "source": "Auto Filter"
+    },
+    {
+      "role": "cleanup",
+      "kind": "instrument",
+      "source": "EQ Eight"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Start the core tone on a square, a saw-square hybrid, or a two-operator FM pair. Keep it simple enough to repeat for eight bars: riddim is a loop, not a patch show.",
+      "when": "before_apply",
+      "verify": "The tone is recognisable on one note, before any modulation.",
+      "why": "Riddim production guidance is explicit that the drop repeats one short motif; complexity fights repetition."
+    },
+    {
+      "instruction": "Put a clean sine sub on its own track under the mid bass, following the same notes. Do not let the mid patch carry the fundamental.",
+      "when": "before_apply",
+      "verify": "Muting the mid bass leaves a stable low end rather than silence.",
+      "why": "A separate sub keeps the low end from wobbling when the mid patch is distorted and modulated."
+    },
+    {
+      "instruction": "Set the core synth to mono, one voice, with glide around 20-40 ms. That slide between notes is a large part of the riddim bounce.",
+      "when": "before_apply",
+      "verify": "Consecutive notes connect with a short slide instead of a hard jump.",
+      "why": "Riddim patch guides specify mono voicing with a short glide time."
+    },
+    {
+      "instruction": "Add short modulation: a 1/8 or 1/16 LFO on Wavetable position, FM amount or filter cutoff, plus short envelopes. For the Wavetable version, shape Envelope 2 up-then-down into the Matrix on oscillator position and on filter cutoff, so the table is scanned by the envelope and the LFO adds the wobble. Movement should be one syllable long, not a slow sweep.",
+      "when": "after_apply",
+      "verify": "Each hit has a distinct vowel or squelch and does not smear into the next.",
+      "why": "Riddim uses short LFO movement on volume, filter, position or FM rather than long wobbles; Push Patterns scans both Wavetable oscillators with an envelope and retriggers LFO 2 at 1/16 on cutoff."
+    },
+    {
+      "instruction": "Stack distortion in stages: Saturator for harmonics, then Redux at a mild downsample for grit, then EQ Eight to cut whatever low-mid the distortion added. Do not stack gain.",
+      "when": "after_apply",
+      "verify": "The bass is aggressive but its level did not jump when the distortion was added.",
+      "why": "Stacking different distortion characters creates more complex harmonics than pushing one stage harder."
+    },
+    {
+      "instruction": "Write a two-to-three-note phrase and repeat it for the whole drop, changing one thing per eight bars: a filter, an added layer, a pitch bend, a swapped sample.",
+      "when": "after_apply",
+      "verify": "The drop evolves without the motif itself changing.",
+      "why": "Riddim variation comes from the sound and small fill choices, while the notes barely change."
+    },
+    {
+      "instruction": "Place the motif on 1/8 or 1/16 triplets. The rhythm compiler renders both grids, and riddim.bounce_140 is authored on 1/8T, so applying it writes real triplet positions instead of a straight-grid sketch.",
+      "when": "after_apply",
+      "verify": "After applying riddim.bounce_140 to a clip, its notes sit at thirds of a beat (0.333, 0.667) rather than only on sixteenths; this recipe alone writes nothing.",
+      "why": "Triplet placement is a defining riddim trait; the compiler renders 1/8T as 12 steps per bar and 1/16T as 24, so the feel is written rather than approximated."
+    }
+  ],
+  "notes": "Sources: EDMProd 'How to Make Riddim like Subtronics' (https://www.edmprod.com/how-to-make-riddim); SoundCy riddim production notes (https://soundcy.com/article/how-to-make-riddim-sounds); EDM Templates' riddim bass principles (https://edmtemplates.net/blogs/edm-templates-blog/how-to-make-riddim-bass-in-serum-2); Presetdrive riddim guide (https://www.presetdrive.com/how-to-make-riddim-bass-in-serum-complete-sound-design-guide). The Serum-specific steps are mapped onto Wavetable and Operator here; the mapping is not transcript-verified. Reference-only.",
+  "audition": {
+    "role": "core",
+    "length_beats": 4,
+    "notes": [
+      {
+        "pitch": 36,
+        "start": 0.0,
+        "duration": 0.3,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 0.333333,
+        "duration": 0.3,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 0.666667,
+        "duration": 0.3,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 2.0,
+        "duration": 0.3,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 2.333333,
+        "duration": 0.3,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 2.666667,
+        "duration": 0.3,
+        "velocity": 110
+      }
+    ]
+  }
+}

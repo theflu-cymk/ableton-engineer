@@ -1,0 +1,89 @@
+{
+  "version": 2,
+  "skills": {
+    "arrangement-coach": {
+      "source": "glincker/ableton-skills",
+      "sourceType": "github",
+      "skillPath": "skills/arrangement-coach/SKILL.md",
+      "computedHash": "47c16d1ff0b14fafbaa386b046ff05f13f676549de9f2186264a8891546ddd7a",
+      "installMode": "copy"
+    },
+    "chord-pro": {
+      "source": "glincker/ableton-skills",
+      "sourceType": "github",
+      "skillPath": "skills/chord-pro/SKILL.md",
+      "computedHash": "7c21fe8a82667d795333a224367d7c8e899a4233f8b3948cb4c3fa6ed88f0d3d",
+      "installMode": "copy"
+    },
+    "groove-builder": {
+      "source": "glincker/ableton-skills",
+      "sourceType": "github",
+      "skillPath": "skills/groove-builder/SKILL.md",
+      "computedHash": "f044ceb73fdc34f01a066490e6aca51fcbd48f385b00197ede0cf20f029f8c1e",
+      "installMode": "copy"
+    },
+    "mastering-prep": {
+      "source": "glincker/ableton-skills",
+      "sourceType": "github",
+      "skillPath": "skills/mastering-prep/SKILL.md",
+      "computedHash": "380972aff01f47b4cc29b395994698839e84f70f604e09ba50fb7bd3f1062739",
+      "installMode": "copy"
+    },
+    "midi-cleanup": {
+      "source": "glincker/ableton-skills",
+      "sourceType": "github",
+      "skillPath": "skills/midi-cleanup/SKILL.md",
+      "computedHash": "ec48638120ccc06568d154fa0456b79ad58cd407f9f2c58d187b004aad894958",
+      "installMode": "copy"
+    },
+    "mixer-doctor": {
+      "source": "glincker/ableton-skills",
+      "sourceType": "github",
+      "skillPath": "skills/mixer-doctor/SKILL.md",
+      "computedHash": "a99385e03997c7bb537b3c91740feb8140a607df703f4f7898ffe281f41414fe",
+      "installMode": "copy"
+    },
+    "producer-mode": {
+      "source": "glincker/ableton-skills",
+      "sourceType": "github",
+      "skillPath": "skills/producer-mode/SKILL.md",
+      "computedHash": "86c21b800310f0a0b4d1f4a310a28cdaf2d33b5558db2ca080e592b07ef2c1c2",
+      "installMode": "copy"
+    },
+    "reference-match": {
+      "source": "glincker/ableton-skills",
+      "sourceType": "github",
+      "skillPath": "skills/reference-match/SKILL.md",
+      "computedHash": "7c2a50d56ac2c6b4ef349fc8234b9d1c56fe38a5a1c7e4a1f749d6d68554ef54",
+      "installMode": "copy"
+    },
+    "sidechain-setup": {
+      "source": "glincker/ableton-skills",
+      "sourceType": "github",
+      "skillPath": "skills/sidechain-setup/SKILL.md",
+      "computedHash": "577340ebefe86b99558bc927ebb9455723dbe926cdc8893d3c02f20919e1d9d4",
+      "installMode": "copy"
+    },
+    "sound-designer": {
+      "source": "glincker/ableton-skills",
+      "sourceType": "github",
+      "skillPath": "skills/sound-designer/SKILL.md",
+      "computedHash": "48f2262cd3c2bfaf1dda94b73a8dfedcbab927cc5d3cab42dd90b1b9e0857876",
+      "installMode": "copy"
+    },
+    "tempo-coach": {
+      "source": "glincker/ableton-skills",
+      "sourceType": "github",
+      "skillPath": "skills/tempo-coach/SKILL.md",
+      "computedHash": "e8cc0653209eddd64fbfb7170124e4cce1536d9dc001886d49c6b5a6f98226af",
+      "installMode": "copy"
+    },
+    "vocal-chain": {
+      "source": "glincker/ableton-skills",
+      "sourceType": "github",
+      "skillPath": "skills/vocal-chain/SKILL.md",
+      "computedHash": "8d7b3ebf508af68ebcfea02a1c742038730900962c1e7f38cf3c249c8f0c9e13",
+      "installMode": "copy"
+    }
+  }
+}

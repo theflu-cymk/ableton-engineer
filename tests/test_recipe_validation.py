@@ -43,7 +43,54 @@ def example_recipe():
     }
 
 
+def style_recipe():
+    return {
+        "id": "dubstep.wobble_operator",
+        "name": "Operator wobble",
+        "version": 1,
+        "kind": "style",
+        "status": "shipped",
+        "ingredients": [
+            {"role": "synth", "kind": "instrument", "source": "Ableton Operator"}
+        ],
+        "audition": {
+            "role": "synth",
+            "length_beats": 2,
+            "notes": [{"pitch": 36, "start": 0.0, "duration": 0.5}],
+        },
+    }
+
+
 class RecipeValidationTests(unittest.TestCase):
+    def test_accepts_an_audition_phrase(self):
+        recipe = style_recipe()
+        self.assertIsNone(validate_recipe(recipe))
+
+    def test_rejects_an_audition_role_that_is_not_an_ingredient(self):
+        recipe = style_recipe()
+        recipe["audition"]["role"] = "sub"
+        with self.assertRaisesRegex(
+            RecipeValidationError, "must name one of the recipe's ingredients"
+        ):
+            validate_recipe(recipe)
+
+    def test_rejects_an_audition_note_past_its_length(self):
+        recipe = style_recipe()
+        recipe["audition"]["notes"][0].update({"start": 1.8, "duration": 0.5})
+        with self.assertRaisesRegex(RecipeValidationError, "ends after"):
+            validate_recipe(recipe)
+
+    def test_rejects_unknown_audition_note_keys(self):
+        recipe = style_recipe()
+        recipe["audition"]["notes"][0]["length"] = 0.5
+        with self.assertRaisesRegex(RecipeValidationError, "unknown key"):
+            validate_recipe(recipe)
+
+    def test_rejects_an_audition_on_a_rhythm_recipe(self):
+        recipe = example_recipe()
+        recipe["audition"] = style_recipe()["audition"]
+        with self.assertRaisesRegex(RecipeValidationError, "only apply"):
+            validate_recipe(recipe)
     def test_accepts_the_documented_recipe_shape_without_mutation(self):
         recipe = example_recipe()
         original = copy.deepcopy(recipe)
@@ -209,6 +256,25 @@ class RecipeValidationTests(unittest.TestCase):
         }
 
         with self.assertRaisesRegex(RecipeValidationError, "dry_run or restore"):
+            validate_recipe(recipe)
+
+
+class TripletGridValidationTests(unittest.TestCase):
+    def test_twelve_step_bars_validate_on_the_eighth_triplet_grid(self):
+        recipe = example_recipe()
+        recipe["tempo"]["grid"] = "1/8T"
+        recipe["lanes"] = [
+            {"slot": "kick", "pattern": "x.......x...", "velocity": 1.0},
+            {"slot": "snare", "pattern": "....x......."},
+        ]
+
+        validate_recipe(recipe)
+
+    def test_sixteen_step_bars_are_refused_on_a_twelve_step_grid(self):
+        recipe = example_recipe()
+        recipe["tempo"]["grid"] = "1/8T"
+
+        with self.assertRaisesRegex(RecipeValidationError, "exactly 12 steps"):
             validate_recipe(recipe)
 
 

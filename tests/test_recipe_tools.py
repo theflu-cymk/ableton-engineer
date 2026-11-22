@@ -68,6 +68,61 @@ class RecipeToolTests(unittest.TestCase):
         self.assertEqual(rows["recipes"][0]["source"], "user")
         self.assertEqual(show_recipe({"id": recipe["id"]}, store=self.store)["recipe"], recipe)
 
+    def test_list_filters_by_kind_tag_search_and_runnable(self):
+        rhythm = example_recipe()
+        rhythm["tags"] = ["riddim", "executable"]
+        self._write(self.shipped, rhythm)
+        self._write(
+            self.shipped,
+            {
+                "id": "riddim.checklist",
+                "name": "Riddim checklist",
+                "version": 1,
+                "kind": "style",
+                "status": "shipped",
+                "tags": ["riddim"],
+                "ingredients": [
+                    {"role": "synth", "kind": "instrument", "source": "Operator"}
+                ],
+            },
+        )
+
+        rows = list_recipes({}, store=self.store)
+        self.assertEqual(rows["count"], 2)
+        self.assertTrue(all("tags" in row for row in rows["recipes"]))
+
+        by_kind = list_recipes({"kind": "style"}, store=self.store)
+        self.assertEqual([row["id"] for row in by_kind["recipes"]], ["riddim.checklist"])
+        self.assertEqual(by_kind["count"], 1)
+
+        by_tag = list_recipes({"tag": "riddim"}, store=self.store)
+        self.assertEqual(
+            [row["id"] for row in by_tag["recipes"]],
+            ["dubstep.half_time", "riddim.checklist"],
+        )
+
+        by_search = list_recipes({"search": "CHECK"}, store=self.store)
+        self.assertEqual([row["id"] for row in by_search["recipes"]], ["riddim.checklist"])
+
+        runnable = list_recipes({"runnable": True}, store=self.store)
+        self.assertEqual([row["id"] for row in runnable["recipes"]], ["dubstep.half_time"])
+
+        combined = list_recipes(
+            {"kind": "style", "tag": "riddim", "runnable": True}, store=self.store
+        )
+        self.assertEqual(combined["count"], 0)
+
+    def test_list_rejects_unknown_kind_and_bad_filter_values(self):
+        with self.assertRaises(LiveError) as ctx:
+            list_recipes({"kind": "loop"}, store=self.store)
+        self.assertEqual(ctx.exception.code, "BAD_ARGS")
+        self.assertIn("style, rhythm, workflow, combination", ctx.exception.message)
+
+        for args in ({"tag": ""}, {"search": 3}, {"runnable": "yes"}):
+            with self.assertRaises(LiveError) as ctx:
+                list_recipes(args, store=self.store)
+            self.assertEqual(ctx.exception.code, "BAD_ARGS")
+
     def test_existing_user_recipe_requires_explicit_overwrite(self):
         save_recipe({"recipe": example_recipe()}, store=self.store)
 
@@ -116,6 +171,29 @@ class RecipeToolTests(unittest.TestCase):
         with self.assertRaises(LiveError) as ctx:
             list_recipes({"bogus": True}, store=self.store)
         self.assertEqual(ctx.exception.code, "BAD_ARGS")
+
+    def test_list_reports_what_can_be_compiled(self):
+        self._write(self.shipped, example_recipe())
+        self._write(
+            self.shipped,
+            {
+                "id": "tearout.checklist",
+                "name": "Tearout checklist",
+                "version": 1,
+                "kind": "style",
+                "status": "shipped",
+                "ingredients": [
+                    {"role": "synth", "kind": "instrument", "source": "Serum 2"}
+                ],
+            },
+        )
+
+        rows = {row["id"]: row for row in list_recipes({}, store=self.store)["recipes"]}
+        self.assertTrue(rows["dubstep.half_time"]["compilable"])
+        self.assertTrue(rows["dubstep.half_time"]["needs_target"])
+        self.assertEqual(rows["dubstep.half_time"]["bpm"], [140.0, 140.0])
+        self.assertFalse(rows["tearout.checklist"]["compilable"])
+        self.assertFalse(rows["tearout.checklist"]["needs_target"])
 
     def test_combination_saves_and_shows_resolved_ingredients(self):
         save_recipe({"recipe": example_recipe()}, store=self.store)

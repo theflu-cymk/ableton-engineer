@@ -84,5 +84,35 @@
       "why": "Matt Tinkler uses Saturator's drive, Base Shape and Color, then discusses width and unison."
     }
   ],
-  "notes": "Source: Matt Tinkler, 'Make AWESOME Bass Growls With Ableton Drift' (https://www.youtube.com/watch?v=KQlGU3LTWMk). Transcript summary, not quotes. Reference-only because the engine cannot create or verify Drift patches."
+  "notes": "Source: Matt Tinkler, 'Make AWESOME Bass Growls With Ableton Drift' (https://www.youtube.com/watch?v=KQlGU3LTWMk). Transcript summary, not quotes. Reference-only because the engine cannot create or verify Drift patches.",
+  "audition": {
+    "role": "synth",
+    "length_beats": 4,
+    "notes": [
+      {
+        "pitch": 36,
+        "start": 0.0,
+        "duration": 1.5,
+        "velocity": 110
+      },
+      {
+        "pitch": 43,
+        "start": 2.0,
+        "duration": 0.25,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 2.5,
+        "duration": 0.25,
+        "velocity": 110
+      },
+      {
+        "pitch": 31,
+        "start": 3.25,
+        "duration": 0.5,
+        "velocity": 110
+      }
+    ]
+  }
 }

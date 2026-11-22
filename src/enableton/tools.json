@@ -2459,12 +2459,17 @@
     {
       "name": "recipe_list",
       "domain": "recipe",
-      "summary": "List shipped and user recipes by kind.",
-      "description": "Reads the recipe store and returns each recipe's id, name, kind, status and source. Recipes are JSON data; this does not touch Live and does not need a connection.",
-      "examples": ["what recipes do I have", "list my recipes"],
+      "summary": "List shipped and user recipes, optionally filtered.",
+      "description": "Reads the recipe store and returns each recipe's id, name, kind, status, source, tags and whether this build can compile it. Optional filters narrow the list by kind, by an exact tag, by a case-insensitive search over id and name, or to recipes that compile into a plan. Filters combine with AND; count is the filtered count. Recipes are JSON data; this does not touch Live and does not need a connection.",
+      "examples": ["what recipes do I have", "list my riddim recipes", "which recipes can actually run"],
       "input": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "kind": {"type": "string", "enum": ["style", "rhythm", "workflow", "combination"], "description": "Only this recipe kind."},
+          "tag": {"type": "string", "minLength": 1, "description": "Only recipes carrying this exact tag, e.g. riddim."},
+          "search": {"type": "string", "minLength": 1, "description": "Case-insensitive text matched against the recipe id and name."},
+          "runnable": {"type": "boolean", "default": false, "description": "Only recipes this build can compile into a plan."}
+        },
         "additionalProperties": false
       },
       "timeout_ms": 1000,
@@ -2519,7 +2524,7 @@
       "name": "recipe_apply",
       "domain": "recipe",
       "summary": "Compile a recipe into a stored reversible plan.",
-      "description": "Reads a recipe and recursively compiles every executable ingredient into the same bounded reversible steps used by ableton_escalate. A rhythm ingredient is rendered as MIDI notes into an existing MIDI target clip with one notes_replace step; the target must be supplied, and every slot needs a pitch (slots[].pitch or pitch_map). This is a MIDI render, not sample loading: source slots are reported unresolved. Sample and instrument bindings cannot be compiled. track_bindings can redirect names used by executable steps, such as a recipe's Drums role to the track that actually exists. It validates and preflights the plan against Live, then stores it for ableton_plan_apply; it never writes Live and never executes the plan. manual checkpoints with when='before_apply' stop plan creation until the caller repeats the call with manual_confirmed: true. The response includes the render summary, pending manual checkpoints, the expected fingerprint and the plan id.",
+      "description": "Reads a recipe and recursively compiles every executable ingredient into the same bounded reversible steps used by ableton_escalate. A rhythm ingredient is rendered as MIDI notes into an existing MIDI target clip with one notes_replace step; the target must be supplied, and every slot needs a pitch (slots[].pitch or pitch_map). A style recipe with an audition phrase renders that phrase into an existing MIDI clip instead: its audition.role must name an instrument or sample ingredient, and the track is the explicit target track, the track_bindings entry for that role, or the one MIDI track whose devices match the ingredient source; an ambiguous or missing match names the ingredient and asks for a binding. A style recipe with device_moves instead resolves each move's device on the role's track and writes reversible devices_set_parameter steps; a device that is not already there fails with the step index, the ingredient and the devices_load insertion this build cannot perform. This is a MIDI render, not sample loading or device creation: such declarations are reported unresolved and never block a recipe that has its own executable steps. A recipe with no step and no audition is unavailable with the first blocking ingredient named. It validates and preflights the plan against Live, then stores it for ableton_plan_apply; it never writes Live and never executes the plan. manual checkpoints with when='before_apply' stop plan creation until the caller repeats the call with manual_confirmed: true. The response includes the render summary (note_count and the exact notes written), pending manual checkpoints, the expected fingerprint and the plan id.",
       "examples": ["compile my roller recipe", "turn this recipe into a plan"],
       "input": {
         "type": "object",
@@ -2528,14 +2533,14 @@
           "manual_confirmed": {"type": "boolean", "default": false, "description": "Set true only after the user has completed every before_apply manual checkpoint."},
           "target": {
             "type": "object",
-            "description": "Existing MIDI clip that a rhythm ingredient renders into. The clip is not created or renamed; notes_replace replaces its whole note vector.",
+            "description": "Existing MIDI clip that a rhythm or style audition renders into. The clip is not created or renamed; notes_replace replaces its whole note vector. track is required for a rhythm; a style audition may omit it and resolve its role to a track by track_bindings or a device match.",
             "properties": {
-              "track": {"type": "string", "description": "Exact track name."},
+              "track": {"type": "string", "description": "Exact track name. Optional for a style audition whose role is bound or resolved."},
               "clip": {"type": "string", "description": "Exact clip name."},
               "location": {"type": "string", "enum": ["arrangement", "session"], "description": "Disambiguate a name that exists in both locations."},
               "slot": {"type": "integer", "minimum": 0, "description": "Zero-based Session slot, when the target is a Session clip."}
             },
-            "required": ["track", "clip"],
+            "required": ["clip"],
             "additionalProperties": false
           },
           "pitch_map": {

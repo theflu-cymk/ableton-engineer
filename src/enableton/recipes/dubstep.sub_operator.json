@@ -1,0 +1,125 @@
+{
+  "id": "dubstep.sub_operator",
+  "name": "Dubstep - clean sine sub (Operator)",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "dubstep",
+    "bpm": [
+      138,
+      142
+    ],
+    "feel": "half_time",
+    "tags": [
+      "140",
+      "native",
+      "operator",
+      "sub"
+    ]
+  },
+  "description": "Reference checklist for the sub layer under a dubstep or riddim mid bass: one Operator sine, mono, no internal movement, filtered and high-cut, sidechained to the kick. Not executable: the engine cannot create Operator patches on Live 12.2.5.",
+  "tags": [
+    "ableton",
+    "bass_music",
+    "checklist",
+    "dubstep",
+    "native",
+    "operator",
+    "reference",
+    "riddim",
+    "sound_design",
+    "sub"
+  ],
+  "ingredients": [
+    {
+      "role": "synth",
+      "kind": "instrument",
+      "source": "Ableton Operator"
+    },
+    {
+      "role": "cleanup",
+      "kind": "instrument",
+      "source": "EQ Eight"
+    },
+    {
+      "role": "mono",
+      "kind": "instrument",
+      "source": "Utility"
+    },
+    {
+      "role": "ducking",
+      "kind": "instrument",
+      "source": "Ableton Compressor"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Load Operator with only Osc A on: sine, Coarse 1, level 0 dB. Switch B, C and D off, and leave the pitch envelope and filter off so nothing modulates the sine.",
+      "when": "before_apply",
+      "verify": "A single steady sine with no movement of its own.",
+      "why": "A sub should follow the notes, not a filter; the wobble belongs on the mid bass."
+    },
+    {
+      "instruction": "Set Voices to 1, enable Glide at 30-80 ms, and use a fixed frequency around 40-60 Hz only if you want one note for the whole track; otherwise play it from MIDI in the key of the Set.",
+      "when": "before_apply",
+      "verify": "Notes slide rather than click, and the sub is in tune with the mid bass.",
+      "why": "Mono plus gentle glide is the standard sub behaviour; detuned or poly sub layers smear the low end."
+    },
+    {
+      "instruction": "Shape the amplitude envelope with attack 0, a long decay and sustain at -inf, so the note length comes from the MIDI gate. Keep release short so consecutive notes do not overlap.",
+      "when": "before_apply",
+      "verify": "Repeated sub notes are separate and do not build up.",
+      "why": "An overlapping sine sub is the usual cause of a low end that gets louder and muddier through a bar."
+    },
+    {
+      "instruction": "High-cut above roughly 120 Hz with EQ Eight, then put Utility in mono below 100 Hz. Check that the sub and the mid bass share the same note at the drop.",
+      "when": "after_apply",
+      "verify": "The sub is felt rather than heard, and there is no low-mid buildup when both layers play.",
+      "why": "The mid bass carries the character; anything above about 120 Hz from a sine is just level."
+    },
+    {
+      "instruction": "Sidechain the sub to the kick with a Compressor at 4:1 and 3-4 dB of gain reduction, keyed from the kick track. A/B the drop with the sub muted to confirm it is adding weight.",
+      "when": "after_apply",
+      "verify": "The kick's transient survives, and muting the sub noticeably thins the drop.",
+      "why": "Kick and sub fight for the same fundamental; ducking is cheaper than carving the kick with EQ."
+    },
+    {
+      "instruction": "Play the sub an octave below the mid bass, not at the same pitch. If the Set is in a key below about E1, move the sub up an octave so the fundamental stays above roughly 30 Hz.",
+      "when": "after_apply",
+      "verify": "The low end is audible on small speakers as well as big ones.",
+      "why": "Very low fundamentals are inaudible on most systems and eat headroom on the master."
+    }
+  ],
+  "notes": "Sources: Futureproof Music School's dubstep guide (https://futureproofmusicschool.com/blog/how-to-make-dubstep-the-ultimate-beginner-s-guide), Vitric's 140 BPM beat/sub/wobble guide (https://vitricaudio.com/guides/how-to-make-dubstep), and Ableton's Live Instrument Reference for Operator's fixed frequency and filter shells (https://www.ableton.com/en/manual/live-instrument-reference). Reference-only; nothing here creates a device on this Live build.",
+  "audition": {
+    "role": "synth",
+    "length_beats": 4,
+    "notes": [
+      {
+        "pitch": 36,
+        "start": 0.0,
+        "duration": 0.75,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 1.5,
+        "duration": 0.5,
+        "velocity": 110
+      },
+      {
+        "pitch": 39,
+        "start": 2.0,
+        "duration": 0.5,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 3.0,
+        "duration": 0.75,
+        "velocity": 110
+      }
+    ]
+  }
+}

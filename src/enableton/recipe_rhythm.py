@@ -17,8 +17,11 @@ import math
 from collections.abc import Mapping
 from typing import Any, Dict, List, Optional, Sequence
 
-from .recipe_patterns import RecipePatternError, parse_step_pattern
+from .recipe_patterns import GRID_STEPS, RecipePatternError, parse_step_pattern
 
+#: Every grid this compiler renders. ``1/8T`` is three steps per beat, ``1/16T`` six.
+SUPPORTED_GRIDS = tuple(GRID_STEPS)
+#: The straight default, kept for callers that predate triplet grids.
 SUPPORTED_GRID = "1/16"
 DEFAULT_VELOCITY = 0.8
 MAX_NOTES = 10000
@@ -49,17 +52,19 @@ def _jitter(key: str) -> float:
     return (int.from_bytes(digest, "big") / 0xFFFFFFFF) * 2.0 - 1.0
 
 
-def _step_beats(recipe: Mapping[str, Any], beats_per_bar: float) -> float:
+def _grid(recipe: Mapping[str, Any]) -> tuple[str, int]:
+    """Return the recipe's declared grid and its steps per 4/4 bar."""
     tempo = recipe.get("tempo")
     if not isinstance(tempo, Mapping):
         raise RhythmCompileError("recipe.tempo must be an object")
     grid = tempo.get("grid")
-    if grid != SUPPORTED_GRID:
+    steps = GRID_STEPS.get(grid) if isinstance(grid, str) else None
+    if steps is None:
         raise RhythmCompileError(
-            "recipe.tempo.grid is %r; this compiler supports only %r"
-            % (grid, SUPPORTED_GRID)
+            "recipe.tempo.grid is %r; this compiler supports %s"
+            % (grid, ", ".join(repr(name) for name in SUPPORTED_GRIDS))
         )
-    return float(beats_per_bar) / 16.0
+    return grid, steps
 
 
 def _target_args(target: Mapping[str, Any]) -> Dict[str, Any]:
@@ -106,7 +111,8 @@ def render_rhythm(
     if not math.isfinite(beats_per_bar) or beats_per_bar <= 0:
         raise RhythmCompileError("beats_per_bar must be positive")
 
-    step_beats = _step_beats(recipe, beats_per_bar)
+    grid, steps_per_bar = _grid(recipe)
+    step_beats = float(beats_per_bar) / steps_per_bar
     length_bars = recipe.get("length_bars")
     if (
         isinstance(length_bars, bool)
@@ -188,7 +194,7 @@ def render_rhythm(
             )
 
         try:
-            bars = parse_step_pattern(lane.get("pattern"))
+            bars = parse_step_pattern(lane.get("pattern"), steps_per_bar)
         except (RecipePatternError, TypeError) as exc:
             raise RhythmCompileError(
                 "recipe.lanes[%d].pattern: %s" % (lane_index, exc)
@@ -211,6 +217,13 @@ def render_rhythm(
             low=0.0,
             high=1.0,
         )
+        if swing and grid != SUPPORTED_GRID:
+            # Swing is a straight-grid idea: it delays every second 1/16. On a triplet grid the
+            # off-beat steps already sit inside the beat, so applying it would smear the feel.
+            raise RhythmCompileError(
+                "recipe.lanes[%d].swing is defined on the straight 1/16 grid; grid %r "
+                "already carries its own feel" % (lane_index, grid)
+            )
         humanize = _number(
             lane.get("humanize", 0.0),
             "recipe.lanes[%d].humanize" % lane_index,
@@ -224,7 +237,7 @@ def render_rhythm(
             for step_index, symbol in enumerate(pattern):
                 if symbol not in "xXo":
                     continue
-                start = (bar_index * 16 + step_index) * step_beats
+                start = (bar_index * steps_per_bar + step_index) * step_beats
                 if step_index % 2:
                     start += step_beats * swing * 0.5
                 if humanize:
@@ -324,6 +337,8 @@ def render_rhythm(
         "target": target_args,
         "bars": length_bars,
         "beats_per_bar": round(beats_per_bar, 6),
+        "grid": grid,
+        "steps_per_bar": steps_per_bar,
         "note_count": len(notes),
         "lanes": lane_rows,
         "samples": sample_rows,
@@ -340,5 +355,6 @@ __all__ = [
     "MAX_NOTES",
     "RhythmCompileError",
     "SUPPORTED_GRID",
+    "SUPPORTED_GRIDS",
     "render_rhythm",
 ]

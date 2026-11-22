@@ -1,0 +1,61 @@
+{
+  "id": "bass_music.mix_chain",
+  "name": "Bass music - sub, mid and drum bus chain",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "bass_music",
+    "bpm": [138, 150],
+    "feel": "half_time",
+    "tags": ["drums", "mix", "native", "reference"]
+  },
+  "description": "Reference checklist for the shared mix of dubstep, riddim, deathstep and tearout: a separate mono sub, a mid bass that owns the character, a drum bus with Drum Buss, a kick-keyed sidechain, gain staging with headroom, and a mono check. Not executable.",
+  "tags": ["ableton", "bass_music", "checklist", "deathstep", "drums", "dubstep", "mix", "native", "reference", "riddim", "tearout"],
+  "ingredients": [
+    {"role": "mono", "kind": "instrument", "source": "Utility"},
+    {"role": "cleanup", "kind": "instrument", "source": "EQ Eight"},
+    {"role": "control", "kind": "instrument", "source": "Multiband Dynamics"},
+    {"role": "drums", "kind": "instrument", "source": "Drum Buss"},
+    {"role": "ducking", "kind": "instrument", "source": "Ableton Compressor"}
+  ],
+  "manual": [
+    {
+      "instruction": "Keep the sub on its own track and in mono below about 100 Hz with Utility. Let the mid bass carry all the character, distortion and movement.",
+      "when": "before_apply",
+      "verify": "Closing one eye at the analyser shows one owner per band: sub below, character above.",
+      "why": "Every heavy-bass guide splits the clean sub from the distorted mid; a stereo sub is the most common mix fault in the style."
+    },
+    {
+      "instruction": "Group the drums and put one Drum Buss across the group. Use Boom around 30-40 Hz for the kick, Crunch for snares and claps, and the compressor with the input trim setting how hard it works.",
+      "when": "after_apply",
+      "verify": "The kit sounds like one instrument and the snare cuts without a separate boost.",
+      "why": "Drum Buss is built for a drum group: its compressor, boom and crunch sections are aimed at exactly these jobs."
+    },
+    {
+      "instruction": "Key a Compressor on the mid bass from the kick, 3-5 dB of gain reduction, and leave the sub layer untouched. Do the same for pads or vocals only if they mask the kick.",
+      "when": "after_apply",
+      "verify": "Each kick hit is audible without raising the kick's level.",
+      "why": "Sidechaining the bass rather than boosting the kick keeps the overall level and headroom under control."
+    },
+    {
+      "instruction": "Gain stage so the master peaks around -6 dBFS before any limiter. Put the loudness in the mix, not in the master chain.",
+      "when": "after_apply",
+      "verify": "The drop is loud in the room while the master meter still has room.",
+      "why": "These styles are mastered loud; arriving at the master with headroom is what makes that possible without clipping."
+    },
+    {
+      "instruction": "Check the drop in mono. If the growl disappears or the sub drops out, the width is coming from a layer that is cancelling itself.",
+      "when": "after_apply",
+      "verify": "The drop keeps its weight and its character summed to one speaker.",
+      "why": "Club systems and phone speakers are effectively mono; stereo width on a bass layer is decoration, not weight."
+    },
+    {
+      "instruction": "A/B the drop against one reference track at the same loudness, not louder. Note which band is emptier in yours: that is the next move, not more compression.",
+      "when": "after_apply",
+      "verify": "You can name the one band or element that differs from the reference.",
+      "why": "Loudness-matched comparison is the only comparison that tells you about balance rather than level."
+    }
+  ],
+  "notes": "Sources: Bass Kleph's Drum Buss explainer (https://www.basskleph.com/blog/mixing-drums-with-ableton-drum-buss); EDMProd's dubstep drop walkthrough on low-end control and arrangement (https://www.pointblankmusicschool.com/blog/how-to-create-a-dubstep-drop-from-scratch); Ableton's Live Instrument Reference for Utility, Multiband Dynamics and Compressor (https://www.ableton.com/en/manual/live-instrument-reference). Reference-only; it changes nothing by itself."
+}

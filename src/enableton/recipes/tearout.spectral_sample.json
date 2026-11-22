@@ -85,5 +85,35 @@
       "why": "The tutorial treats this as a reusable sample-to-gun recipe; printing keeps the result stable."
     }
   ],
-  "notes": "Source: oddprophet, 'SERUM 2: HOW TO TURN ANY SAMPLE INTO A HEAVY DUBSTEP BASS' (https://www.youtube.com/watch?v=LRQFCUXqXr4). Transcript summary, not quotes. Reference-only because Serum 2's spectral oscillator and effects cannot be created or verified by this engine."
+  "notes": "Source: oddprophet, 'SERUM 2: HOW TO TURN ANY SAMPLE INTO A HEAVY DUBSTEP BASS' (https://www.youtube.com/watch?v=LRQFCUXqXr4). Transcript summary, not quotes. Reference-only because Serum 2's spectral oscillator and effects cannot be created or verified by this engine.",
+  "audition": {
+    "role": "sub",
+    "length_beats": 4,
+    "notes": [
+      {
+        "pitch": 36,
+        "start": 0.0,
+        "duration": 1.5,
+        "velocity": 110
+      },
+      {
+        "pitch": 43,
+        "start": 2.0,
+        "duration": 0.25,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 2.5,
+        "duration": 0.25,
+        "velocity": 110
+      },
+      {
+        "pitch": 31,
+        "start": 3.25,
+        "duration": 0.5,
+        "velocity": 110
+      }
+    ]
+  }
 }

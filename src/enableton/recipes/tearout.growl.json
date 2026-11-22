@@ -89,5 +89,35 @@
       "why": "Dripment's second Serum 2 routine uses comb/band-pass filtering, triplet LFO movement and a second comb in the effects chain."
     }
   ],
-  "notes": "Sources: oddprophet, 'I Made A 1-2-3 Method For Dubstep Sound Design... It Works Every Time' (https://www.youtube.com/watch?v=OwQDpCtbNTM); Dripment, '2 TEAROUT Serum 2 BASS ROUTINES EVERY BEGINNER Should Know' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summaries, not quotes. Reference-only because these are Serum 2 patch and resampling methods."
+  "notes": "Sources: oddprophet, 'I Made A 1-2-3 Method For Dubstep Sound Design... It Works Every Time' (https://www.youtube.com/watch?v=OwQDpCtbNTM); Dripment, '2 TEAROUT Serum 2 BASS ROUTINES EVERY BEGINNER Should Know' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summaries, not quotes. Reference-only because these are Serum 2 patch and resampling methods.",
+  "audition": {
+    "role": "synth",
+    "length_beats": 4,
+    "notes": [
+      {
+        "pitch": 36,
+        "start": 0.0,
+        "duration": 1.5,
+        "velocity": 110
+      },
+      {
+        "pitch": 43,
+        "start": 2.0,
+        "duration": 0.25,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 2.5,
+        "duration": 0.25,
+        "velocity": 110
+      },
+      {
+        "pitch": 31,
+        "start": 3.25,
+        "duration": 0.5,
+        "velocity": 110
+      }
+    ]
+  }
 }

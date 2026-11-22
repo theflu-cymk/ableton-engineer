@@ -73,5 +73,35 @@
       "why": "dnksaus maps Auto Filter band-pass to a macro and resamples the Operator bass."
     }
   ],
-  "notes": "Source: dnksaus, 'Make HEAVY Dubstep Basses with Operator' (https://www.youtube.com/watch?v=PFmBcZujMwk). Transcript summary, not quotes. Reference-only because the engine cannot create or verify Operator patches."
+  "notes": "Source: dnksaus, 'Make HEAVY Dubstep Basses with Operator' (https://www.youtube.com/watch?v=PFmBcZujMwk). Transcript summary, not quotes. Reference-only because the engine cannot create or verify Operator patches.",
+  "audition": {
+    "role": "synth",
+    "length_beats": 4,
+    "notes": [
+      {
+        "pitch": 36,
+        "start": 0.0,
+        "duration": 0.75,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 1.5,
+        "duration": 0.5,
+        "velocity": 110
+      },
+      {
+        "pitch": 39,
+        "start": 2.0,
+        "duration": 0.5,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 3.0,
+        "duration": 0.75,
+        "velocity": 110
+      }
+    ]
+  }
 }

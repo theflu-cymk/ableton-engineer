@@ -126,7 +126,7 @@ def _recipe_compilable(
         seen.add(recipe_id)
     if recipe.get("kind") == "rhythm":
         return True
-    if recipe.get("steps"):
+    if recipe.get("steps") or recipe.get("audition") or recipe.get("device_moves"):
         return True
     for child_id in _recipe_children(recipe):
         child = recipes.get(child_id)
@@ -146,7 +146,11 @@ def _recipe_dependencies(
             return [], False
         seen.add(recipe_id)
     refs = set(_step_track_refs(recipe))
-    needs_target = recipe.get("kind") == "rhythm"
+    needs_target = (
+        recipe.get("kind") == "rhythm"
+        or bool(recipe.get("audition"))
+        or bool(recipe.get("device_moves"))
+    )
     for child_id in _recipe_children(recipe):
         child = recipes.get(child_id)
         if child is None:

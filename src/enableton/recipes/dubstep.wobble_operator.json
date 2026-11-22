@@ -1,0 +1,136 @@
+{
+  "id": "dubstep.wobble_operator",
+  "name": "Dubstep - Operator wobble bass",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "dubstep",
+    "bpm": [
+      138,
+      142
+    ],
+    "feel": "half_time",
+    "tags": [
+      "140",
+      "native",
+      "operator",
+      "wobble"
+    ]
+  },
+  "description": "Reference checklist for a tempo-synced dubstep wobble on Ableton Operator: saw body plus an unmodulated sine sub, OSR-24 low-pass, a synced square LFO with retrigger, saturation and a kick sidechain. Not executable: Live 12.2.5 cannot create an Operator patch from a plan.",
+  "tags": [
+    "ableton",
+    "bass_music",
+    "checklist",
+    "dubstep",
+    "lfo",
+    "native",
+    "operator",
+    "reference",
+    "sound_design",
+    "wobble"
+  ],
+  "ingredients": [
+    {
+      "role": "synth",
+      "kind": "instrument",
+      "source": "Ableton Operator"
+    },
+    {
+      "role": "wobble",
+      "kind": "instrument",
+      "source": "Ableton LFO (MIDI effect)"
+    },
+    {
+      "role": "drive",
+      "kind": "instrument",
+      "source": "Ableton Saturator"
+    },
+    {
+      "role": "cleanup",
+      "kind": "instrument",
+      "source": "EQ Eight"
+    },
+    {
+      "role": "weight",
+      "kind": "instrument",
+      "source": "Multiband Dynamics (OTS preset)"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Set Osc A to Saw D (or Square) at 0 dB, and enable Osc B as a sine at about -12 dB with no modulation into it. The saw supplies the harmonics that the wobble sweeps; the sine keeps the fundamental present when the filter closes.",
+      "when": "before_apply",
+      "verify": "Solo the bass and hold a note: the low end survives a fully closed filter.",
+      "why": "Dubspot's Operator wobble starts from a broad saw plus an unmodulated sine sub for club translation."
+    },
+    {
+      "instruction": "Choose the OSR-24 ladder low-pass in Operator's filter section, with cutoff around 100 Hz and resonance around 0.30. Keep the filter envelope out of the way while you dial the LFO. For the variant Dubspot's Simpler patch uses, switch to a 12 dB band-pass at about the same 100 Hz and set the filter envelope amount around -20 instead: the negative envelope is what gives the note its thump.",
+      "when": "before_apply",
+      "verify": "The patch is dark but not silent, with a little resonant edge as it opens.",
+      "why": "The same tutorial uses OSR-24 at roughly 100 Hz and 0.30 resonance for a growl without aliasing."
+    },
+    {
+      "instruction": "Add the MIDI LFO device in front of Operator and map it to Filter Cutoff. Square wave, tempo-synced to 1/4, amount about 70%, retrigger on, offset to taste. This toggles between open and closed: the classic on-off wobble. Set Operator to one voice with a short glide, as Dubspot's Simpler version does, so consecutive notes slide into each other instead of re-attacking. For the busier variant, retime the LFO to 1/8, the rate that tutorial performs with.",
+      "when": "before_apply",
+      "verify": "Each new note starts its wobble on the grid instead of flamming against the last one.",
+      "why": "An external LFO keeps Operator's own envelopes free for amplitude shaping, and retrigger prevents off-grid starts."
+    },
+    {
+      "instruction": "For the talking whomp variant, slow the LFO to 1/2 bar, raise Operator's resonance, then insert Redux after it with hard downsampling between 15 and 24. As the filter sweeps, the downsample adds a vocal quality.",
+      "when": "after_apply",
+      "verify": "The bass reads as a voice rather than a filter sweep, and the sub is not lost.",
+      "why": "The Dubspot follow-up lowers the rate, raises resonance and uses Redux hard downsample for the talking bass."
+    },
+    {
+      "instruction": "Add Saturator after the synth: Analog Clip, drive about +6 dB, output trimmed to -3 dB. Then EQ Eight with a 30 Hz low cut and a gentle dip around 300-500 Hz if the mids are boxy.",
+      "when": "after_apply",
+      "verify": "The bass is louder and more aggressive without a mud build-up in the low mids.",
+      "why": "The tutorial chain is Saturator for harmonics, then EQ to keep the sub tidy and remove boxiness."
+    },
+    {
+      "instruction": "Add Multiband Dynamics on the OTS preset at 20-30% wet to lift the high mids, and sidechain a Compressor from the kick at 4:1 for 3-4 dB of gain reduction.",
+      "when": "after_apply",
+      "verify": "The kick and the wobble take turns instead of masking each other.",
+      "why": "OTS-style multiband lift plus kick sidechain is the tutorial's finishing chain and the standard for the style."
+    },
+    {
+      "instruction": "Group the chain into an Instrument Rack and map LFO rate, LFO amount and filter resonance to macros, so one patch can cover several wobble rates in the drop.",
+      "when": "after_apply",
+      "verify": "You can change wobble speed per section without re-patching.",
+      "why": "The tutorial finishes by macro-mapping the wobble controls into a rack."
+    }
+  ],
+  "notes": "Sources: Dubspot, 'Video Tutorial: Making A Dubstep Bass In Ableton Live' (https://blog.dubspot.com/video-tutorial-making-a-dubstep-bass-in-ableton-live); Synthtopia's summary of the Dubspot Operator/Redux follow-up (https://www.synthtopia.com/content/2010/12/03/ableton-live-wobble-bass-tutorial); Quadrophone wobble bass walkthrough (https://quadrophone.com/synthesis/make-a-wobble-bass). Parameter values are one tutorial's starting point, not measurements. Reference-only because the engine cannot create or verify Operator patches on this Live build.",
+  "audition": {
+    "role": "synth",
+    "length_beats": 4,
+    "notes": [
+      {
+        "pitch": 36,
+        "start": 0.0,
+        "duration": 0.75,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 1.5,
+        "duration": 0.5,
+        "velocity": 110
+      },
+      {
+        "pitch": 39,
+        "start": 2.0,
+        "duration": 0.5,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 3.0,
+        "duration": 0.75,
+        "velocity": 110
+      }
+    ]
+  }
+}

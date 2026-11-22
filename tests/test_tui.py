@@ -251,6 +251,93 @@ class CatalogueScreenTests(unittest.TestCase):
         self.assertFalse(any(BLOCK in line for line in lines))
 
 
+class RecipeMenuTests(unittest.TestCase):
+    def test_the_menu_offers_recipes(self):
+        actions = [item.action for item in tui.MENU if item.kind == "action"]
+        self.assertIn("recipes", actions)
+
+    def test_recipe_argv_sends_a_target_only_when_both_halves_were_named(self):
+        self.assertEqual(
+            tui.recipe_argv("dubstep.half_time"), ["recipe", "dubstep.half_time"]
+        )
+        self.assertEqual(
+            tui.recipe_argv("dubstep.half_time", "Drums", "drums A", "session"),
+            [
+                "recipe", "dubstep.half_time",
+                "--target-track", "Drums",
+                "--target-clip", "drums A",
+                "--location", "session",
+            ],
+        )
+        # Half a target is never invented into a full one, and a typo is not passed as a location.
+        self.assertEqual(tui.recipe_argv("r", "Drums"), ["recipe", "r"])
+        self.assertEqual(
+            tui.recipe_argv("r", "Drums", "c", "nowhere"),
+            ["recipe", "r", "--target-track", "Drums", "--target-clip", "c"],
+        )
+        self.assertEqual(
+            tui.recipe_argv("r", confirmed=True), ["recipe", "r", "--manual-confirmed"]
+        )
+
+    def test_usable_recipes_are_listed_first_and_broken_files_last(self):
+        rows = tui.sort_recipes(
+            [
+                {"id": "z", "name": "Zeta", "compilable": False},
+                {"id": "b", "name": "Broken", "status": "invalid", "compilable": False},
+                {"id": "a", "name": "Alpha", "compilable": True},
+            ]
+        )
+        self.assertEqual([row["id"] for row in rows], ["a", "z", "b"])
+
+    def test_the_chooser_says_what_can_change_the_set(self):
+        rows = [
+            {
+                "id": "a", "name": "Half-time", "kind": "rhythm", "status": "shipped",
+                "compilable": True, "needs_target": True, "bpm": [140, 140],
+            },
+            {
+                "id": "b", "name": "Checklist", "kind": "style", "status": "shipped",
+                "compilable": False, "needs_target": False,
+            },
+        ]
+        text = "\n".join(tui._recipe_lines(rows, 0, (100, 30)))
+        self.assertIn("Half-time", text)
+        self.assertIn("140 BPM", text)
+        self.assertIn("needs a target", text)
+        self.assertIn("reference only", text)
+        self.assertIn("1 can change this Set", text)
+        self.assertIn("\u276f", text)
+
+    def test_a_plan_screen_shows_every_step_it_would_apply(self):
+        payload = {
+            "recipe_id": "dubstep.half_time",
+            "recipe_name": "Half-time",
+            "status": "plan_ready",
+            "plan_id": "p_12345678",
+            "steps": [{"n": 1, "tool": "notes_replace", "why": "Render 2 bars"}],
+            "render": {
+                "bars": 2,
+                "note_count": 26,
+                "target": {"track": "Drums", "clip": "drums A"},
+                "warnings": [],
+            },
+        }
+        text = "\n".join(tui._recipe_result_lines(payload, "Half-time", (100, 30)))
+        self.assertIn("notes_replace", text)
+        self.assertIn("26 notes", text)
+        self.assertIn("Drums / drums A", text)
+
+    def test_an_unavailable_recipe_shows_the_reason(self):
+        payload = {
+            "recipe_id": "tearout.growl",
+            "recipe_name": "Growl",
+            "status": "unavailable",
+            "reason": "recipe 'tearout.growl' has no executable steps",
+        }
+        text = "\n".join(tui._recipe_result_lines(payload, "Growl", (100, 30)))
+        self.assertIn("no executable steps", text)
+
+
 class MenuVersionTests(unittest.TestCase):
     def test_the_banner_uses_the_shipped_script_version(self):
         shipped = script_version()

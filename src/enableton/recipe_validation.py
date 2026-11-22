@@ -17,7 +17,7 @@ import math
 from collections.abc import Mapping
 
 from .recipe_fingerprint import FingerprintError, parse_fingerprint
-from .recipe_patterns import RecipePatternError, parse_step_pattern
+from .recipe_patterns import GRID_STEPS, RecipePatternError, parse_step_pattern
 
 PROCEDURAL_KINDS = ("combination", "style", "workflow")
 MAX_STEPS = 12
@@ -308,7 +308,9 @@ def _rhythm(data: Mapping) -> None:
     tempo = _object(data.get("tempo"), "recipe.tempo")
     _finite_number(tempo.get("bpm"), "recipe.tempo.bpm", minimum=0.001)
     _text(tempo.get("feel"), "recipe.tempo.feel")
-    _text(tempo.get("grid"), "recipe.tempo.grid")
+    grid = _text(tempo.get("grid"), "recipe.tempo.grid")
+    # Unknown grids keep the legacy 16-step reading; the compiler is where a grid is refused.
+    steps_per_bar = GRID_STEPS.get(grid, GRID_STEPS["1/16"])
 
     length_bars = _positive_integer(data.get("length_bars"), "recipe.length_bars")
     lanes = data.get("lanes")
@@ -330,7 +332,9 @@ def _rhythm(data: Mapping) -> None:
                 f"{path} has unknown key(s): {', '.join(unknown)}"
             )
         try:
-            bars = parse_step_pattern(_text(lane.get("pattern"), f"{path}.pattern"))
+            bars = parse_step_pattern(
+                _text(lane.get("pattern"), f"{path}.pattern"), steps_per_bar
+            )
         except RecipePatternError as exc:
             raise RecipeValidationError(f"{path}.pattern: {exc}") from exc
         if length_bars % len(bars):
@@ -381,6 +385,87 @@ def _rhythm(data: Mapping) -> None:
         )
 
 
+def _device_moves(moves: object, ingredients: list[Mapping]) -> None:
+    """Machine writes for a processing recipe: an existing device, a parameter and a value."""
+    if moves is None:
+        return
+    if not isinstance(moves, list) or not moves:
+        raise RecipeValidationError("recipe.device_moves must be a non-empty array")
+    if len(moves) > 8:
+        raise RecipeValidationError("recipe.device_moves is limited to 8 entries")
+    for index, move in enumerate(moves, start=1):
+        path = "recipe.device_moves[%d]" % index
+        entry = _object(move, path)
+        unknown = sorted(set(entry) - {"role", "device", "parameter", "value", "why"})
+        if unknown:
+            raise RecipeValidationError(
+                "%s has unknown key(s): %s" % (path, ", ".join(unknown))
+            )
+        role = _text(entry.get("role"), path + ".role")
+        matched = [item for item in ingredients if item.get("role") == role]
+        if not matched:
+            raise RecipeValidationError(
+                "%s.role must name one of the recipe's ingredients: %s"
+                % (path, ", ".join(str(item.get("role")) for item in ingredients) or "none")
+            )
+        if matched[0].get("kind") not in ("instrument", "sample"):
+            raise RecipeValidationError(
+                "%s.role must name an instrument or sample ingredient" % path
+            )
+        _text(entry.get("device"), path + ".device")
+        _text(entry.get("parameter"), path + ".parameter")
+        _finite_number(entry.get("value"), path + ".value")
+        _optional_text(entry.get("why"), path + ".why")
+
+
+def _audition(audition: object, ingredients: list[Mapping]) -> None:
+    """An audition is a short, playable phrase that a style recipe can write into a clip."""
+    if audition is None:
+        return
+    data = _object(audition, "recipe.audition")
+    unknown = sorted(set(data) - {"role", "length_beats", "notes"})
+    if unknown:
+        raise RecipeValidationError(
+            "recipe.audition has unknown key(s): " + ", ".join(unknown)
+        )
+    role = _text(data.get("role"), "recipe.audition.role")
+    matched = [item for item in ingredients if item.get("role") == role]
+    if not matched:
+        raise RecipeValidationError(
+            "recipe.audition.role must name one of the recipe's ingredients: %s"
+            % (", ".join(str(item.get("role")) for item in ingredients) or "none")
+        )
+    if matched[0].get("kind") not in ("instrument", "sample"):
+        raise RecipeValidationError(
+            "recipe.audition.role must name an instrument or sample ingredient"
+        )
+    length = _finite_number(
+        data.get("length_beats", 4), "recipe.audition.length_beats", minimum=0.25
+    )
+    notes = data.get("notes")
+    if not isinstance(notes, list) or not notes:
+        raise RecipeValidationError("recipe.audition.notes must be a non-empty array")
+    for index, note in enumerate(notes, start=1):
+        path = "recipe.audition.notes[%d]" % index
+        entry = _object(note, path)
+        extra = sorted(set(entry) - {"pitch", "start", "duration", "velocity"})
+        if extra:
+            raise RecipeValidationError(
+                "%s has unknown key(s): %s" % (path, ", ".join(extra))
+            )
+        _integer_in_range(entry.get("pitch"), path + ".pitch", 0, 127)
+        start = _finite_number(entry.get("start"), path + ".start", minimum=0)
+        duration = _finite_number(
+            entry.get("duration"), path + ".duration", minimum=0.0001
+        )
+        if "velocity" in entry:
+            _integer_in_range(entry["velocity"], path + ".velocity", 1, 127)
+        if start + duration > length + 0.001:
+            raise RecipeValidationError(
+                "%s ends after recipe.audition.length_beats" % path
+            )
+
+
 def validate_recipe(recipe: object) -> None:
     """Validate common fields, the contract fields, and the payload selected by ``kind``."""
     data = _object(recipe, "recipe")
@@ -407,5 +492,19 @@ def validate_recipe(recipe: object) -> None:
         raise RecipeValidationError(f"unsupported recipe kind: {kind}")
     if kind in PROCEDURAL_KINDS:
         _composition(data)
+        ingredients = data.get("ingredients")
+        if ingredients is None:
+            ingredients = data.get("parts") or []
+        _audition(data.get("audition"), list(ingredients))
+        _device_moves(data.get("device_moves"), list(ingredients))
+        if data.get("audition") is not None and data.get("device_moves") is not None:
+            raise RecipeValidationError(
+                "recipe cannot declare both an audition phrase and device_moves"
+            )
     else:
         _rhythm(data)
+        if "audition" in data or "device_moves" in data:
+            raise RecipeValidationError(
+                "recipe.audition and recipe.device_moves only apply to a style, workflow or "
+                "combination recipe"
+            )

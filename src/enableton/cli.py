@@ -11,7 +11,7 @@ import argparse
 import difflib
 import json
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence
 
 from . import diagnostics
 from .manifest import load_manifest
@@ -58,6 +58,17 @@ def doctor(host: str = "127.0.0.1", port: int = DEFAULT_PORT) -> Dict[str, Any]:
     finally:
         client.close()
     return report
+
+
+def _assignments(values: Sequence[str], flag: str) -> Dict[str, str]:
+    """Parse repeated ``NAME=VALUE`` flags without inventing a shorthand."""
+    out: Dict[str, str] = {}
+    for value in values:
+        name, sep, raw = value.partition("=")
+        if not sep or not name.strip() or not raw.strip():
+            raise ValueError("--%s must look like NAME=VALUE" % flag)
+        out[name.strip()] = raw.strip()
+    return out
 
 
 def _print(obj: Any) -> None:
@@ -118,6 +129,60 @@ def main(argv: Optional[list] = None) -> int:
 
     run_parser = sub.add_parser("run", help="apply a stored plan id", parents=[common])
     run_parser.add_argument("plan_id")
+
+    recipes_parser = sub.add_parser(
+        "recipes", help="list shipped and user recipes", parents=[common]
+    )
+    recipes_parser.add_argument(
+        "--kind", choices=("style", "rhythm", "workflow", "combination"), default=None,
+        help="only this recipe kind",
+    )
+    recipes_parser.add_argument(
+        "--tag", default=None, help="only recipes carrying this tag, e.g. riddim"
+    )
+    recipes_parser.add_argument(
+        "--search", default=None, help="match this text in a recipe id or name"
+    )
+    recipes_parser.add_argument(
+        "--runnable", action="store_true",
+        help="only recipes this build can compile into a plan",
+    )
+    recipe_parser = sub.add_parser(
+        "recipe", help="compile one recipe into a stored plan", parents=[common]
+    )
+    recipe_parser.add_argument("recipe_id")
+    recipe_parser.add_argument(
+        "--show", action="store_true",
+        help="print the recipe definition and its manual checkpoints; does not compile or need Live",
+    )
+    recipe_parser.add_argument(
+        "--target-track", default=None, help="existing MIDI track a rhythm renders into"
+    )
+    recipe_parser.add_argument(
+        "--target-clip", default=None, help="existing MIDI clip a rhythm renders into"
+    )
+    recipe_parser.add_argument(
+        "--location", choices=("arrangement", "session"), default=None,
+        help="which clip a duplicate name means",
+    )
+    recipe_parser.add_argument(
+        "--slot", type=int, default=None, help="Session slot of the target clip"
+    )
+    recipe_parser.add_argument(
+        "--pitch", action="append", default=[], metavar="SLOT=PITCH",
+        help="MIDI pitch for a rhythm slot that declares none; repeatable",
+    )
+    recipe_parser.add_argument(
+        "--binding", action="append", default=[], metavar="ROLE=TRACK",
+        help="point a recipe step's track name at the track in this Set; repeatable",
+    )
+    recipe_parser.add_argument(
+        "--manual-confirmed", action="store_true",
+        help="the recipe's before_apply checkpoints were completed",
+    )
+    recipe_parser.add_argument(
+        "--apply", action="store_true", help="apply the compiled plan in the same call"
+    )
 
     modes_parser = sub.add_parser(
         "modes", help="list modes, tool counts and finding counts", parents=[common]
@@ -276,6 +341,127 @@ def main(argv: Optional[list] = None) -> int:
         except (LiveError, OSError) as exc:
             message = exc.message if isinstance(exc, LiveError) else str(exc)
             print(message, file=sys.stderr)
+            return EXIT_CONNECTION
+        finally:
+            client.close()
+
+    if args.command == "recipes":
+        query: Dict[str, Any] = {}
+        for key in ("kind", "tag", "search"):
+            value = getattr(args, key)
+            if value is not None:
+                query[key] = value
+        if args.runnable:
+            query["runnable"] = True
+        try:
+            _print(run_tool("recipe_list", query))
+            return EXIT_OK
+        except LiveError as exc:
+            print(str(exc), file=sys.stderr)
+            return EXIT_FINDINGS
+
+    if args.command == "recipe":
+        # Reading a recipe is a local file read: only applying, or naming a target that has to be
+        # resolved in the Set, needs the Live socket.
+        if args.show:
+            conflicts = sorted(
+                flag for flag, given in (
+                    ("--target-track", bool(args.target_track)),
+                    ("--target-clip", bool(args.target_clip)),
+                    ("--location", bool(args.location)),
+                    ("--slot", args.slot is not None),
+                    ("--pitch", bool(args.pitch)),
+                    ("--binding", bool(args.binding)),
+                    ("--manual-confirmed", args.manual_confirmed),
+                    ("--apply", args.apply),
+                ) if given
+            )
+            if conflicts:
+                print(
+                    "--show reads one recipe and cannot be combined with %s"
+                    % ", ".join(conflicts),
+                    file=sys.stderr,
+                )
+                return EXIT_FINDINGS
+            try:
+                _print(run_tool("recipe_show", {"id": args.recipe_id}))
+                return EXIT_OK
+            except LiveError as exc:
+                print(str(exc), file=sys.stderr)
+                return EXIT_FINDINGS
+
+        payload: Dict[str, Any] = {"id": args.recipe_id}
+        if not args.target_clip and (args.location or args.slot is not None):
+            print(
+                "--location and --slot need --target-clip: they describe an existing clip",
+                file=sys.stderr,
+            )
+            return EXIT_FINDINGS
+        if args.target_track or args.target_clip:
+            target: Dict[str, Any] = {}
+            if args.target_track:
+                target["track"] = args.target_track
+            if args.target_clip:
+                target["clip"] = args.target_clip
+            if args.location:
+                target["location"] = args.location
+            if args.slot is not None:
+                target["slot"] = args.slot
+            payload["target"] = target
+        try:
+            bindings = _assignments(args.binding, "binding")
+            if bindings:
+                payload["track_bindings"] = bindings
+            if args.pitch:
+                try:
+                    pitches = {
+                        name: int(value)
+                        for name, value in _assignments(args.pitch, "pitch").items()
+                    }
+                except ValueError:
+                    raise ValueError("--pitch values must be whole MIDI notes (0-127)")
+                bad = sorted(name for name, value in pitches.items() if not 0 <= value <= 127)
+                if bad:
+                    raise ValueError(
+                        "--pitch values must be whole MIDI notes (0-127): %s" % ", ".join(bad)
+                    )
+                payload["pitch_map"] = pitches
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return EXIT_FINDINGS
+        if args.manual_confirmed:
+            payload["manual_confirmed"] = True
+
+        if (
+            not args.apply
+            and not args.target_track
+            and not args.target_clip
+            and not args.pitch
+            and not args.binding
+        ):
+            try:
+                plan = run_tool("recipe_apply", payload)
+            except LiveError as exc:
+                print(str(exc), file=sys.stderr)
+                return EXIT_FINDINGS
+            _print(plan)
+            return EXIT_OK if plan.get("plan_id") else EXIT_FINDINGS
+
+        client = LiveClient(host=args.host, port=args.port)
+        try:
+            client.connect(timeout=1.5)
+            plan = run_tool("recipe_apply", payload, client)
+            if not args.apply or not plan.get("plan_id"):
+                _print(plan)
+                return EXIT_OK if plan.get("plan_id") else EXIT_FINDINGS
+            applied = run_tool("ableton_plan_apply", {"plan_id": plan["plan_id"]}, client)
+            _print({"recipe": plan, "apply": applied})
+            return EXIT_OK if applied.get("applied") else EXIT_FINDINGS
+        except LiveError as exc:
+            print(str(exc), file=sys.stderr)
+            return EXIT_CONNECTION if exc.code in TRANSPORT_ERRORS else EXIT_FINDINGS
+        except OSError as exc:
+            print("cannot reach Live on %s:%d: %s" % (args.host, args.port, exc), file=sys.stderr)
             return EXIT_CONNECTION
         finally:
             client.close()

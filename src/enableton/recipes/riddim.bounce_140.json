@@ -1,0 +1,29 @@
+{
+  "id": "riddim.bounce_140",
+  "name": "Riddim - triplet bounce motif at 140",
+  "version": 1,
+  "kind": "rhythm",
+  "status": "shipped",
+  "tempo": {"bpm": 140, "feel": "half_time", "grid": "1/8T"},
+  "length_bars": 2,
+  "lanes": [
+    {"slot": "bass", "pattern": "Xxx......x..|Xxx...x..x..", "velocity": 0.9},
+    {"slot": "sub", "pattern": "x...........|x..x........", "velocity": 0.85},
+    {"slot": "stab", "pattern": ".........x..|.........x..", "velocity": 0.7}
+  ],
+  "slots": [
+    {"slot": "bass", "mode": "hit", "from": "riddim/bass/patches", "select": "highest_transient", "count": 1, "pitch": 36},
+    {"slot": "sub", "mode": "hit", "from": "riddim/bass/sub", "select": "lowest_centroid", "count": 1, "pitch": 24},
+    {"slot": "stab", "mode": "hit", "from": "riddim/synth/stabs", "select": "random", "count": 1, "pitch": 48}
+  ],
+  "flavor": {
+    "name": "riddim",
+    "bpm": [140, 145],
+    "feel": "half_time",
+    "tags": ["bounce", "executable", "riddim", "triplets"]
+  },
+  "description": "A two-bar riddim bounce on a genuine 1/8T grid: 12 steps per bar, three per beat, so the accented three-hit cluster starts on beat one and its third hit lands two thirds of the way through the beat. The answer sits on beat three in bar one and moves to beat two plus a pickup in bar two, with a sub under each phrase start and a stab closing each bar. Renders MIDI notes into an existing clip; it does not load samples.",
+  "tags": ["bass_music", "bounce", "executable", "rhythm", "riddim", "triplets"],
+  "notes": "Positions are real triplets: the compiler renders grid 1/8T as 12 steps per bar and 1/16T as 24, and both are refused if the pattern bar length disagrees. Swing stays at 0 because this compiler refuses swing on triplet grids rather than smearing them; humanize is left off so the motif stays exactly on the triplet boundaries. Sample slots remain unresolved until recipe_build exists.",
+  "why": "Riddim's bounce is the triplet feel, not the note names, so the motif is authored in triplet steps (0, 1/3, 2/3 of a beat) with the sub keeping the low end steady under the distorted mid. Sources: EDMProd's riddim guide (https://www.edmprod.com/how-to-make-riddim), Genre AI's riddim summary (https://genre-ai.app/genre/riddim), and Presetdrive's riddim bass walkthrough (https://www.presetdrive.com/how-to-make-riddim-bass-in-serum-complete-sound-design-guide)."
+}

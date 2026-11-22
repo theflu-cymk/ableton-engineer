@@ -1,0 +1,146 @@
+{
+  "id": "deathstep.growl_operator",
+  "name": "Deathstep - detuned FM growl (Operator)",
+  "version": 1,
+  "kind": "style",
+  "status": "shipped",
+  "flavor": {
+    "name": "deathstep",
+    "bpm": [
+      140,
+      150
+    ],
+    "feel": "half_time",
+    "tags": [
+      "deathstep",
+      "fm",
+      "growl",
+      "native"
+    ]
+  },
+  "description": "Reference checklist for the deathstep mid bass: an inharmonic two-operator FM growl, a formant stage, heavy staged saturation, pitch-drop accents over a chromatic phrase, and a separate sub. Not executable: the engine cannot create Operator patches on Live 12.2.5.",
+  "tags": [
+    "ableton",
+    "bass_music",
+    "checklist",
+    "deathstep",
+    "fm",
+    "native",
+    "operator",
+    "reference",
+    "sound_design"
+  ],
+  "ingredients": [
+    {
+      "role": "synth",
+      "kind": "instrument",
+      "source": "Ableton Operator"
+    },
+    {
+      "role": "formant",
+      "kind": "instrument",
+      "source": "Corpus or Spectral Resonator"
+    },
+    {
+      "role": "drive",
+      "kind": "instrument",
+      "source": "Ableton Saturator"
+    },
+    {
+      "role": "grit",
+      "kind": "instrument",
+      "source": "Ableton Erosion or Redux"
+    },
+    {
+      "role": "cleanup",
+      "kind": "instrument",
+      "source": "EQ Eight"
+    },
+    {
+      "role": "sub",
+      "kind": "instrument",
+      "source": "Ableton Operator (sine)"
+    }
+  ],
+  "manual": [
+    {
+      "instruction": "Build a two-operator FM pair: Osc A sine at 0 dB, Osc B sine modulating it at Coarse 3-8, and a short decay on B's envelope so the modulation is strongest at the attack. Do not use a whole-number ratio if you want it ugly.",
+      "when": "before_apply",
+      "verify": "One note has a metallic, biting attack that decays into a body.",
+      "why": "FM drum and bass guidance uses exactly this pair; detuning B off a whole-number ratio is what makes the harmonics inharmonic."
+    },
+    {
+      "instruction": "Route the pair through a formant stage: a narrow band-pass in Auto Filter, or Corpus tuned to a low vowel, swept slowly across the note. Deathstep reads as a voice in pain, not a clean sub.",
+      "when": "before_apply",
+      "verify": "The growl has a vowel-like centre that moves, and it changes character with the sweep.",
+      "why": "Genre descriptions name formant filtering as a deathstep bass ingredient alongside FM and wavetable synthesis."
+    },
+    {
+      "instruction": "Split the low end before distortion: filter the growl at about 100-120 Hz so the distortion has no sub to chew, and keep a separate clean sine sub under it.",
+      "when": "before_apply",
+      "verify": "The distorted growl keeps its weight, and the low end does not turn to mush when drive is added.",
+      "why": "Distorting a full-range bass makes the fundamental intermodulate; every heavy-bass guide splits the sub first."
+    },
+    {
+      "instruction": "Stack drive in two stages with different characters, for example Saturator (Analog Clip) into Redux or Erosion, then EQ Eight to remove the harsh 2-5 kHz peak the stack created.",
+      "when": "after_apply",
+      "verify": "The growl is loud and torn but does not make the ears ring on its own.",
+      "why": "Stacking distortion types is the standard way to get complexity without one stage doing all the work."
+    },
+    {
+      "instruction": "Write a chromatic, dissonant phrase: minor-second moves, a pitch drop at the end of a bar, and a rest before the next hit. Deathstep leans on tension rather than melody.",
+      "when": "after_apply",
+      "verify": "The phrase sounds threatening without any reverb or effects carrying it.",
+      "why": "Deathstep is described as prioritising dissonance and chromatic motion over anthemics."
+    },
+    {
+      "instruction": "Print the growl to audio and resample variations: reverse a tail, pitch a copy down an octave for a drop hit, and keep the live patch for the main phrase.",
+      "when": "after_apply",
+      "verify": "The drop has several distinct growl events without several live synth instances.",
+      "why": "Deathstep production is described as heavy audio manipulation and resampling of textures."
+    }
+  ],
+  "notes": "Sources: Melodigging's deathstep genre notes (https://www.melodigging.com/genre/deathstep); Recording Arts Canada's TenGraphs interview (https://recordingarts.com/record/introduction-of-deathstep); Garnish Music Production's FM drum/build notes (https://edu.garnishmusicproduction.com/ableton-advanced-fm-making-fm-drum-sounds). The formant and split-chain steps are standard bass-music practice applied to the genre description, not a single transcript. Reference-only.",
+  "audition": {
+    "role": "synth",
+    "length_beats": 4,
+    "notes": [
+      {
+        "pitch": 33,
+        "start": 0.0,
+        "duration": 0.4,
+        "velocity": 110
+      },
+      {
+        "pitch": 33,
+        "start": 0.5,
+        "duration": 0.4,
+        "velocity": 110
+      },
+      {
+        "pitch": 33,
+        "start": 1.0,
+        "duration": 0.4,
+        "velocity": 110
+      },
+      {
+        "pitch": 30,
+        "start": 1.5,
+        "duration": 0.6,
+        "velocity": 110
+      },
+      {
+        "pitch": 33,
+        "start": 2.5,
+        "duration": 0.4,
+        "velocity": 110
+      },
+      {
+        "pitch": 30,
+        "start": 3.0,
+        "duration": 0.75,
+        "velocity": 110
+      }
+    ]
+  }
+}

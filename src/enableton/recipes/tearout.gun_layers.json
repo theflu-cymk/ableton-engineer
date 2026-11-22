@@ -89,5 +89,35 @@
       "why": "MOONBOY uses filtered fills and a disperser on resampled basses; Oddprophet keeps the sub out of the convolution path."
     }
   ],
-  "notes": "Sources: MOONBOY, 'HOW TO TEAROUT DUBSTEP (Marauda, Kai Wachi, Excision)' (https://www.youtube.com/watch?v=nApsgDWSQ7Y); Code: Pandorum, 'MACHINE GUN BASS DESIGN' (https://www.youtube.com/watch?v=sk--QbE_TM0); Wheysted Music, 'SERUM TEAR-OUT GUN BASS TUTORIAL' (https://www.youtube.com/watch?v=KkXF4T_WPbY); Dripment, '2 TEAROUT Serum 2 BASS ROUTINES' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summaries, not quotes. Reference-only because the engine cannot build, resample or verify these patches."
+  "notes": "Sources: MOONBOY, 'HOW TO TEAROUT DUBSTEP (Marauda, Kai Wachi, Excision)' (https://www.youtube.com/watch?v=nApsgDWSQ7Y); Code: Pandorum, 'MACHINE GUN BASS DESIGN' (https://www.youtube.com/watch?v=sk--QbE_TM0); Wheysted Music, 'SERUM TEAR-OUT GUN BASS TUTORIAL' (https://www.youtube.com/watch?v=KkXF4T_WPbY); Dripment, '2 TEAROUT Serum 2 BASS ROUTINES' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summaries, not quotes. Reference-only because the engine cannot build, resample or verify these patches.",
+  "audition": {
+    "role": "sub",
+    "length_beats": 4,
+    "notes": [
+      {
+        "pitch": 36,
+        "start": 0.0,
+        "duration": 1.5,
+        "velocity": 110
+      },
+      {
+        "pitch": 43,
+        "start": 2.0,
+        "duration": 0.25,
+        "velocity": 110
+      },
+      {
+        "pitch": 36,
+        "start": 2.5,
+        "duration": 0.25,
+        "velocity": 110
+      },
+      {
+        "pitch": 31,
+        "start": 3.25,
+        "duration": 0.5,
+        "velocity": 110
+      }
+    ]
+  }
 }

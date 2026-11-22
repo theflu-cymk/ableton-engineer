@@ -525,11 +525,23 @@ else. Its `kind` selects the payload:
 | `rhythm` | `tempo`, `length_bars`, `lanes`, `slots` | a drum or note pattern and the sounds it needs |
 | `workflow` | `steps` | a validated sequence of reversible tool calls |
 | `combination` | `ingredients` and/or `steps` | a recipe composed of existing recipes plus optional procedure |
+| `style` | `ingredients`, `manual`, optional `audition` | a device/parameter checklist plus a short phrase that makes the patched sound audible |
 
 A `combination`'s ingredients are typed bindings; every recipe binding must exist when the
 combination is saved, so recall cannot silently produce a half-empty recipe. Its `flavor` profile
 names and constrains the style; a user can build a personal style from smaller recipes without a
 new handler or mode.
+
+A `style` recipe's `audition` is `{role, length_beats, notes[]}`, where `role` names one of its
+executable `instrument` or `sample` ingredients. Compiling it resolves that role to an **existing**
+MIDI track — an explicit target, the `track_bindings` entry for the role, or the one MIDI track
+whose devices match the ingredient's `source` — and emits one reversible `notes_replace`. It never
+creates devices or clips, and ingredient declarations that no step needs are reported unresolved
+rather than invented. A `device_moves` entry is `{role, device, parameter, value}`: it resolves the
+named device on the role's track and emits a reversible `devices_set_parameter`, or fails with the
+step index, the ingredient and the `devices_load` insertion this build cannot perform. A style
+recipe with no step, audition or device move is `unavailable` with the operation and the first
+blocking ingredient named.
 
 ```json
 {
@@ -634,14 +646,21 @@ transport change or save was made. The manual gates are fake-suite verified; no 
 
 ### 12.3 Patterns are text
 
-Sixteen steps per bar, one character each: `x` hit, `X` accent, `o` ghost, `.` rest, `|` bar line.
+One character per step: `x` hit, `X` accent, `o` ghost, `.` rest, `|` bar line. The step count follows the recipe's declared grid — 16 steps per 4/4 bar on `1/16`, 12 on `1/8T`, 24 on `1/16T` — so a triplet bounce is authored in the same notation rather than approximated.
 A pattern written this way is legible in a chat message, editable by hand, and diffable in git. The
 model can author one directly ("more of a drill pattern: kick on 1, snare on 3, rolling hats") and
 the user can correct a single character without touching anything else.
 
 **Verified offline foundation (pattern tests only):** `recipe_patterns.parse_step_pattern` validates
-the documented symbols and splits complete 16-step bars, with or without `|` separators. It does not
-infer loop counts, schedule notes, or write to Live.
+the documented symbols and splits complete bars of the declared grid length, with or without `|`
+separators. It does not infer loop counts, schedule notes, or write to Live.
+
+**Verified on the fake suite (2026-11-21):** `recipe_rhythm` renders `1/8T` (12 steps per bar) and
+`1/16T` (24) alongside `1/16`, and `validate_recipe` rejects a bar whose length disagrees with its
+grid. Applying the shipped `riddim.bounce_140` to a Session clip through a plan wrote 14 notes, four
+of them at 1/3 and 2/3 of a beat that no 1/16 grid can express; the pack test compiles every shipped
+rhythm on the grid it declares. Swing on a triplet grid is refused rather than applied to the wrong
+steps. Full suite `673 passed, 104 subtests`.
 
 **Verified offline foundation (synthetic tests only):** `recipe_validation.validate_recipe` checks
 the required version-1 recipe fields, documented `hit`/`layer` slot modes, that each lane's pattern
