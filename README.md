@@ -9,11 +9,11 @@ measurements and real A/B track takes.
 | Product | **Enableton** |
 | Package | `enableton` `0.1.0` (`uv run enableton`) |
 | Repository | `theflu-cymk/ableton-engineer` (this repo) |
-| Remote Script | `0.4.26` |
+| Remote Script | `0.5.0` |
 | Control Surface in Live | `Enableton` |
 | Python | 3.11 or newer |
 | Verified against | Ableton Live 12.2.5 on Windows |
-| Tool catalogue | 89 tools in 9 modes; 21 in `produce` |
+| Tool catalogue | 97 tools in 10 modes; 16 in `produce` |
 
 ## Project lineage
 
@@ -24,7 +24,7 @@ reference only. They are different codebases, and their numbers do not transfer:
   Script. It reported 242 tools (156 upstream + 86 additions), release `v0.1.0-beta.2`, protocol
   `1.8.1-ext.15` and Python 3.12–3.14.
 - Enableton is a custom Python server plus `remote_script/Enableton`: package `0.1.0`, Remote
-  Script `0.4.26`, Python 3.11 or newer.
+  Script `0.5.0`, Python 3.11 or newer.
 
 Tool counts, version strings, port numbers, Python ranges and setup steps in the EnAbleton README
 describe the archived codebase. Use the table above for this checkout.
