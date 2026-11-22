@@ -61,8 +61,30 @@ rhythm returned `unavailable` because it has no expected fingerprint. The manual
 fake-suite verified; no recipe with a `before_apply` checkpoint was applied on real Live.
 `recipe_learn`, `recipe_build` and `recipe_refine` remain unimplemented; sample/instrument
 ingredients are still reported unavailable, and rhythm sample slots are reported unresolved rather
-than loaded. The 34-tool mode cap is unchanged because `ableton_inspect` is a session control, not
-a mode member.
+than loaded. The 34-tool mode cap is unchanged because `ableton_inspect` is a session control, not a mode
+member.
+
+### Style-recipe device moves verified on real Live (2026-11-22, `0.5.0`)
+
+**Verified.** `doctor` reported script `0.5.0`, build `118a39b3e339`, no `stale`. The open Set was
+initially untitled and the safety executor refused every write (`PRECONDITION_FAILED: this Set has
+no file path`), which is the guard working; after the operator saved a scratch copy as
+`scratchcumasyouare`, a disposable `RECIPE GATE` track was created and EQ Eight, Saturator and
+Multiband Dynamics were loaded from the Browser. `bass.loud_rack --target-track "RECIPE GATE"
+--manual-confirmed --apply` wrote six parameters, and a fresh `devices_read_parameters` read back
+`Amount 0.8` (80 %), `Drive 0.5694` (5.0 dB), `Dry/Wet 1.0` (100 %), `1 Filter Type A 1.0`
+(High Pass 12dB), `1 Frequency A 0.14275` (30.0 Hz) and `2 Gain A -1.5` (-1.50 dB) on the real
+devices. Three Assumed values were wrong and are fixed: Saturator Drive is normalized 0-1 (0.5 =
+0.0 dB), EQ Eight parameters are band/side-qualified, and the preset had renamed the EQ device to
+`Remove Mud`, which the class match (`Eq8`) resolves. All 20 audition recipes applied into one real
+Session clip and `notes_read` matched the reported notes; `riddim.triplet_operator` differed only by
+the readback rounding `0.3333` vs `0.333333`. The disposable track, clip and devices were deleted,
+no save was issued, and the Set file on disk was not written.
+
+**Found, not fixed:** `tracks_create`, `devices_load` and `clips_create_midi` returned
+`PRECONDITION_FAILED: applied trace did not match the dry-run trace` although the track and devices
+had landed (the arrangement clip had not). `doctor` showed `errors` rise from 2 to 4 across the
+gate. The recipe apply path did not use those tools and was unaffected.
 
 ### Device bypass unavailable; warp-mode write (2026-11-10, `0.2.14`)
 

@@ -538,8 +538,11 @@ MIDI track — an explicit target, the `track_bindings` entry for the role, or t
 whose devices match the ingredient's `source` — and emits one reversible `notes_replace`. It never
 creates devices or clips, and ingredient declarations that no step needs are reported unresolved
 rather than invented. A `device_moves` entry is `{role, device, parameter, value}`: it resolves the
-named device on the role's track and emits a reversible `devices_set_parameter`, or fails with the
-step index, the ingredient and the `devices_load` insertion this build cannot perform. A style
+declared device on the role's track, matching either Live's device name or its class (so a renamed
+EQ Eight still resolves as `Eq8`), and emits a reversible `devices_set_parameter`; otherwise it fails
+with the step index, the ingredient and the `devices_load` insertion this build cannot perform.
+Values are in Live's own parameter units, which are not always the displayed unit (Saturator Drive
+is normalized 0-1 with 0.5 = 0.0 dB; EQ Eight frequency is normalized 0-1). A style
 recipe with no step, audition or device move is `unavailable` with the operation and the first
 blocking ingredient named.
 

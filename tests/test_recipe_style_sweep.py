@@ -33,23 +33,26 @@ class StyleSweepTests(unittest.TestCase):
         source.write_bytes(b"scratch")
         self.server.song.file_path = str(source)
         # A realistic processing track: the loud-rack recipe's devices already exist here.
+        # Real Live 12.2.5 shapes, verified on 2026-11-22: class-matched devices, a renamed
+        # EQ Eight, band-qualified parameters and normalized Saturator Drive.
         self.server.song.tracks[1].devices = [
             FakeDevice(
-                "Multiband Dynamics", "Multiband Dynamics",
+                "Multiband Dynamics", "MultibandDynamics",
                 parameters=[FakeDeviceParameter("Amount", 0.2, 0.0, 1.0)],
             ),
             FakeDevice(
                 "Saturator", "Saturator",
                 parameters=[
-                    FakeDeviceParameter("Drive", 0.0, 0.0, 36.0),
+                    FakeDeviceParameter("Drive", 0.5, 0.0, 1.0),
                     FakeDeviceParameter("Dry/Wet", 0.5, 0.0, 1.0),
                 ],
             ),
             FakeDevice(
-                "EQ Eight", "Eq8",
+                "Remove Mud", "Eq8",
                 parameters=[
-                    FakeDeviceParameter("Frequency", 20000.0, 20.0, 22000.0),
-                    FakeDeviceParameter("Gain", 0.0, -18.0, 18.0),
+                    FakeDeviceParameter("1 Filter Type A", 3.0, 0.0, 7.0),
+                    FakeDeviceParameter("1 Frequency A", 0.27, 0.0, 1.0),
+                    FakeDeviceParameter("2 Gain A", 0.0, -15.0, 15.0),
                 ],
             ),
         ]

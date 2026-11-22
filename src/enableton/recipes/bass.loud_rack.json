@@ -4,52 +4,57 @@
   "version": 1,
   "kind": "style",
   "status": "shipped",
-  "flavor": {
-    "name": "tearout",
-    "bpm": [
-      140,
-      150
-    ],
-    "feel": "half_time",
-    "tags": [
-      "bass_music",
-      "checklist",
-      "clipper",
-      "dubstep",
-      "loudness",
-      "mix",
-      "ott",
-      "reference",
-      "resampling",
-      "riddim",
-      "saturation",
-      "sound_design",
-      "tearout",
-      "tutorial",
-      "youtube"
-    ]
-  },
-  "description": "Reference checklist for a reusable bass loudness rack: gain-stage, OTT and saturation stages, EQ and clipper, then A/B and resample. Suitable for dubstep, riddim and tearout.",
+  "summary": "OTT-style density into saturation, then a corrective low cut and a small EQ trim, for a bass patch built from the manual.",
+  "tags": ["bass", "mixing", "loudness", "tearout", "dubstep"],
+  "bpm": [140, 150],
   "ingredients": [
+    {"role": "ott", "kind": "instrument", "source": "OTT"},
+    {"role": "saturation", "kind": "instrument", "source": "Saturator"},
+    {"role": "eq", "kind": "instrument", "source": "EQ Eight"},
+    {"role": "clipper", "kind": "instrument", "source": "Clipper"}
+  ],
+  "device_moves": [
     {
       "role": "ott",
-      "kind": "instrument",
-      "source": "OTT"
+      "device": "MultibandDynamics",
+      "parameter": "Amount",
+      "value": 0.8,
+      "why": "80% of the OTT amount (Live exposes Amount as 0.0-1.0; the factory default is 1.0), per the recipe manual"
     },
     {
       "role": "saturation",
-      "kind": "instrument",
-      "source": "Ableton Saturator"
+      "device": "Saturator",
+      "parameter": "Drive",
+      "value": 0.5694,
+      "why": "5.0 dB of drive: Live exposes Drive as 0.0-1.0 where 0.5 is 0.0 dB, so 0.5694 reads back 5.0 dB"
+    },
+    {
+      "role": "saturation",
+      "device": "Saturator",
+      "parameter": "Dry/Wet",
+      "value": 1.0,
+      "why": "fully wet, as the recipe manual states"
     },
     {
       "role": "eq",
-      "kind": "instrument",
-      "source": "EQ Eight"
+      "device": "Eq8",
+      "parameter": "1 Filter Type A",
+      "value": 1.0,
+      "why": "band 1 as a 12 dB/octave high pass, so the frequency move really is a low cut"
     },
     {
-      "role": "clipper",
-      "kind": "instrument",
-      "source": "Clipper"
+      "role": "eq",
+      "device": "Eq8",
+      "parameter": "1 Frequency A",
+      "value": 0.14275,
+      "why": "30.0 Hz low cut (Live stores EQ Eight frequency as 0.0-1.0; 0.14275 reads back 30.0 Hz)"
+    },
+    {
+      "role": "eq",
+      "device": "Eq8",
+      "parameter": "2 Gain A",
+      "value": -1.5,
+      "why": "small corrective cut on band 2, not a tone move (EQ Eight gain is in dB)"
     }
   ],
   "manual": [
@@ -88,44 +93,6 @@
       "when": "after_apply",
       "verify": "The loudness survives mono and the kick still reads.",
       "why": "A loud rack can hide phase and low-end problems; the tutorials repeatedly check the sound in context rather than soloed."
-    }
-  ],
-  "notes": "Source: Dripment, '2 TEAROUT Serum 2 BASS ROUTINES EVERY BEGINNER Should Know' (https://www.youtube.com/watch?v=NRfK34KZIf8). Transcript summary, not quotes. Reference-only because the engine has no OTT, Saturator, EQ or clipper chain.",
-  "device_moves": [
-    {
-      "role": "ott",
-      "device": "Multiband Dynamics",
-      "parameter": "Amount",
-      "value": 0.8,
-      "why": "OTT-style density at roughly 80% depth, per the recipe manual"
-    },
-    {
-      "role": "saturation",
-      "device": "Saturator",
-      "parameter": "Drive",
-      "value": 5.0,
-      "why": "about 5 dB of drive on the first stage"
-    },
-    {
-      "role": "saturation",
-      "device": "Saturator",
-      "parameter": "Dry/Wet",
-      "value": 1.0,
-      "why": "fully wet, as the recipe manual states"
-    },
-    {
-      "role": "eq",
-      "device": "EQ Eight",
-      "parameter": "Frequency",
-      "value": 30.0,
-      "why": "corrective low cut before the clipper"
-    },
-    {
-      "role": "eq",
-      "device": "EQ Eight",
-      "parameter": "Gain",
-      "value": -1.5,
-      "why": "small corrective cut, not a tone move"
     }
   ]
 }

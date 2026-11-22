@@ -210,23 +210,26 @@ class StyleAuditionTests(unittest.TestCase):
         self.assertIn("--binding click=<track>", reason)
 
     def _seed_processing_devices(self):
+        # Live's real shapes: EQ Eight is often renamed by its preset ("Remove Mud"), its
+        # parameters are band-qualified, and Saturator Drive is normalized 0..1, not dB.
         self.adapter.song.tracks[1].devices = [
             FakeDevice(
-                "Multiband Dynamics", "Multiband Dynamics",
+                "Multiband Dynamics", "MultibandDynamics",
                 parameters=[FakeDeviceParameter("Amount", 0.2, 0.0, 1.0)],
             ),
             FakeDevice(
                 "Saturator", "Saturator",
                 parameters=[
-                    FakeDeviceParameter("Drive", 0.0, 0.0, 36.0),
+                    FakeDeviceParameter("Drive", 0.5, 0.0, 1.0),
                     FakeDeviceParameter("Dry/Wet", 0.5, 0.0, 1.0),
                 ],
             ),
             FakeDevice(
-                "EQ Eight", "Eq8",
+                "Remove Mud", "Eq8",
                 parameters=[
-                    FakeDeviceParameter("Frequency", 20000.0, 20.0, 22000.0),
-                    FakeDeviceParameter("Gain", 0.0, -18.0, 18.0),
+                    FakeDeviceParameter("1 Filter Type A", 3.0, 0.0, 7.0),
+                    FakeDeviceParameter("1 Frequency A", 0.27, 0.0, 1.0),
+                    FakeDeviceParameter("2 Gain A", 0.0, -15.0, 15.0),
                 ],
             ),
         ]
@@ -245,13 +248,22 @@ class StyleAuditionTests(unittest.TestCase):
         self.assertEqual(plan["status"], "plan_ready", plan.get("reason"))
         render = plan["render"]
         self.assertEqual(render["strategy"], "device_parameters")
-        self.assertEqual(render["move_count"], 5)
+        self.assertEqual(render["move_count"], 6)
         self.assertEqual(render["moves"][0]["resolved_by"], "target")
         self.assertEqual(
             [row["role"] for row in render["unresolved_ingredients"]], ["clipper"]
         )
         self.assertEqual(
-            [step["tool"] for step in plan["steps"]], ["devices_set_parameter"] * 5
+            [step["tool"] for step in plan["steps"]], ["devices_set_parameter"] * 6
+        )
+        # The EQ device is named "Remove Mud" on this track; the class resolves it.
+        self.assertEqual(
+            {row["device"] for row in render["moves"] if row["role"] == "eq"},
+            {"Remove Mud"},
+        )
+        self.assertEqual(
+            [step["args"]["parameter"] for step in plan["steps"] if step["args"]["device"] == "Remove Mud"],
+            ["1 Filter Type A", "1 Frequency A", "2 Gain A"],
         )
 
         applied = self._apply(plan)
@@ -283,7 +295,7 @@ class StyleAuditionTests(unittest.TestCase):
         reason = plan["reason"]
         self.assertIn("step 1 (devices_set_parameter)", reason)
         self.assertIn("ingredient 'ott' (instrument, 'OTT')", reason)
-        self.assertIn("'Multiband Dynamics'", reason)
+        self.assertIn("'MultibandDynamics'", reason)
         self.assertIn("devices_load", reason)
         self.assertIn("--binding ott=<track>", reason)
 

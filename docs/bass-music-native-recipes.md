@@ -306,8 +306,9 @@ the socket, so only those paths need Live running.
 
 Twenty of the twenty-six style recipes carry a four-beat **audition phrase**: applying one writes
 that phrase into an existing MIDI clip on a track you choose, so the patch you built from the manual
-checklist is immediately audible. `bass.loud_rack` instead declares five **device moves** and writes
-those parameter values on a track that already carries Multiband Dynamics, Saturator and EQ Eight.
+checklist is immediately audible. `bass.loud_rack` instead declares six **device moves** and writes
+those parameter values on a track that already carries Multiband Dynamics, Saturator and EQ Eight
+(matched by device class, so a renamed EQ Eight still resolves).
 The remaining five — `bass_music.mix_chain`, `tearout.filtered_fill`, `tearout.gun_click`,
 `tearout.gun_glue`, `tearout.growl_fatten` — need a sample load, a device insertion, a rack/group or
 routing this build has no step for; each fails at compile time with the step, the operation, the
@@ -360,8 +361,39 @@ The reported payload is the contract. For an audition, `render.strategy` is `aud
 recipe, `render.strategy` is `device_parameters`, `render.moves` lists every
 track/device/parameter/value written, and `render.unresolved_ingredients` names what the plan did not
 touch (`bass.loud_rack` leaves `clipper` to you, since the recipe declares no move for it). Parameter
-names are Live's native names, tagged **Assumed**; a name this Live build does not expose fails in
-preflight rather than silently doing nothing.
+names and ranges are Live's native ones, **Verified** on Live 12.2.5 (below); a name this build does
+not expose fails in preflight rather than silently doing nothing.
+
+### Verified on real Live 12.2.5 (2026-11-22)
+
+On a saved scratch copy (`scratchcumasyouare`, 5 tracks, 120 BPM), a disposable `RECIPE GATE` track
+was created, and EQ Eight, Saturator and Multiband Dynamics were loaded from the Browser. Then
+`uv run enableton recipe bass.loud_rack --target-track "RECIPE GATE" --manual-confirmed --apply`
+reported `applied: true`, and a fresh `devices_read_parameters` read back exactly:
+
+| Device (as Live names it) | Parameter | Raw | Display |
+|---|---|---|---|
+| Multiband Dynamics | `Amount` | `0.8` | `80 %` |
+| Saturator | `Drive` | `0.5694` | `5.0 dB` |
+| Saturator | `Dry/Wet` | `1.0` | `100 %` |
+| Remove Mud (class `Eq8`) | `1 Filter Type A` | `1.0` | `High Pass 12dB` |
+| Remove Mud (class `Eq8`) | `1 Frequency A` | `0.14275` | `30.0 Hz` |
+| Remove Mud (class `Eq8`) | `2 Gain A` | `-1.5` | `-1.50 dB` |
+
+Three **Assumed** details were wrong and are now fixed in the recipe:
+
+- Saturator `Drive` is normalized `0.0–1.0` with `0.5` = `0.0 dB`, so the old `5.0` was outside the
+  parameter's own range. `0.5694` is the value that displays `5.0 dB`.
+- EQ Eight's parameters are band- and side-qualified (`1 Frequency A`, `2 Gain A`, …). Plain
+  `Frequency` and `Gain` do not exist on the device.
+- Loading EQ Eight from the Browser named the device `Remove Mud` after its preset, so the recipe now
+  declares the class `Eq8`; the compiler resolves name **or** class and writes to the real name.
+
+The 20 audition recipes were also applied into a real Session clip on that track and read back with
+`notes_read`: all 20 matched the reported notes (one differed only by Live's readback rounding,
+`0.3333` vs `0.333333`). The track, its clip and its devices were deleted afterwards, no save was
+issued, and the Set file on disk was not written; every write left a `scratch_copy` backup under
+`%APPDATA%\Enableton\backups`.
 
 A recipe that cannot write returns `status: "unavailable"` with the step it would need, the entity
 and the operation this build cannot perform:
@@ -405,6 +437,12 @@ What each remaining blocker means:
 - **Style apply writes a test phrase or parameter values, not a device chain**: the audition is a
   four-beat motif, not a composed part, and it replaces the target clip's existing notes (restorable
   by undo); device moves only change parameters of devices that already exist.
+- **Device writes were verified on one Set only** (Live 12.2.5, 2026-11-22). Other presets can
+  rename or reconfigure devices, and only the parameters listed above were checked.
+- **`tracks_create`, `devices_load` and `clips_create_midi` misreport success**: each returned
+  `PRECONDITION_FAILED: applied trace did not match the dry-run trace`. The track and devices had
+  in fact landed (the clip creation had not), so the trace comparison is stricter than the write.
+  Not fixed here; the recipe path was unaffected.
 - **No measured verification** of any style checklist; `recipe_verify` has nothing to measure for
   them because they carry no `expected` fingerprint.
 
